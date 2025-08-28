@@ -1,0 +1,73 @@
+---
+title: 'Admin Request'
+description: 'This documentation describes how validation is handled with crudadmin.'
+---
+
+## Creating admin request
+
+You can create extended version of Laravel Request via following command.
+
+```bash
+php artisan admin:request CustomerRequest
+```
+
+Following class will be accepted by CrudAdmin validator as predefined settings across project.
+
+```php app/Http/Requests/CustomerRequest.php
+<?php
+
+namespace App\Http\Requests;
+
+use Admin\Core\Requests\AdminModelRequest;
+
+class CustomerRequest extends AdminModelRequest
+{
+    /**
+     * Use only given fields from admin model
+     *
+     * @return  array
+     */
+    public function only()
+    {
+        return [
+            // 'field_a', 'field_b'
+        ];
+    }
+
+    /**
+     * Use only given fields with validation format, but also merge additional fields
+     *
+     * @return  array
+     */
+    public function rules()
+    {
+        return [
+            // 'field_1' => 'required|min:5',
+        ];
+    }
+
+    /**
+     * Megre additional validation rules into request
+     *
+     * @return  array
+     */
+    public function merge()
+    {
+        return [
+            // 'field' => 'name:email'
+        ];
+    }
+
+    /**
+     * Replace existing validation rules with attached ones
+     *
+     * @return  array
+     */
+    public function replace()
+    {
+        return [
+            // 'field' => 'name:email'
+        ];
+    }
+}
+```

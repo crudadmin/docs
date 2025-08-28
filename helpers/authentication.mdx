@@ -20,7 +20,7 @@ php artisan vendor:publish --tag admin_helpers.config
 
 ## Creating helpers
 
-First we need create user helpers. With this methods we will be obtaining logged user object.
+First we need create user helpers. With this methods we will be obtaining logged user object. You can use any of that.
 
 ```php app/Utilities/helpers.php
 function user()
@@ -69,7 +69,7 @@ Enable OTP in admin_helpers config.
 
 ## Register Controller
 
-You can configure you own registration process.
+You can configure you own registration process using your own validation rules. Checkout more about [Admin Rules]().
 
 ```php app/Http/Controllers/RegisterController.php
 <?php

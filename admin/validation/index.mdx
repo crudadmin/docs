@@ -1,0 +1,93 @@
+---
+title: 'Validation'
+description: 'This documentation describes how validation is handled with crudadmin. CrudAdmin uses extended automatic validator generator, which helps you automaticaly using defined rules in AdminModel.'
+---
+
+### Creating resource with help of admin model rules.
+
+Following methods will use automatic validation rules defined in Customer model. Validation whitelists only fields defined in `only` method, with one extra additional rule attached which does not exist in model.
+
+```php app/Http/Controllers/CustomerController.php
+<?php
+
+namespace App\Http\Controller;
+
+class CustomerController extends Controller
+{
+    /**
+     * Use only given fields from admin model
+     *
+     * @return  array
+     */
+    public function register()
+    {
+        $data = Customer::validator()->only([
+            'username', 'email', 'password'
+        ])->merge([
+            'license_terms' => 'required',
+        ])->validate()->getData();
+
+        Customer::create($data);
+    }
+}
+```
+
+## Supported methods
+
+### `only`
+
+Whitelists fields from admin model which will be automaticlaly validated in incoming request.
+
+```php
+$model->validator()->only([
+    'username', 'email', 'password'
+])->validate()->getData()
+```
+
+### `merge`
+
+Merges additional data with incoming request.
+
+```php
+$model->validator()->merge([
+    'license_terms' => 'required',
+])->validate()->getData()
+```
+
+### `replace`
+
+Replaces existing rules defined in admin model.
+
+```php
+$model->validator()->replace([
+    'username' => 'max:10',
+])->validate()->getData()
+```
+
+### `validate`
+
+Validates incoming request and throws validation exception if validation fails.
+
+```php
+$model->validator()->validate()
+```
+
+### `getData`
+
+Returns validated and processed data in array.
+
+```php
+$data = $model->validator()->validate()->getData();
+
+Model::create($data);
+```
+
+### `use`
+
+Uses [Admin Request](/admin/validation/request) class, with defined set of rules which may be shared across multiple places in project.
+
+```php
+use App\Http\Requests\CustomerRequest;
+
+$model->validator()->use(CustomerRequest::class)->validate()->getData();
+```

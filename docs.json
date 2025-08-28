@@ -24,8 +24,15 @@
           {
             "group": "CrudAdmin",
             "pages": [
-              "admin/Admin Model",
-              "admin/..."
+              "admin/model/index"
+            ]
+          },
+          {
+            "group": "Validation",
+            "icon": "ruler",
+            "pages": [
+              "admin/validation/index",
+              "admin/validation/request"
             ]
           },
           {
