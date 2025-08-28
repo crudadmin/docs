@@ -1,0 +1,42 @@
+---
+title: 'Login'
+description: 'This documentation describes how login process.'
+---
+
+## Create login controller
+
+By default, login is pointing to default guard model. Change it according to your needs by setting `$guard` property.
+
+```php app/Http/Controllers/LoginController.php
+<?php
+
+namespace App\Http\Controllers\Auth;
+
+use AdminHelpers\Auth\Controllers\LoginController as AdminLoginController;
+
+class LoginController extends AdminLoginController {}
+```
+## Login response
+
+```json
+{
+    "type": "success",
+    "title": "Informácia",
+    "message": "Boli ste úspešne registrovaní!",
+    "error": false,
+    "data": {
+        "driver": "users",
+        "user": {
+            "username": "Marek Gogol",
+            "email": "info@marekgogol.sk",
+            "updated_at": "2025-08-28T07:20:31.000000Z",
+            "created_at": "2025-08-28T07:20:31.000000Z",
+            "id": 13
+        },
+        "token": {
+            "token": "1|pjSjjD86fs3FgOcdJpcKRSzoYExrgljWrMiVMkPH72270f65",
+            "expiration": null
+        }
+    }
+}
+```

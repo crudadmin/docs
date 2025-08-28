@@ -67,6 +67,16 @@ class User extends BaseAuthenticatable
 {
     use HasUserAuth,
         HasApiTokens;
+
+    public function rules($row)
+    {
+        return [
+            'email' => 'name:E-mail|required|email|max:60|index|unique:'.$this->getTable().',email,'.(isset($row) ? $row->getKey() : 'NULL').',id,deleted_at,NULL',
+            'verified' => 'name:Overené údaje|type:select|multiple',
+            'password' => 'name:Heslo|type:password|min:4|max:40|confirmed|'.(isset($row) ? '' : '|inAdmin:required'),
+            ...
+        ];
+    }
 }
 ```
 

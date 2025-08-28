@@ -17,8 +17,8 @@
             "group": "Getting started",
             "pages": [
               "index",
-              "quickstart",
-              "development"
+              "admin/quickstart",
+              "admin/development"
             ]
           },
           {
@@ -68,7 +68,8 @@
             "pages": [
               "helpers/authentication/index",
               "helpers/authentication/otp",
-              "helpers/authentication/registration"
+              "helpers/authentication/registration",
+              "helpers/authentication/login"
             ]
           }
         ]
