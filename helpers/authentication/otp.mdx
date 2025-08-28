@@ -1,0 +1,41 @@
+---
+title: 'OTP Authentication'
+description: 'This documentation describes how to configure OTP authentication.'
+---
+
+## Configuration
+
+First enable OTP in admin_helpers config.
+
+```php config/admin_helpers.php
+'auth' => [
+    'otp' => [
+        'enabled' => true,
+        ...
+```
+
+## Testing
+
+If you enable token debug, emails or sms codes won't be sent. But your defined tokens will be used instead from `whitelisted_tokens` config.
+
+For disabling using real OTP tokens for certaing users, you can do it by adding their *email* or *phone* number to `test_identifiers` config.
+
+```php .env
+AUTH_TOKEN_DEBUG=true
+```
+
+```php config/admin_helpers.php
+'auth' => [
+    'otp' => [
+        'test_identifiers' => [
+            // '+421900000000',
+        ],
+
+        'whitelisted_tokens' => [
+            12345,
+        ],
+```
+
+Then everything should be ready to set. After **registration** or **log in** you will receive OTP code to your email.
+
+![OTP](/images/helpers/otp.png)

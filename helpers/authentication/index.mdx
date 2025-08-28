@@ -1,0 +1,89 @@
+---
+title: 'Configuration'
+description: 'This documentation describes how to configure authentication.'
+---
+
+## Before you start
+
+Configure [sanctum](https://laravel.com/docs/master/sanctum) in your project to support API tokens. By default, it is already part of the package, so no need to install it.
+
+```bash
+php artisan vendor:publish --tag=sanctum-migrations
+php artisan migrate
+```
+
+## Creating helpers
+
+First we need create user helpers. With this methods we will be obtaining logged user object. You can use any of that.
+
+```php app/Utilities/helpers.php
+function user()
+{
+    return auth()->guard('user')->user();
+}
+
+function client()
+{
+    return user();
+}
+```
+
+## Authorization provider
+
+Set guards and providers according your logic name.
+
+```php config/auth.php
+'guards' => [
+    'user' => [
+        'driver' => 'sanctum',
+        'provider' => 'users',
+        'hash' => false,
+    ],
+],
+
+'providers' => [
+    'users' => [
+        'driver' => 'eloquent',
+        'model' => env('AUTH_MODEL', App\Models\User::class),
+    ],
+],
+
+```
+
+## Add authentication support to your model
+
+Extend your model from `BaseAuthenticatable` and use `HasUserAuth`, `HasApiTokens` traits.
+
+```php app/Models/User.php
+<?php
+
+namespace App\Models;
+
+use Laravel\Sanctum\HasApiTokens;
+use Admin\Eloquent\BaseAuthenticatable;
+use AdminHelpers\Auth\Concerns\HasUserAuth;
+
+class User extends BaseAuthenticatable
+{
+    use HasUserAuth,
+        HasApiTokens;
+}
+```
+
+## Routing
+
+You can pass extended version of controller to handle authentication. Or call empty methods to use default one.
+
+Using FixPhoneNumber middleware phone numbers in requests will be unified to one format.
+
+```php routes/web.php
+use AdminHelpers\Auth\Middleware\FixPhoneNumber;
+
+Route::middleware([FixPhoneNumber::class])->group(function () {
+    AdminAuth::login(LoginController::class);
+
+    AdminAuth::otp();
+
+    AdminAuth::register(RegisterController::class);
+});
+```

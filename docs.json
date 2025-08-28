@@ -11,7 +11,7 @@
   "navigation": {
     "tabs": [
       {
-        "tab": "Guides",
+        "tab": "CrudAdmin",
         "groups": [
           {
             "group": "Getting started",
@@ -36,12 +36,6 @@
             ]
           },
           {
-            "group": "Helpers",
-            "pages": [
-              "helpers/authentication"
-            ]
-          },
-          {
             "group": "Customization",
             "pages": [
               "essentials/settings",
@@ -55,6 +49,26 @@
               "essentials/code",
               "essentials/images",
               "essentials/reusable-snippets"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Helpers package",
+        "groups": [
+          {
+            "group": "Getting started",
+            "pages": [
+              "helpers/installation"
+            ]
+          },
+          {
+            "group": "Authentication",
+            "icon": "arrow-right-to-bracket",
+            "pages": [
+              "helpers/authentication/index",
+              "helpers/authentication/otp",
+              "helpers/authentication/registration"
             ]
           }
         ]

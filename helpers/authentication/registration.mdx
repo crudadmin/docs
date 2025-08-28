@@ -1,0 +1,78 @@
+---
+title: 'Registration'
+description: 'This documentation describes how registration process.'
+---
+
+## Obtaining OTP code during first step of registration
+
+Method `getValidatedOtpData` validates incoming OTP registration request. If needed, checkout more about [Admin Validation](/admin/validation).
+
+```php app/Http/Controllers/RegisterController.php
+<?php
+
+namespace App\Http\Controllers\Auth;
+
+use App\Http\Requests\CustomerRequest;
+use AdminHelpers\Auth\Controllers\RegisterController as AdminRegisterController;
+
+class RegisterController extends AdminRegisterController
+{
+    public function getValidatedOtpData($model)
+    {
+        return $model->validator()->use(CustomerRequest::class)->merge([
+            'license_terms' => 'required',
+        ])->validate()->getData();
+    }
+}
+```
+
+## Final validation of registration request with OTP code
+
+Method `getValidatedRegisterData` validates incoming final registration request. Those data may be different from the first step of registration.
+
+```php app/Http/Controllers/RegisterController.php
+public function getValidatedRegisterData($model)
+{
+    return $model->validator()->use(RegisterForm::class)->validate()->getData();
+}
+```
+
+## Registering the user
+
+Method `register` registers the user.
+
+```php app/Http/Controllers/RegisterController.php
+public function createUser($model, $data, $isNewEntry)
+{
+    $user = $model->create($data);
+
+    // Do more logic...
+
+    return $user;
+}
+```
+
+## Registration response
+
+```json
+{
+    "type": "success",
+    "title": "Informácia",
+    "message": "Boli ste úspešne registrovaní!",
+    "error": false,
+    "data": {
+        "driver": "users",
+        "user": {
+            "username": "Marek Gogol",
+            "email": "info@marekgogol.sk",
+            "updated_at": "2025-08-28T07:20:31.000000Z",
+            "created_at": "2025-08-28T07:20:31.000000Z",
+            "id": 13
+        },
+        "token": {
+            "token": "1|pjSjjD86fs3FgOcdJpcKRSzoYExrgljWrMiVMkPH72270f65",
+            "expiration": null
+        }
+    }
+}
+```
