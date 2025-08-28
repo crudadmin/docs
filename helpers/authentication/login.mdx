@@ -12,10 +12,43 @@ By default, login is pointing to default guard model. Change it according to you
 
 namespace App\Http\Controllers\Auth;
 
+use App\Utilities\Traits\HasAuthResponse;
 use AdminHelpers\Auth\Controllers\LoginController as AdminLoginController;
 
-class LoginController extends AdminLoginController {}
+class LoginController extends AdminLoginController
+{
+    use HasAuthResponse;
+}
 ```
+
+You can edit response by overriding `authorizedResponse` method. We share that method as trait for registration controller as well.
+
+```php app/Utilities/Traits/HasAuthResponse.php
+<?php
+
+namespace App\Utilities\Traits;
+
+use AppRequest;
+
+trait HasAuthResponse
+{
+    /**
+     * Overrides default login response
+     *
+     * @param User $user
+     * @param string $type
+     *
+     * @return array
+     */
+    public function authorizedResponse($user, $type = null)
+    {
+        return autoAjax()->store(
+            AppRequest::setToken($type ?: 'login')->authenticated()
+        )->message(_('Vitajte späť!'));
+    }
+}
+```
+
 ## Login response
 
 ```json

@@ -1,0 +1,157 @@
+---
+title: "Bootstrap request"
+description: "Every **vue, nuxt, ionic** app we are building contains of bootstrap request. Data returned from this request will be automatically binded into **Vuex/Pinia** stores in those SPA apps."
+---
+
+## Explanation
+
+This GET request is used to obtain all backend data, metadata, and all shared informations from backend.
+
+## Configuration
+
+```php routes/api.php
+Route::any('bootstrap', [BootstrapController::class, 'index']);
+```
+
+```php app/Http/Controllers/BootstrapController.php
+<?php
+
+namespace App\Http\Controllers;
+
+use AppRequest;
+
+class BootstrapController extends Controller
+{
+    public function index()
+    {
+        $only = array_filter(explode(',', request('only')));
+
+        return autoAjax()->store(
+            AppRequest::only($only)
+        );
+    }
+}
+```
+
+## AppRequest class
+
+This class is used to render all data returned from bootstrap request during GET response. You can add as many methods as you need, and split them between **guests** and **authorized users**.
+
+```php app/Utilities/Bootstrap/AppRequest.php
+<?php
+
+namespace App\Utilities\Bootstrap;
+
+use Localization;
+use AdminHelpers\Utilities\BootstrapRequest;
+
+class AppRequest extends BootstrapRequest
+{
+    public function get()
+    {
+        return $this->only([ 'locale', 'app', 'auth', 'setting' ]);
+    }
+
+    public function authenticated()
+    {
+        return $this->only([ 'auth' ]);
+    }
+
+    public function auth()
+    {
+        $data = $this->isAuthorized() ? parent::auth() : [];
+
+        return $data + [
+            //...
+        ];
+    }
+
+    public function app()
+    {
+        return [
+            'booted' => true,
+            'backendEnv' => [
+                //...
+            ],
+        ];
+    }
+
+    public function locale()
+    {
+        return [
+            'locale' => $locale = app()->getLocale(),
+            'translations' => Localization::getJson($locale),
+        ];
+    }
+
+    public function setting()
+    {
+        return [
+            //..
+        ];
+    }
+}
+```
+
+<Warning>
+We are using singular forms of method naming. Same in Pinia stores.
+</Warning>
+
+## Facade
+
+You can create shortcut to you AppRequest accordingly to your needs. Helpful if you have multiple bootstrap classes in your project.
+
+```php config/app.php
+'aliases' => Facade::defaultAliases()->merge([
+    'AppRequest' => Facades\App\Utilities\Bootstrap\AppRequest::class,
+    // 'Example' => App\Facades\Example::class,
+])->toArray(),
+```
+
+## Response and structure
+
+According your method naming, data will be automatically binded into Vuex/Pinia stores.
+
+```json
+{
+    "error": false,
+    "store": {
+        "locale": {
+            "locale": "sk",
+            "translations": "[]"
+        },
+        "app": {
+            "booted": true,
+            "backendEnv": []
+        },
+        "auth": {
+            "driver": "users",
+            "user": {
+                "id": 15,
+                "number": "2002025000015",
+                "username": "Marek Gogol",
+                "email": "info2@marekgogol.sk",
+                "verified": [
+                    "email"
+                ],
+                "points": 0,
+                "earnings": 0,
+                "created_at": "2025-08-28T07:44:24.000000Z",
+                "updated_at": "2025-08-28T08:23:18.000000Z",
+                "deleted_at": null
+            }
+        },
+        "setting": []
+    }
+}
+```
+
+<Warning>
+For wrapping data in **store** object, you need to set `store` parameter to `true` in autoajax config.
+</Warning>
+
+```php config/autoajax.php
+return [
+    'store' => true,
+];
+```

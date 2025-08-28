@@ -73,6 +73,23 @@
             ]
           }
         ]
+      },
+      {
+        "tab": "Development structure",
+        "groups": [
+          {
+            "group": "Getting started",
+            "pages": [
+              "development/index"
+            ]
+          },
+          {
+            "group": "Requests",
+            "pages": [
+              "development/bootstrap"
+            ]
+          }
+        ]
       }
     ],
     "global": {
