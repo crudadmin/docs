@@ -1,0 +1,92 @@
+---
+title: 'Authentication'
+description: 'This documentation describes how we are handling authentication in our projects.'
+icon: 'arrow-right-to-bracket'
+---
+
+## Package installation
+
+1. install composer package
+
+```
+composer require crudadmin/helpers
+```
+
+2. publish helpers configuration file
+
+```
+php artisan vendor:publish --tag admin_helpers.config
+```
+
+## Creating helpers
+
+First we need create user helpers. With this methods we will be obtaining logged user object.
+
+```php app/Utilities/helpers.php
+function user()
+{
+    return auth()->guard('user')->user();
+}
+
+function client()
+{
+    return user();
+}
+```
+
+## Authorization provider
+
+Set guards and providers according your logic name.
+
+```php config/auth.php
+'guards' => [
+    'user' => [
+        'driver' => 'sanctum',
+        'provider' => 'users',
+        'hash' => false,
+    ],
+],
+
+'providers' => [
+    'users' => [
+        'driver' => 'eloquent',
+        'model' => env('AUTH_MODEL', App\Models\User::class),
+    ],
+],
+
+```
+
+## OTP authentication
+
+Enable OTP in admin_helpers config.
+
+```php config/admin_helpers.php
+'auth' => [
+    'otp' => [
+        'enabled' => true,
+        ...
+```
+
+## Register Controller
+
+You can configure you own registration process.
+
+```php app/Http/Controllers/RegisterController.php
+<?php
+
+namespace App\Http\Controllers\Auth;
+
+use App\Http\Requests\RegisterForm;
+use AdminHelpers\Auth\Controllers\RegisterController as AdminRegisterController;
+
+class RegisterController extends AdminRegisterController
+{
+    public function getValidatedOtpData($model)
+    {
+        return $model->validator()->use(RegisterForm::class)->merge([
+            'license_terms' => 'required',
+        ])->validate()->getData();
+    }
+}
+
+```
