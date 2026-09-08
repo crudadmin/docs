@@ -16,9 +16,7 @@
           {
             "group": "Getting started",
             "pages": [
-              "index",
-              "admin/quickstart",
-              "admin/development"
+              "index"
             ]
           },
           {
@@ -33,22 +31,6 @@
             "pages": [
               "admin/validation/index",
               "admin/validation/request"
-            ]
-          },
-          {
-            "group": "Customization",
-            "pages": [
-              "essentials/settings",
-              "essentials/navigation"
-            ]
-          },
-          {
-            "group": "Writing content",
-            "pages": [
-              "essentials/markdown",
-              "essentials/code",
-              "essentials/images",
-              "essentials/reusable-snippets"
             ]
           }
         ]
@@ -91,27 +73,11 @@
           }
         ]
       }
-    ],
-    "global": {
-      "anchors": []
-    }
+    ]
   },
   "logo": {
     "light": "/logo/light.svg",
     "dark": "/logo/dark.svg"
-  },
-  "navbar": {
-    "links": [
-      {
-        "label": "Support",
-        "href": "mailto:hi@mintlify.com"
-      }
-    ],
-    "primary": {
-      "type": "button",
-      "label": "Dashboard",
-      "href": "https://dashboard.mintlify.com"
-    }
   },
   "contextual": {
     "options": [
@@ -127,9 +93,7 @@
   },
   "footer": {
     "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
+      "github": "https://github.com/crudadmin"
     }
   }
 }
