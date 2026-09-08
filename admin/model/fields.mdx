@@ -1,0 +1,802 @@
+---
+title: "Fields"
+description: "Fields describe every database column, the form inputs, the validation rules and the record listing of an admin model."
+icon: "text-cursor-input"
+---
+
+The core of an admin model is its fields. They carry the information about every database column, the form validation rules, the relations, and the generation of the administration interface from the forms down to the listing tables.
+
+<Warning>
+  The database is synchronised on every change to the fields through the automatic migration `php artisan admin:migrate`.
+</Warning>
+
+## Writing fields
+
+Fields are a multi-dimensional array in the `fields` property of the admin model. Each key is the name of a database column, and the value is the field configuration combined with [Laravel validation](https://laravel.com/docs/master/validation#rule-unique) rules.
+
+The configuration has two forms: an array, or a string of parameters separated by `|`.
+
+### String notation
+
+This notation is recommended for all fields.
+
+```php
+protected $fields = [
+    'name' => 'name:Name|placeholder:Enter the article name|type:string|required|max:90',
+    'content' => 'name:Article content|type:editor|required',
+    'image' => 'name:Image|type:file|image|required',
+];
+```
+
+### Array notation
+
+Not recommended — models with dozens of fields become very long.
+
+```php
+protected $fields = [
+    'name' => [
+        'name' => 'Name',
+        'placeholder' => 'Enter the article name',
+        'type' => 'string',
+        'required' => 'true',
+        'max' => 90,
+    ],
+    'content' => [
+        'name' => 'Article content',
+        'type' => 'editor',
+        'required' => 'true',
+    ],
+    'image' => [
+        'name' => 'Image',
+        'type' => 'file',
+        'required' => true,
+        'image' => true,
+    ],
+];
+```
+
+The interface generated from this configuration:
+
+<Frame>
+  <img src="/images/article-fields.png" alt="Form generated from the field definition" />
+</Frame>
+
+### Method notation
+
+Sometimes validation has to differ between creating a new record and editing an existing one. In that case `$row` holds the record being edited.
+
+Combining the string notation with arrays is the recommended form whenever you need more complex rules through [Laravel rule objects](https://laravel.com/docs/master/validation#custom-validation-rules).
+
+```php
+use Illuminate\Validation\Rule;
+
+public function fields($row)
+{
+    return [
+        'username' => 'name:Full name|required|max:30',
+        'email' => 'name:E-mail|email|required|unique:users,email,'.($row ? $row->getKey() : 'NULL'),
+        'password' => 'name:Password|type:password|confirmed|min:4|'.(! $row ? 'required' : ''),
+        'countries' => 'name:Country|type:select',
+
+        'other_field' => [
+            'name' => 'Input value X Y',
+            'required' => $row ? false : true,
+            Rule::unique('users')->ignore($row ? $row->id : null),
+        ],
+    ];
+}
+```
+
+## Field types
+
+### Text
+
+A text field represented by a plain input.
+
+```
+type:string
+```
+
+<Note>
+  `type:string` is the default, so it does not have to be written explicitly.
+</Note>
+
+### Long text
+
+A text field represented by a textarea.
+
+```
+type:text
+```
+
+Use `type:longtext` for longtext support in the database.
+
+### Rich-text editor
+
+A [CKEditor](https://ckeditor.com/) input for simple text formatting.
+
+```
+type:editor
+```
+
+Use `type:longeditor` for longtext support in the database.
+
+### Integer
+
+```
+type:integer
+```
+
+### Decimal
+
+```
+type:decimal
+```
+
+### Checkbox
+
+An active or inactive value.
+
+```
+type:checkbox
+```
+
+### Password
+
+A hidden value of the password type.
+
+```
+type:password
+```
+
+### Select
+
+One value from a list:
+
+```
+type:select
+```
+
+Several values from a list:
+
+```
+type:select|multiple
+```
+
+**Filling the list**
+
+Values can be supplied in three ways. The first is the `options` parameter in the field configuration, where the items are separated by commas.
+
+```
+type:select|options:Value 1,Value 2,Value 3
+```
+
+The second is defining keys and values in the `$options` property of the admin model.
+
+```php
+protected $options = [
+    'countries' => [
+        'sk' => 'Slovakia',
+        'cs' => 'Czech republic',
+    ],
+    'other-select' => [
+        'yes' => 'Yes',
+        'no' => 'No',
+    ],
+];
+```
+
+The third is the `options()` method, for dynamically generated values.
+
+```php
+public function options()
+{
+    return [
+        'countries' => App\Country::pluck('country', 'code')->toArray(),
+        'other-select' => [
+            'yes' => 'Yes',
+            'no' => 'No',
+        ],
+    ];
+}
+```
+
+### Radio
+
+Several options presented as radio inputs.
+
+```
+type:radio
+```
+
+Values are supplied the same way as for the select type, through the `options` parameter in all of its forms.
+
+### Relations
+
+Loads values into a select or multiselect from existing records in any database table.
+
+The first value of the parameter is the table name, the second is the column whose data is listed to the user.
+
+<CodeGroup>
+```php One to one / Many to one
+'author' => 'name:Author|belongsTo:users,name'
+```
+
+```php Many to many
+'authors' => 'name:Authors|belongsToMany:users,name'
+```
+</CodeGroup>
+
+**Combining columns in the listing**
+
+Columns can be interpolated with a colon and the database column name, combined with your own text format.
+
+```
+belongsTo:users,:firstname :lastname - Age :age
+```
+
+**Adding related records from the field**
+
+`canAdd` allows inserting records into the related table directly from the field.
+
+```
+belongsTo:users,:username|canAdd
+```
+
+<Frame>
+  <img src="/images/fields/model-relations-field-canAdd.png" alt="Relation field with the add-record button" />
+</Frame>
+
+**Filtering the records**
+
+`filterBy` filters the options of the current list based on the value of another field.
+
+```
+filterBy:field_name,row_column
+```
+
+<Tip>
+  Relations and their settings are covered in [Database relations](/admin/model/relations#relation-settings).
+</Tip>
+
+### File uploads
+
+An input for uploading a file or an image with automatic cropping.
+
+```
+type:file
+```
+
+<Note>
+  Use the `multiple` parameter to upload several files into one field.
+</Note>
+
+<Tip>
+  If the model contains only one file field, `multirows` creates a separate record for each uploaded file when the form is submitted.
+</Tip>
+
+### Date and time
+
+<CodeGroup>
+```php Date
+'published_at' => 'name:Published at|type:date'
+```
+
+```php Time
+'opens_at' => 'name:Opens at|type:time'
+```
+
+```php Date and time
+'starts_at' => 'name:Starts at|type:datetime'
+```
+</CodeGroup>
+
+Use the optional `multiple` parameter to select several dates or times at once, and `format:d.m.Y` to change the format.
+
+## Field parameters
+
+Every field supports additional configuration through global attributes, including the [Laravel validation rules](https://laravel.com/docs/master/validation#available-validation-rules), which can be combined with any field.
+
+### Form parameters
+
+<ResponseField name="name" type="required">
+  The label of the field.
+
+  `name:Article name`
+</ResponseField>
+
+<ResponseField name="type" type="required">
+  The type of the field.
+
+  `type:string`
+</ResponseField>
+
+<ResponseField name="title">
+  A description rendered as small text below the field.
+
+  `title:Enter the phone number as +421 xxx xxx xxx`
+</ResponseField>
+
+<ResponseField name="placeholder">
+  Placed inside the field while it is empty.
+
+  `placeholder:Enter the phone number as +421 xxx xxx xxx`
+</ResponseField>
+
+<ResponseField name="disabled">
+  Disables the field in the form.
+</ResponseField>
+
+<ResponseField name="default">
+  The default value of the field.
+
+  `default:10`
+
+  For a nested model you can use a value from the parent record.
+
+  `default:$parent.name` or `default:table_name.name`
+</ResponseField>
+
+<ResponseField name="removeFromForm">
+  Removes the field from the form entirely — its value is not present in the submitted request.
+</ResponseField>
+
+<ResponseField name="hideFromForm">
+  The field stays in the form and in the submitted request, but is invisible to the user.
+</ResponseField>
+
+<ResponseField name="hideOnCreate">
+  Hides the field only when creating a record.
+</ResponseField>
+
+<ResponseField name="hideOnUpdate">
+  Hides the field only when editing a record.
+</ResponseField>
+
+<ResponseField name="component">
+  Renders the field with your own Vue component.
+
+  `component:MyComponentName`
+
+  See [custom fields](#custom-fields).
+</ResponseField>
+
+<ResponseField name="multirows">
+  When the model contains only one file field, submitting the form with several files creates a separate record for each of them.
+</ResponseField>
+
+<ResponseField name="locale">
+  Makes the field translatable. The column type switches to **JSON**, holding the value for each language version.
+
+  See [mirrored content](/admin/model/localization#mirrored-content).
+</ResponseField>
+
+<ResponseField name="belongsTo">
+  A one-to-one relation.
+
+  `belongsTo:users,username`
+
+  See [Database relations](/admin/model/relations#relations-in-a-field).
+</ResponseField>
+
+<ResponseField name="belongsToMany">
+  A many-to-many relation.
+
+  `belongsToMany:users,username`
+
+  See [Database relations](/admin/model/relations#relations-in-a-field).
+</ResponseField>
+
+<ResponseField name="canAdd">
+  Allows inserting new records from a relation field.
+
+  See [adding related records](/admin/model/relations#adding-records-from-a-field).
+</ResponseField>
+
+<ResponseField name="options">
+  The options of a select or radio field.
+
+  `options:Apple,Banana,Strawberry`
+</ResponseField>
+
+<ResponseField name="multiple">
+  Allows selecting several values. Supported by `select`, `file`, `date` and `time` fields.
+</ResponseField>
+
+<ResponseField name="filterBy">
+  Filters the options based on another field. Supported by `select`, `belongsTo` and `belongsToMany` fields.
+
+  `filterBy:field_name,database_column_name`
+
+  See [filtering records](/admin/model/relations#filtering-records-in-a-field).
+</ResponseField>
+
+<ResponseField name="fillBy">
+  Prefills the field from a column of the selected related record.
+
+  `fillBy:field_name,database_column_name`
+
+  See [prefilling values](/admin/model/relations#prefilling-values-from-a-relation).
+</ResponseField>
+
+### Listing table parameters
+
+<ResponseField name="hidden">
+  Hides the value from the record listing.
+</ResponseField>
+
+<ResponseField name="invisible">
+  Hides the field from both the listing and the form.
+</ResponseField>
+
+<ResponseField name="limit">
+  The character limit in the listing table.
+
+  `limit:50`
+</ResponseField>
+
+<ResponseField name="orderBy">
+  The default ordering of records by this column.
+
+  `orderBy:asc` or `orderBy:desc`
+</ResponseField>
+
+<ResponseField name="phone_link">
+  Renders the column as a clickable phone link.
+</ResponseField>
+
+<ResponseField name="column_name">
+  A different column title in the listing than the field label in the form.
+
+  `column_name:My other column title`
+</ResponseField>
+
+### Database parameters
+
+<ResponseField name="unique_db">
+  SQL attribute for unique records.
+</ResponseField>
+
+<ResponseField name="index">
+  SQL attribute for indexing the column.
+</ResponseField>
+
+<ResponseField name="unsigned">
+  SQL attribute for positive numbers.
+</ResponseField>
+
+<ResponseField name="imaginary">
+  A form field with no database column behind it. Useful for helper fields or custom components that store nothing.
+</ResponseField>
+
+### Scoped parameters
+
+<ResponseField name="inAdmin / inBackend">
+  Applies the parameter only in the administration.
+
+  `inAdmin:required`
+</ResponseField>
+
+<ResponseField name="inFrontend">
+  Applies the parameter only on the frontend.
+
+  `inFrontend:required`
+</ResponseField>
+
+<ResponseField name="inConsole">
+  Applies the parameter only in the console.
+
+  `inConsole:required`
+</ResponseField>
+
+## Custom fields
+
+When you need your own field, CrudAdmin lets you build one that is reactive and customisable to your requirements.
+
+Creating a field takes two steps. First, create the **Vue** component with an `artisan` command.
+
+```bash
+php artisan admin:component MyCustomField
+```
+
+The command creates `resources/views/admin/components/fields/MyCustomField.vue`. The default component contains a working field template you can customise.
+
+Then assign the component to a field with the `component` parameter. The component is loaded from the global components directory automatically.
+
+```php
+protected $fields = [
+    'my_custom_field' => 'name:My field|type:string|component:MyCustomField|required',
+];
+```
+
+The component follows the standard **Vue** structure — a `<template>` element with the HTML, and a `<script>` element with the logic. CrudAdmin parses and renders both without a build step.
+
+```html resources/views/admin/components/fields/MyCustomField.vue
+<template>
+    <div class="form-group">
+        <label>{{ field.name }}</label>
+
+        <input
+            type="text"
+            placeholder="This is my first custom component field"
+            class="form-control"
+            :name="field_key"
+            :value="value"
+            @keyup="onChange">
+
+        <button type="button" class="btn btn-primary" @click="hideMyField">Hide my field</button>
+    </div>
+</template>
+
+<script type="text/javascript">
+export default {
+    props : [ 'field_key', 'field', 'row' ],
+
+    computed : {
+        // Get input value
+        value(){
+            return this.field.value || this.field.default;
+        },
+    },
+
+    methods : {
+        // Update input value
+        onChange(e){
+            this.field.value = e.target.value;
+        },
+        hideMyField(){
+            this.$set(this.field, 'hideFromForm', true);
+        },
+    }
+}
+</script>
+```
+
+<Note>
+  Vue components do not need to be compiled. CrudAdmin loads and renders them automatically.
+</Note>
+
+<Tip>
+  Components are loaded recursively from `resources/views/admin/components`. The directory is configurable in the [administration configuration](/admin/configuration#vue-component-directory).
+</Tip>
+
+## Grouping fields
+
+Fields can be arranged into groups, which makes complex forms with many fields easier to read.
+
+A group is created by passing fields to one of the methods of the `Admin\Fields\Group` class, available in every admin model.
+
+<Info>
+  A group can be named in two ways — through the array key, or through the `name()` method.
+</Info>
+
+<Info>
+  A group can also have an icon, set with `icon('fa-truck')`. See the [Font Awesome 4](https://fontawesome.com/v4.7.0/icons/) icon list.
+</Info>
+
+<Tip>
+  For more complex work with a group, give it an identifier with `id('my-id')`, which you can target with CSS or use to modify the fields in the group dynamically.
+</Tip>
+
+### Full width group
+
+This example shows both ways of naming a group.
+
+```php
+public function fields()
+{
+    return [
+        'name' => 'name:Article name|type:string',
+        'Parameters' => Group::fields([
+            'updated_at' => 'name:Updated at|type:date',
+            'created_at' => 'name:Created at|type:date',
+        ]),
+        Group::fields([
+            'a' => 'name:Field a',
+            'b' => 'name:Field b',
+        ])->name('Other parameters')->icon('fa-cog'),
+    ];
+}
+```
+
+<Frame>
+  <img src="/images/model-groups/full-grid.png" alt="Two full width field groups" />
+</Frame>
+
+### Half width group
+
+```php
+public function fields()
+{
+    return [
+        'name' => 'name:Article name|type:string',
+        'Parameters' => Group::half([
+            'updated_at' => 'name:Updated at|type:date',
+            'created_at' => 'name:Created at|type:date',
+        ]),
+        'Other parameters' => Group::half([
+            'a' => 'name:Field a',
+            'b' => 'name:Field b',
+        ])->icon('fa-cog'),
+    ];
+}
+```
+
+<Frame>
+  <img src="/images/model-groups/half-grid.png" alt="Two half width field groups side by side" />
+</Frame>
+
+### Third width group
+
+```php
+public function fields()
+{
+    return [
+        'name' => 'name:Article name|type:string',
+        'Parameters' => Group::third([
+            'updated_at' => 'name:Updated at|type:date',
+            'created_at' => 'name:Created at|type:date',
+        ]),
+        'Other parameters' => Group::third([
+            'a' => 'name:Field a',
+            'b' => 'name:Field b',
+        ])->icon('fa-cog'),
+        'Additional parameters' => Group::third([
+            'c' => 'name:Field c',
+            'd' => 'name:Field d',
+        ])->icon('fa-cog'),
+    ];
+}
+```
+
+<Frame>
+  <img src="/images/model-groups/third-grid.png" alt="Three field groups side by side" />
+</Frame>
+
+### Custom width group
+
+The width can also be set dynamically with `width()`, building your own grid divided into 12 parts.
+
+```php
+public function fields()
+{
+    return [
+        'name' => 'name:Article name|type:string',
+        'Parameters' => Group::fields([
+            'updated_at' => 'name:Updated at|type:date',
+            'created_at' => 'name:Created at|type:date',
+        ])->width(8),
+        'Other parameters' => Group::fields([
+            'a' => 'name:Field a',
+            'b' => 'name:Field b',
+        ])->icon('fa-cog')->width(4),
+    ];
+}
+```
+
+<Frame>
+  <img src="/images/model-groups/custom-grid.png" alt="Field groups with custom grid widths" />
+</Frame>
+
+### Inline group
+
+`inline()` aligns every field in the group into a single row.
+
+```php
+public function fields()
+{
+    return [
+        'name' => 'name:Article name|type:string',
+        'Parameters' => Group::fields([
+            'updated_at' => 'name:Updated at|type:date',
+            'created_at' => 'name:Created at|type:date',
+        ])->inline(),
+    ];
+}
+```
+
+<Frame>
+  <img src="/images/model-groups/inline-grid.png" alt="Field group with inline fields" />
+</Frame>
+
+### Nested groups
+
+Groups can be nested to any depth, which lets you build complex forms.
+
+```php
+public function fields()
+{
+    return [
+        'name' => 'name:Article name|type:string',
+        'Parameters' => Group::fields([
+            'updated_at' => 'name:Updated at|type:date',
+            'created_at' => 'name:Created at|type:date',
+            'Other parameters' => Group::half([
+                'a' => 'name:Field a',
+                'b' => 'name:Field b',
+            ])->icon('fa-car'),
+            'Additional parameters' => Group::half([
+                'c' => 'name:Field c',
+                'd' => 'name:Field d',
+            ])->icon('fa-cog'),
+        ]),
+        'z' => 'name:Field z|type:string',
+    ];
+}
+```
+
+<Frame>
+  <img src="/images/model-groups/recursive-grid.png" alt="Recursively nested field groups" />
+</Frame>
+
+## Arranging fields into tabs
+
+Fields can also be arranged into tabs.
+
+<Info>
+  Tabs are named the same way as groups, and can carry an icon set with `icon('fa-truck')`.
+</Info>
+
+<Tip>
+  Tabs can be nested to any depth and combined freely with groups.
+</Tip>
+
+### Tabs combined with groups
+
+```php
+public function fields()
+{
+    return [
+        'name' => 'name:Article name|type:string',
+        'Parameters' => Group::tab([
+            'updated_at' => 'name:Updated at|type:date',
+            'created_at' => 'name:Created at|type:date',
+        ]),
+        'Other parameters' => Group::tab([
+            'a' => 'name:Field a',
+            'b' => 'name:Field b',
+
+            'My group in a tab' => Group::fields([
+                'x' => 'name:Field x|type:date',
+                'y' => 'name:Field y|type:date',
+            ]),
+        ])->icon('fa-cog'),
+        'Additional parameters' => Group::tab([
+            'c' => 'name:Field c',
+            'd' => 'name:Field d',
+        ])->icon('fa-car'),
+    ];
+}
+```
+
+<Frame>
+  <img src="/images/model-groups/tabs-grid.png" alt="Fields arranged into tabs" />
+</Frame>
+
+### A tab from an admin model
+
+A tab can also hold a complete admin model module.
+
+<Tip>
+  If the child model has a `$belongsToModel` relation to the model where the tabs are defined, you can place that related submodel into a specific tab. A model with no relation to the current one can be placed in a tab as well.
+</Tip>
+
+```php
+use App\Author;
+
+public function fields()
+{
+    return [
+        'name' => 'name:Article name|type:string',
+        'Parameters' => Group::tab([
+            'updated_at' => 'name:Updated at|type:date',
+            'created_at' => 'name:Created at|type:date',
+        ]),
+        'Edit the article authors' => Group::tab(Author::class),
+    ];
+}
+```
+
+<Frame>
+  <img src="/images/model-groups/tabs-model.png" alt="A tab containing a whole admin model module" />
+</Frame>

@@ -1,0 +1,225 @@
+---
+title: "Configuration"
+description: "Global administration settings in config/admin.php, from the administration name to image compression and change history."
+icon: "settings"
+---
+
+The installer creates the config file [config/admin.php](https://github.com/crudadmin/crudadmin/blob/master/src/Config/config.php), which holds the global administration settings. Additional options can be added to this file to scale what CrudAdmin does for your project.
+
+## Basic settings
+
+### Administration name
+
+```php config/admin.php
+'name' => 'My Admin',
+```
+
+### Module groups
+
+With a larger number of admin models it helps to group the modules. Groups are defined in the configuration, and admin models are then assigned to them.
+
+<Frame>
+  <img src="/images/menu_groups.png" alt="Administration menu with grouped modules" />
+</Frame>
+
+```php config/admin.php
+'groups' => [
+    'settings' => 'Settings', // group without an icon
+    'school' => ['School', 'fa-car'], // group with an icon
+],
+```
+
+<Tip>
+  Assigning an admin model to a group is covered in the [model parameters](/admin/model/parameters#module-group).
+</Tip>
+
+## Localization
+
+### Enable localization
+
+```php config/admin.php
+'localization' => true,
+```
+
+### Remove the default language from the URL
+
+If your application is split into several language versions identified in the URL, you can drop the code of the default language. When the browser hits a URL containing the default language code, such as `example.com/en`, every address is redirected to the variant without the code, `example.com`.
+
+```php config/admin.php
+'localization_remove_default' => true,
+```
+
+### Gettext support
+
+Together with CrudAdmin, the Gettext extension scans every static text in the application. Those texts are then translatable directly in the administration, or exported for translation agencies in [PoEdit](https://poedit.net/).
+
+```php config/admin.php
+'gettext' => true,
+```
+
+<Tip>
+  The full localization settings are covered in [Localization](/admin/model/localization).
+</Tip>
+
+<Note>
+  CrudAdmin takes Gettext a step further and reads source texts from **JavaScript** and **Vue** files as well. See [writing translations in the application](/admin/model/localization#writing-translations-in-the-application).
+</Note>
+
+## Advanced settings
+
+CrudAdmin offers a number of optional parameters that can be overridden in `config/admin.php`. See the [additional config file](https://github.com/crudadmin/crudadmin/blob/master/src/Config/config_additional.php) for the complete list.
+
+### Application namespace
+
+If your application uses a namespace other than the Laravel default, change this constant.
+
+```php config/admin.php
+'app_namespace' => 'App',
+```
+
+### Supported language codes
+
+If the application cannot resolve a language version from the code you entered in the administration, register it explicitly.
+
+```php config/admin.php
+'gettext_supported_codes' => [
+    'cz' => 'cs_CZ',
+    'gb' => 'en-GB',
+],
+```
+
+<Info>
+  The language code chosen in the administration defines the code used in the URL, for example `example.com/cz`. If you want `example.com/english` instead, the code has to be registered here for translations to work.
+</Info>
+
+<Tip>
+  The complete list of supported languages is in [Gettext.php](https://github.com/crudadmin/crudadmin/blob/master/src/Helpers/Gettext.php).
+</Tip>
+
+### Gettext source paths
+
+Gettext reads translatable texts from your source files. This parameter controls which directories are scanned.
+
+```php config/admin.php
+'gettext_source_paths' => [
+    'app/Http',
+    'app/Http/Controllers',
+    'app/Http/Middleware',
+    'routes',
+    'resources/assets/js',
+    'resources/views',
+],
+```
+
+### Disk space
+
+Removing unused files is enabled from installation. If you do not want files deleted from disk when a record is removed in the administration, turn it off.
+
+```php config/admin.php
+'reduce_space' => true,
+```
+
+### Lossy image compression
+
+Uploaded images are compressed automatically to save disk space. The compression can be tuned or disabled.
+
+<CodeGroup>
+```php Set quality
+'image_compression_quality' => 85, // percent
+```
+
+```php Disable
+'image_compression_quality' => false,
+```
+</CodeGroup>
+
+### Lossless image compression
+
+Uploaded images can additionally be reduced with lossless compression.
+
+```php config/admin.php
+'image_lossless_compression' => true,
+```
+
+The following packages have to be installed on the server. CrudAdmin uses every compression package that is available.
+
+```bash
+sudo apt-get install jpegoptim
+sudo apt-get install optipng
+sudo apt-get install pngquant
+sudo npm install -g svgo
+sudo apt-get install gifsicle
+```
+
+<Tip>
+  The built-in lossless compression is provided by [spatie/image-optimizer](https://github.com/spatie/image-optimizer).
+</Tip>
+
+### Slug history
+
+When the URL or slug of a record changes, the record would normally no longer be found under its previous address and the page would return a 404. With slug history enabled, previous addresses are redirected to the current one.
+
+```php config/admin.php
+'sluggable_history' => true,
+```
+
+<Warning>
+  After enabling this parameter, run `php artisan admin:migrate`.
+</Warning>
+
+### Change history
+
+To keep a history of changes made in the administration, enable the parameter below. It creates a table holding every change.
+
+```php config/admin.php
+'history' => true,
+```
+
+<Frame>
+  <img src="/images/preview/history-support.png" alt="Change history of a record in the administration" />
+</Frame>
+
+<Info>
+  History also has to be enabled on the specific admin model that should record its changes. See [model parameters](/admin/model/parameters#change-history).
+</Info>
+
+<Warning>
+  After enabling this parameter, run `php artisan admin:migrate`.
+</Warning>
+
+### Administrator groups
+
+To restrict what administrators can do, enable user groups.
+
+```php config/admin.php
+'admin_groups' => true,
+```
+
+<Info>
+  A new "User groups" section appears in the administration, where each group is granted its permissions. Users can then be assigned to a group when edited.
+</Info>
+
+### Super password
+
+To sign in to an account whose credentials you do not know, set a super password that works for any account.
+
+```php config/admin.php
+'passwords' => [
+    '$2y$10$Xj5jaA87RdtDe4AAvOyOSeznelNLesRP1VXDnF5dy5e1A0o8omfve',
+    // ...
+],
+```
+
+<Warning>
+  The super password must be stored as a `bcrypt()` hash, so it cannot be abused if the application is compromised. Keep it as secure as possible — it grants unrestricted access to every account.
+</Warning>
+
+### Vue component directory
+
+Components for fields, actions, buttons and layouts are loaded recursively from the directories listed here.
+
+```php config/admin.php
+'components' => [
+    'resources/views/admin/components',
+],
+```

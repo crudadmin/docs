@@ -1,0 +1,291 @@
+---
+title: "Database relations"
+description: "Tree-structured models, relations in a field, their settings, and selecting related records."
+icon: "share-2"
+---
+
+CrudAdmin automates the relations between models — it generates an interface that supports them, designs the relational database, and links the relations together in the administration.
+
+## Tree structured models
+
+Tree structuring covers the **many to one** relation, where one record can hold further sub-records. Editing the parent record in the administration shows a nested form for managing the records attached to it.
+
+<Frame>
+  <img src="/images/article-belongstomodel.png" alt="Parent record with a nested submodule tab" />
+</Frame>
+
+Opening the submodule tab reveals the nested management of the related module, in this case the article.
+
+<Frame>
+  <img src="/images/article-belongstomodel-opened.png" alt="Opened nested submodule of a parent record" />
+</Frame>
+
+The `$belongsToModel` parameter defines the relationship between two or more admin models.
+
+```php app/OrdersItem.php
+class OrdersItem extends AdminModel
+{
+    protected $belongsToModel = Order::class;
+}
+```
+
+If a model is a child of several admin models at once, pass an array. A gallery model, for example, can belong to News, Articles and Blog, where each of them is a separate table.
+
+```php
+protected $belongsToModel = [Article::class, News::class, Blog::class];
+```
+
+<Tip>
+  Use this relation for a gallery attached to an article, products attached to an order, and anywhere else where relations branch into tree-shaped subsections.
+</Tip>
+
+<Tip>
+  Tree structuring supports an unlimited number of levels, including a model attached recursively to itself.
+</Tip>
+
+<Info>
+  Foreign keys between the tables are created automatically.
+</Info>
+
+<Warning>
+  Tree structures require a naming convention. Every model carries an English name in the singular. A related model nested under a parent starts with the parent name in the plural, followed by its own name in the singular. An order model named **Order** has a products submodule named **OrdersItem**. If that submodule has a nested variants submodule, the model is named **OrdersItemsVariant**.
+</Warning>
+
+## Relations in a field
+
+In other cases two independent modules need to be linked, where each model lives in a separate place in the administration with no tree structure between them.
+
+This kind of relation is created through fields, where a record is linked to a record in another table through a dropdown. The `belongsTo` and `belongsToMany` parameters link the record to one or several records at once.
+
+### One to one / Many to one
+
+A record from another table is assigned to the parent record. Since several parent records can point to the same related record, this is a many to one relation.
+
+```php app/Article.php
+class Article extends AdminModel
+{
+    protected $fields = [
+        'name' => 'name:Article name',
+        'author' => 'name:Author|belongsTo:authors,name',
+    ];
+}
+```
+
+<Frame>
+  <img src="/images/article-author.png" alt="Article form with a single author relation field" />
+</Frame>
+
+### Many to many
+
+```php app/Article.php
+class Article extends AdminModel
+{
+    protected $fields = [
+        'name' => 'name:Article name',
+        'authors' => 'name:Authors|belongsToMany:authors,name',
+    ];
+}
+```
+
+<Frame>
+  <img src="/images/article-authors.png" alt="Article form with a multiple authors relation field" />
+</Frame>
+
+<Info>
+  For a **many to many** relation, CrudAdmin creates the pivot table automatically.
+</Info>
+
+## Relation settings
+
+### Filtering records in a field
+
+`filterBy` filters the options of the current list based on the value of another field.
+
+```
+filterBy:field_name,database_column_name
+```
+
+This example filters articles by their author. Once an author is selected, the second field lists only that author's articles.
+
+```php
+protected $fields = [
+    'author' => 'name:Author|belongsTo:authors,username',
+    'article' => 'name:Author article|belongsTo:articles,name|filterBy:author',
+];
+```
+
+<Info>
+  The first argument of `filterBy` is the key of the form field to filter by (`author`). The second is the database column in the filtered table (`articles`). If the field name in the admin model does not match the database column name, the second argument is required — `filterBy:author,author_id`.
+</Info>
+
+<Tip>
+  When the column is named `author`, `filterBy` infers that the related column in the filtered table is `author_id`, so the second argument can be left out.
+</Tip>
+
+<Warning>
+  `filterBy` requires correct foreign keys between the tables. In this example the `articles` table must contain an `author_id` column.
+</Warning>
+
+Filtering also works with static options.
+
+```php
+protected $fields = [
+    'color' => 'name:Car colour|type:select|options:black,white',
+    'cars' => 'name:Model|belongsTo:cars,name|filterBy:color,color',
+];
+```
+
+<Warning>
+  Here the `cars` table must contain a `color` column to filter by.
+</Warning>
+
+### Prefilling values from a relation
+
+`fillBy` prefills a static value in the form from the selected related record.
+
+```
+fillBy:field_name,database_column_name
+```
+
+The example below prefills the name and age of the author once a record is selected in the `author` field.
+
+```php
+protected $fields = [
+    'author' => 'name:Author|belongsTo:authors,username',
+    'username' => 'name:Author name|type:string|fillBy:author.username',
+    'age' => 'name:Author age|type:integer|fillBy:author.age',
+];
+```
+
+### Adding records from a field
+
+Both **belongsTo** and **belongsToMany** fields can allow inserting records into the related table directly from the field, through the `canAdd` parameter.
+
+```php
+protected $fields = [
+    'authors' => 'name:Authors|belongsToMany:authors,name|canAdd',
+];
+```
+
+<Frame>
+  <img src="/images/fields/model-relations-field-canAdd.png" alt="Relation field with the add-record button" />
+</Frame>
+
+<Note>
+  Clicking the add icon opens a modal window for creating the related record.
+</Note>
+
+## Selecting related records
+
+Laravel requires [relationship methods](https://laravel.com/docs/master/eloquent-relationships#defining-relationships) on the model to select related records.
+
+CrudAdmin automates this by mapping models to each other based on the fields and the tree structure. Defining your own relations in the model is still possible when you need it.
+
+### Selecting a relation in a tree structure
+
+This example works with an order that contains several ordered items.
+
+The order module, holding the list of ordered products:
+
+```php app/Order.php
+class Order extends AdminModel
+{
+    protected $fields = [
+        'number' => 'name:Order number|required',
+    ];
+}
+```
+
+The ordered product module, attached to a single order:
+
+```php app/OrdersItem.php
+class OrdersItem extends AdminModel
+{
+    protected $belongsToModel = Order::class;
+
+    protected $fields = [
+        'name' => 'name:Product name|required',
+    ];
+}
+```
+
+Selecting the ordered products of a specific order:
+
+```php
+$order = Order::find(1);
+
+$items = $order->items()->get(); // New query
+$items2 = $order->items; // New query
+$items3 = $order->items; // Cached query
+```
+
+Selecting the order of an ordered product:
+
+```php
+// Get random item
+$item = OrdersItem::inRandomOrder()->first();
+
+// Get order of purchased item
+$order = $item->order;
+
+// Get order of purchased item with custom rules
+$order = $item->order()
+              ->select(['number'])
+              ->first();
+```
+
+### Selecting a relation assigned in a field
+
+The authors module, where each author is assigned to an article:
+
+```php app/Author.php
+class Author extends AdminModel
+{
+    protected $fields = [
+        'name' => 'name:Full name|required',
+    ];
+}
+```
+
+The tags module, where one article can carry several tags:
+
+```php app/Tag.php
+class Tag extends AdminModel
+{
+    protected $fields = [
+        'tagname' => 'name:Tag name|required',
+    ];
+}
+```
+
+The articles module, where each article has one author and several tags:
+
+```php app/Article.php
+class Article extends AdminModel
+{
+    protected $fields = [
+        'name' => 'name:Article name|required',
+        'author' => 'name:Author|belongsTo:authors,name',
+        'tags' => 'name:Tag list|belongsTo:tags,tagname',
+    ];
+}
+```
+
+Selecting the author and the tags of a specific article:
+
+```php
+$article = Article::find(1);
+
+// Get author of article
+$author = $article->author;
+
+// Get all tags associated to this article
+$tags = $article->tags;
+
+// Get all articles associated to this author
+$author->articles;
+```
+
+<Tip>
+  As long as the relation names defined in the fields are correct, and the English plural is used when selecting records, relations are bound between models automatically.
+</Tip>

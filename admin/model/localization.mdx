@@ -1,0 +1,279 @@
+---
+title: "Localization"
+description: "Language versions, Gettext translations of static texts, and translating the dynamic content stored in the database."
+icon: "languages"
+---
+
+This page covers the localization settings in `config/admin.php` and how to use them.
+
+## Enabling localization
+
+If the application needs multiple language versions, switch the parameter to `true`. Then run the database migration, which creates the `languages` table and adds the language management module to the administration.
+
+```php config/admin.php
+'localization' => true,
+```
+
+<Note>
+  The first language added in the administration becomes the default one.
+</Note>
+
+<Warning>
+  Run `php artisan admin:migrate` after enabling localization.
+</Warning>
+
+### Forced redirect to the default language
+
+To redirect to the default language version automatically, add the global **middleware** to `app/Http/Kernel.php`.
+
+```php app/Http/Kernel.php
+/**
+ * The application's global HTTP middleware stack.
+ *
+ * These middleware are run during every request to your application.
+ *
+ * @var array
+ */
+protected $middleware = [
+    // ...
+
+    \Admin\Middleware\LocalizationMiddleware::class,
+];
+```
+
+The client is redirected to the default language version on arrival — `http://example.com/` redirects to `http://example.com/sk`.
+
+With localization active, **every route** is redirected to the address carrying the language code — `http://example.com/articles` redirects to `http://example.com/sk/articles`.
+
+### Disabling the forced redirect
+
+The forced redirect can be turned off. On the default language version, every URL is then available without the language code.
+
+```php config/admin.php
+'localization_remove_default' => true,
+```
+
+<Info>
+  With this parameter, content on the default language is available only without the language code — `http://example.com/articles` instead of `http://example.com/sk/articles`.
+</Info>
+
+## Gettext — translating static texts
+
+Together with the Gettext extension, CrudAdmin collects every static source text in the application and makes it translatable as *.po* files for [PoEdit](https://poedit.net/), or through the online editor in the administration.
+
+### Enabling Gettext
+
+Enable the extension in `config/admin.php`.
+
+```php config/admin.php
+'gettext' => true,
+```
+
+To translate in JavaScript and Vue components on the frontend, add the library that initialises the translation functions. The `@gettext` blade directive handles it — place it in the main layout as the first script in the order. The system injects the translation libraries and caches them.
+
+```blade resources/views/layout.blade.php
+        @gettext
+
+        <script src="{{ mix('js/app.js') }}"></script>
+    </body>
+</html>
+```
+
+With Vue, add the module that binds the translation functions into the `this` constructor of every component.
+
+```javascript resources/js/app.js
+require('./bootstrap');
+
+window.Vue = require('vue');
+
+Vue.use(Gettext);
+```
+
+<Note>
+  CrudAdmin scans the directories where translatable files may live and reloads every source text on change. The scanned paths are defined in the [advanced configuration](/admin/configuration#gettext-source-paths) and can be overridden with your own list.
+</Note>
+
+<Warning>
+  After enabling Gettext, run `php artisan admin:migrate` to add the columns to the language table and enable editing **PO** and **MO** files.
+</Warning>
+
+<Tip>
+  The **.PO** file for translation is available for download in the administration.
+</Tip>
+
+### Writing translations in the application
+
+For translations to be picked up, static texts have to be written in the right form. The examples below cover both singular and plural.
+
+#### PHP files
+
+PHP files follow the standard functions from the [PHP documentation](http://php.net/manual/en/function.gettext.php).
+
+```php
+// Singular
+echo _('This is my translate');
+
+// Plural
+$count = 2;
+echo sprintf(ngettext('%d car', '%d cars', $count), $count);
+```
+
+#### Blade files
+
+Blade files are translated the same way as plain PHP.
+
+```blade
+<div>{{ _('This is my translate') }}</div>
+<div>{{ sprintf(ngettext('%d car', '%d cars', $count), $count) }}</div>
+```
+
+#### JavaScript files
+
+CrudAdmin reads translations from JavaScript files as well, through the methods of the injected library.
+
+```javascript
+var a = _('This is my translate');
+var b = __('This is my translate');
+var c = gettext('This is my translate');
+
+var d = n__('%d car', '%d cars', 2).replace('%d', 2);
+var e = ngettext('%d car', '%d cars', 2).replace('%d', 2);
+
+console.log(a, b, c, d, e);
+```
+
+#### Vue components
+
+Vue components use the same JavaScript functions. They are bound into every component, so they are available globally as well as in the `this` constructor.
+
+```html
+<template>
+    <div>{{ _('This is my translate') }}</div>
+    <div>{{ n__('%d car', '%d cars', 2).replace('%d', 2) }}</div>
+    <div>{{ myTranslate() }}</div>
+</template>
+
+<script>
+export default {
+    methods: {
+        myTranslate()
+        {
+            var trans1 = __('I have'),
+                trans2 = n__('%d car', '%d cars', 2).replace('%d', 2),
+                trans3 = this._('and'),
+                trans4 = ngettext('%d wheel', '%d wheels', 4).replace('%d', 4);
+
+            return trans1 + ' ' + trans2 + ' ' + trans3 + ' ' + trans4;
+        }
+    }
+}
+</script>
+```
+
+### Managing the translations
+
+The generated interface for uploading files from PoEdit:
+
+<Frame>
+  <img src="/images/languages.png" alt="Language management with PO file upload" />
+</Frame>
+
+The online editor in the administration:
+
+<Frame>
+  <img src="/images/languages-editor.png" alt="Online translation editor in the administration" />
+</Frame>
+
+The collected texts opened in PoEdit:
+
+<Frame>
+  <img src="/images/poedit.png" alt="Collected source texts opened in PoEdit" />
+</Frame>
+
+<Tip>
+  Download PoEdit at [poedit.net](https://poedit.net/).
+</Tip>
+
+## Translating dynamic content
+
+Once language versions and static text translations are set up, the interface for translating the dynamic content stored in the database can be generated too.
+
+### Unique records per language
+
+- A relation between the model and the `languages` table is created automatically.
+- Each language version holds its own records.
+- The language is switched under the administrator profile photo, or in the form of the module. Switching it lists the records of the selected language.
+
+<Frame>
+  <img src="/images/languages-select.png" alt="Language switch under the administrator profile photo" />
+</Frame>
+
+<Frame>
+  <img src="/images/languages-select-two.png" alt="Language switch inside a module form" />
+</Frame>
+
+<Note>
+  The language can only be switched in a module that supports language versions.
+</Note>
+
+Enable unique content with the `$localization` property.
+
+```php app/Article.php
+<?php
+
+class Article extends AdminModel
+{
+    /*
+     * Enable multilanguages
+     */
+    protected $localization = true;
+
+    /*
+     * Automatic form and database generation
+     */
+    protected $fields = [
+        'name' => 'name:Name|placeholder:Enter the article name|required|max:90',
+        'content' => 'name:Content|type:editor',
+    ];
+}
+```
+
+To select the records of the language version the client is currently on, the model provides the `localization()` local scope.
+
+```php app/Http/Controllers/ArticleController.php
+<?php
+
+class ArticleController extends Controller
+{
+    public function index()
+    {
+        $articles = Article::localization()->get();
+
+        return view('articles', compact('articles'));
+    }
+}
+```
+
+<Warning>
+  After enabling language versions on a model, run `php artisan admin:migrate` to add the relation to the `languages` table.
+</Warning>
+
+### Mirrored content
+
+With mirrored content the record exists once in the database, but each language version holds a different value in the column.
+
+Enable it with the `locale` parameter on the field you want to translate.
+
+```php
+protected $fields = [
+    'name' => 'name:Project title|type:string|locale',
+];
+```
+
+<Info>
+  A translated field switches its column type to **JSON**, holding the values of every language version.
+</Info>
+
+<Tip>
+  If the client is on a non-default language and the record has no translated value, the system falls back to the default language value.
+</Tip>

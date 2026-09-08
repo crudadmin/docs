@@ -1,0 +1,124 @@
+---
+title: "Pretty URLs"
+description: "Generating slugs from a database column, multilanguage slugs, and selecting records by their slug."
+icon: "link"
+---
+
+Many sites need to show their subpages under generated *nice friendly* URL addresses representing records in the database, instead of selecting records by their id.
+
+<CodeGroup>
+```text Selecting a record by id
+example.com/article/1
+```
+
+```text Selecting a record by slug
+example.com/article/my-article
+```
+</CodeGroup>
+
+## Generating slugs
+
+CrudAdmin generates slugs from database values through the `$sluggable` property of the admin model.
+
+```php app/Article.php
+class Article extends AdminModel
+{
+    /*
+     * Sluggable
+     */
+    protected $sluggable = 'name';
+
+    protected $fields = [
+        'name' => 'name:Name|placeholder:Enter the article name|required|max:90',
+        'content' => 'name:Article content|type:editor|required',
+        'image' => 'name:Image|type:file|image|required',
+    ];
+}
+```
+
+`$sluggable` holds the column the URL addresses are generated from. A helper column named `slug` is created in the database, holding the generated value after the record is created or updated.
+
+<Frame>
+  <img src="/images/article-slug-column.png" alt="Generated slug column in the database table" />
+</Frame>
+
+<Info>
+  If the generated slug already exists in the database, an incremental value is appended. Three records named **My article** produce the slugs **my-article**, **my-article-1** and **my-article-2**.
+</Info>
+
+## Multilanguage slugs
+
+If the field carries the `locale` parameter, which translates the record into several languages, the `slug` column is stored as **JSON**, where each language holds its own slug.
+
+```php
+/*
+ * Sluggable
+ */
+protected $sluggable = 'name';
+
+protected $fields = [
+    'name' => 'name:Name|locale|required',
+];
+```
+
+<Frame>
+  <img src="/images/article-slug-column-locale.png" alt="Slug column stored as JSON with a value per language" />
+</Frame>
+
+<Note>
+  If the record has no translation in the administration, CrudAdmin falls back to the slug of the main language, or any available translated value.
+</Note>
+
+<Tip>
+  Translating records and texts is covered in [Localization](/admin/model/localization).
+</Tip>
+
+## Selecting a record by its slug
+
+### By slug
+
+In the controller, use `findBySlug()` or `findBySlugOrFail()` to look up the record by the slug passed as a URL parameter.
+
+```php app/Http/Controllers/ArticleController.php
+class ArticleController extends Controller
+{
+    /*
+     * example.com/article/{slug}
+     */
+    public function show($slug)
+    {
+        $article = Article::findBySlugOrFail($slug);
+
+        return view('article')->withArticle($article);
+    }
+}
+```
+
+### By slug and id
+
+A record can also be selected by its `slug` and `id` at once. When `findBySlug` or `findBySlugOrFail` receives the record id as its second argument, it verifies the slug from the URL and redirects the client to the correct address with a `301` header if it does not match.
+
+```php app/Http/Controllers/ArticleController.php
+class ArticleController extends Controller
+{
+    /*
+     * example.com/article/{id}/{slug}
+     */
+    public function show($id, $slug)
+    {
+        $article = Article::findBySlugOrFail($slug, $id);
+
+        return view('article')->withArticle($article);
+    }
+}
+```
+
+### Reading the slug value
+
+Use `$article->getSlug()` to access the generated slug of a record.
+
+```blade
+<a href="{{ action('ArticleController@show', $article->getSlug()) }}">
+    {{ $article->name }}
+</a>
+```

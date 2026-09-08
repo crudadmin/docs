@@ -72,8 +72,8 @@ class User extends BaseAuthenticatable
     {
         return [
             'email' => 'name:E-mail|required|email|max:60|index|unique:'.$this->getTable().',email,'.(isset($row) ? $row->getKey() : 'NULL').',id,deleted_at,NULL',
-            'verified' => 'name:Overené údaje|type:select|multiple',
-            'password' => 'name:Heslo|type:password|min:4|max:40|confirmed|'.(isset($row) ? '' : '|inAdmin:required'),
+            'verified' => 'name:Verified data|type:select|multiple',
+            'password' => 'name:Password|type:password|min:4|max:40|confirmed|'.(isset($row) ? '' : '|inAdmin:required'),
             ...
         ];
     }

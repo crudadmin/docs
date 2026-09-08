@@ -1,0 +1,95 @@
+---
+title: "How it works"
+description: "CrudAdmin reads Eloquent models extended with additional parameters and generates the administration interface, forms, validation and the whole relational database from them."
+icon: "workflow"
+---
+
+CrudAdmin reads **Eloquent** models that carry additional parameters. Once extended this way, we call them **Admin models**. From them CrudAdmin generates the whole administration interface, forms with automatic validation, and the complete database including relations.
+
+Adding a new section to the administration takes three steps:
+
+<Steps>
+  <Step title="Create an admin model">
+    ```bash
+    php artisan admin:model Article
+    ```
+  </Step>
+  <Step title="Migrate the database">
+    ```bash
+    php artisan admin:migrate
+    ```
+  </Step>
+  <Step title="Done">
+    A fully working administration section is live.
+  </Step>
+</Steps>
+
+## The administration interface
+
+CrudAdmin builds the whole administration environment from your **admin models**, including the navigation menu, and links everything together.
+
+<Frame>
+  <img src="/images/preview/models-structure.png" alt="Administration sidebar generated from admin models" />
+</Frame>
+
+<Tip>
+  Icons are picked automatically from the English model names. See [ModelIcons.php](https://github.com/crudadmin/crudadmin/blob/master/src/Traits/ModelIcons.php) for the mapping.
+</Tip>
+
+## Form generation and validation
+
+Forms and their validation are assembled from the configuration in the **admin model**.
+
+<Frame>
+  <img src="/images/preview/admin-form.png" alt="Form generated from an admin model definition" />
+</Frame>
+
+## Database design
+
+The database and its relations are designed from the fields defined in the **admin model**.
+
+When a model carries parameters that describe a relationship with other models, CrudAdmin creates the relations in the database and connects the generated forms in the interface. Every relation type is supported. The example below shows a **one to many** relation.
+
+### 1. Linking admin models through a relation
+
+This example links two admin models with the [belongsToModel](/admin/model/relations#tree-structured-models) property. Once linked, opening the parent record shows a nested section for the related model.
+
+<Frame>
+  <img src="/images/preview/article-relationship-model.png" alt="Two admin models linked with belongsToModel" />
+</Frame>
+
+### 2. Migrating the database
+
+Any change in the **admin model** that is represented by a database column has to be migrated with an `artisan` command.
+
+<Frame>
+  <img src="/images/terminal/article-migration.png" alt="Output of the php artisan admin:migrate command" />
+</Frame>
+
+### 3. Generated tables and relations
+
+From the fields in the admin model, CrudAdmin created the database tables, set the column types and built the relations between them.
+
+<Frame>
+  <img src="/images/database/article-relationship-diagram.png" alt="Database diagram of the generated tables and their relation" />
+</Frame>
+
+<Note>
+  When you add new fields to an existing table, CrudAdmin adds the columns automatically — you do not write migrations.
+</Note>
+
+<Warning>
+  When you remove a field that still exists as a database column, CrudAdmin asks you to confirm dropping the column during the migration.
+</Warning>
+
+<Info>
+  Depending on the admin model configuration, CrudAdmin adds extra columns such as the record position, publication date, deletion date, creation date and update date (`_order`, `published_at`, `deleted_at`, `updated_at`). These can be turned off with the [model parameters](/admin/model/parameters).
+</Info>
+
+### 4. The generated interface with a nested relation
+
+Opening the parent record reveals a nested form for managing the related content. Models can be nested to any depth.
+
+<Frame>
+  <img src="/images/preview/article-relationship-ui.png" alt="Nested relation section inside a parent record" />
+</Frame>

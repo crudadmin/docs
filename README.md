@@ -12,7 +12,14 @@ Content lives in MDX files, navigation and site settings in `docs.json`. Project
 | Helpers package | `helpers/` |
 | Development structure | `development/` |
 
-The legacy Docsify documentation is kept in `../docsify_old` while it is being migrated here.
+## Branches
+
+This repository holds both generations of the documentation:
+
+- **`dev`** — the Mintlify documentation in this directory, where all work happens
+- **`old`** — the legacy Docsify documentation, kept for reference
+
+The legacy content has been fully migrated and translated into English. The mapping from each legacy page to its new location is in [`AGENTS.md`](AGENTS.md).
 
 ## Development
 

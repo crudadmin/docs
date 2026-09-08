@@ -1,0 +1,393 @@
+---
+title: "Model parameters"
+description: "Parameters and settings of an admin model — the basics, content restrictions and the additional settings that control forms and tables."
+icon: "sliders"
+---
+
+Every admin model is built from parameters that define how its components are generated in the administration. A freshly created model already contains the most common ones, which you can edit, remove or extend.
+
+<Warning>
+  Any parameter that creates a database column, or changes an existing column or its properties, requires an automatic migration with `php artisan admin:migrate`. The command synchronises the whole relational database.
+</Warning>
+
+## 1. Fields
+
+The `$fields` parameter defines every database column, every form input, the validation rules and the data shown in the record listing.
+
+### Static fields
+
+```php
+protected $fields = [
+    'name' => 'name:Name|placeholder:Enter the article name|type:string|required|max:90',
+    'content' => 'name:Article content|type:editor|required',
+    'image' => 'name:Author photo|type:file|image',
+    'countries' => 'name:Country list|type:select|options:Slovak,Czech,English',
+];
+```
+
+### Dynamically generated fields
+
+When fields are generated dynamically, you can change the rules for saving a record — the currently edited record is passed to the method.
+
+<Tip>
+  The example below applies an exception to the unique e-mail rule for the record being edited.
+</Tip>
+
+```php
+public function fields($row)
+{
+    return [
+        'username' => 'name:Full name|type:string|required',
+        'email' => 'name:E-mail|email|required|unique:users,email,'.(isset($row) ? $row->getKey() : 'NULL'),
+    ];
+}
+```
+
+<Tip>
+  The complete field reference is in [Fields](/admin/model/fields).
+</Tip>
+
+## 2. Basic parameters
+
+### Creation date
+
+`$migration_date` holds the date and time the model was created. The administration uses it to order the modules and build the structure in the right sequence.
+
+```php
+protected $migration_date = '2017-11-05 10:00:00';
+```
+
+<Info>
+  Required parameter, generated automatically. One date can belong to at most one admin model.
+</Info>
+
+### Module name
+
+The name of the section in the administration.
+
+```php
+protected $name = 'Articles';
+```
+
+<Frame>
+  <img src="/images/article-modelname.png" alt="Module name in the administration sidebar" />
+</Frame>
+
+<Info>
+  Required parameter, generated automatically.
+</Info>
+
+### Module description
+
+The optional description of the section in the administration.
+
+```php
+protected $title = 'Edit the list of articles in the blog section.';
+```
+
+<Frame>
+  <img src="/images/article-modeltitle.png" alt="Module description under the section heading" />
+</Frame>
+
+### Module group
+
+An admin model can be assigned to a subgroup defined in the [system configuration](/admin/configuration#module-groups).
+
+```php
+protected $group = 'settings';
+```
+
+<Frame>
+  <img src="/images/group-settings.png" alt="Admin model assigned to a menu group" />
+</Frame>
+
+### Localization
+
+Allows a unique translation of the content for every language version of the site.
+
+```php
+protected $localization = true;
+```
+
+<Info>
+  Each module gets unique records per language version, and a foreign key to the `languages` table is created automatically.
+</Info>
+
+<Tip>
+  Translating records and texts is covered in [Localization](/admin/model/localization).
+</Tip>
+
+### Relations between models
+
+`$belongsToModel` defines the relationship between two or more admin models.
+
+```php
+protected $belongsToModel = Article::class;
+```
+
+If a model is a child of several admin models at once, pass an array.
+
+```php
+protected $belongsToModel = [Article::class, News::class, Blog::class];
+```
+
+<Info>
+  Foreign keys between the tables are created automatically.
+</Info>
+
+<Tip>
+  Relations and content branching are covered in [Database relations](/admin/model/relations).
+</Tip>
+
+### Automatic URL generation
+
+`$sluggable` generates URL addresses from the value of a column. Useful for content whose URL carries a formatted value that is then used to look the record up.
+
+```php
+protected $sluggable = 'field-name';
+```
+
+<Info>
+  A `slug` column is created in the table, holding the value of the chosen column without diacritics and in **nice URL** form.
+</Info>
+
+<Tip>
+  Generating and resolving URL addresses is covered in [Pretty URLs](/admin/frontend/sluggable).
+</Tip>
+
+### Change history
+
+Enables the history of changes made to records.
+
+```php
+protected $history = true;
+```
+
+<Frame>
+  <img src="/images/preview/history-support.png" alt="Change history of a record" />
+</Frame>
+
+<Info>
+  Change history also has to be enabled in the [administration configuration](/admin/configuration#change-history).
+</Info>
+
+### Disabling the module
+
+When you need the database table without generating an administration interface, or you simply want to hide the module, set the value to `false`.
+
+```php
+protected $active = true;
+```
+
+### Skipping column removal during migrations
+
+If your admin model is attached to an existing table shared with another project, which contains columns the admin model does not define, list those columns so they are ignored.
+
+```php
+protected $skipDropping = ['column_x', 'column_y'];
+```
+
+## 3. Content restrictions
+
+Each module needs its own content rules — the **maximum** or **minimum** number of records, whether records can be **reordered** by drag and drop, whether they can be **published** or deleted.
+
+### Creating records
+
+Set to `false` to forbid creating new records in the section.
+
+```php
+protected $insertable = true;
+```
+
+### Editing records
+
+Set to `false` to forbid editing existing records in the section.
+
+```php
+protected $editable = true;
+```
+
+### Deleting records
+
+Set to `false` to forbid deleting existing records in the section.
+
+```php
+protected $deletable = true;
+```
+
+### Publishing records
+
+Set to `true` to allow publishing and hiding records in the section.
+
+```php
+protected $publishable = true;
+```
+
+<Info>
+  A `published_at` column is created in the table, holding the publication state of the record.
+</Info>
+
+### Reordering records
+
+Set to `false` to forbid moving records by **drag and drop**. Reordering is enabled on every admin model by default.
+
+```php
+protected $sortable = true;
+```
+
+<Info>
+  An `_order` column is created in the table, holding the position of the record. Records selected through the Eloquent model are ordered by it automatically.
+</Info>
+
+### Minimum number of records
+
+Once the minimum number of records is reached, the administration hides the option to delete records.
+
+```php
+protected $minimum = 0;
+```
+
+<Note>
+  The value `0` means no limit.
+</Note>
+
+### Maximum number of records
+
+Once the maximum number of records is reached, the administration hides the option to add new records.
+
+```php
+protected $maximum = 0;
+```
+
+<Note>
+  The value `0` means no limit.
+</Note>
+
+### Single record mode
+
+`$single` switches the interface into single-record mode by setting `$minimum` and `$maximum` to 1. The record listing is hidden and the page contains only the form for editing one record.
+
+```php
+protected $single = false;
+```
+
+<Info>
+  In this mode `$sortable` and `$publishable` are set to `false`, which affects the database migration.
+</Info>
+
+<Tip>
+  Useful for static pages such as **About us** or **Contact**, or for application settings that do not need more than one row.
+</Tip>
+
+## 4. Additional settings
+
+Additional settings target specific behaviours of the admin model — form texts, table rules and similar options. They are defined in the `$settings` property or the `settings()` method.
+
+```php
+protected $settings = [
+    'columns.column_name' => [
+        'name' => 'XYZ',
+        'hidden' => true,
+    ],
+    'columns.other_column.name' => 'My column name',
+];
+```
+
+<Tip>
+  Settings can be written as a nested array, or with keys where dots separate the nesting.
+</Tip>
+
+### Form texts
+
+```php
+protected $settings = [
+    'title' => [
+        'create' => 'New record',
+        'update' => 'Editing record no. :id',
+    ],
+    'buttons' => [
+        'insert' => 'Create a new record',
+        'create' => 'Submit the new record',
+        'update' => 'Update the record',
+    ],
+];
+```
+
+### Column names and order
+
+Use these parameters to **hide** a column, **limit its text length** or change its default **name**.
+
+```php
+protected $settings = [
+    'columns' => [
+        'field1' => [
+            'name' => 'Column name for field x',
+            'limit' => 4,
+        ],
+        'field2.name' => 'Column name for field y',
+        'field2.after' => 'field1',
+        'field3' => [
+            'before' => 'field1',
+        ],
+    ],
+];
+```
+
+### Adding new columns
+
+You can add columns that carry no value from an existing database column and assign them any value, including **HTML** that will be rendered.
+
+```php
+protected $settings = [
+    'columns' => [
+        'price_vat' => [
+            'name' => 'Price with VAT',
+            'after' => 'field1',
+        ],
+        'paid_status' => [
+            'name' => 'Status',
+            'encode' => false,
+        ],
+    ],
+];
+```
+
+```php
+public function setAdminAttributes($attributes = [])
+{
+    $attributes['price_vat'] = ($this->price * 1.2) . ' €';
+    $attributes['paid_status'] = $this->paid_at
+        ? '<i class="fa fa-check green"></i>'
+        : '<i class="fa fa-times unpaid"></i>';
+
+    return $attributes;
+}
+```
+
+### Custom buttons in the side panel
+
+The side panel of a record, which holds the delete and publish buttons, can be extended through `$buttons`.
+
+```php
+protected $buttons = [
+    App\Admin\Buttons\MyButton::class,
+];
+```
+
+<Tip>
+  Configuring buttons is covered in [Actions and buttons](/admin/model/actions).
+</Tip>
+
+### Custom layouts in the interface
+
+The administration interface can be extended with layout snippets that build on the existing admin components.
+
+```php
+protected $layouts = [
+    App\Admin\Layouts\MyFormLayout::class,
+];
+```
+
+<Tip>
+  Configuring layouts is covered in [Layout snippets](/admin/model/layouts).
+</Tip>

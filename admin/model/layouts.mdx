@@ -1,0 +1,137 @@
+---
+title: "Layout snippets"
+description: "Layout snippets add your own components into the existing administration interface."
+icon: "layout-template"
+---
+
+Layout snippets let you place your own components into the existing administration interface.
+
+## Creating a layout
+
+A layout is made of two files — a PHP configuration file and the component template assigned to it. Both are created with an `artisan` command.
+
+```bash
+php artisan admin:layout MyCustomLayout
+```
+
+<Note>
+  The command asks which kind of component you want, **Vue** or **Blade**.
+</Note>
+
+<Info>
+  With **Vue**, the component `MyCustomLayout.vue` is created in `resources/views/admin/components/layouts`. With **Blade**, the file `MyCustomLayout.blade.php` is created in `resources/views/admin`.
+</Info>
+
+## Configuring the layout
+
+The first file is the PHP class holding the settings of the component.
+
+```php app/Admin/Layouts/MyExampleLayout.php
+class MyExampleLayout extends Layout
+{
+    public $position = 'form-top';
+
+    /*
+     * On build blade layout
+     */
+    public function build()
+    {
+        return view('admin.MyExampleLayout');
+    }
+}
+```
+
+### Position
+
+The `$position` property decides where the generated component is placed.
+
+```php
+public $position = 'form-top';
+```
+
+| Position | Placement |
+| --- | --- |
+| `top` | Before the module panel |
+| `bottom` | After the module panel |
+| `form-top` | Top of the form |
+| `form-bottom` | Bottom of the form |
+| `form-header` | Form header |
+| `form-footer` | Form footer |
+| `table-header` | Header of the record table |
+| `table-footer` | Footer of the record table |
+
+### Supplying the component
+
+<CodeGroup>
+```php Blade
+public function build()
+{
+    $articles = Article::get();
+
+    return view('admin.MyTestLayout', compact('articles'));
+}
+```
+
+```php Vue
+public function build()
+{
+    return $this->component('MyTestLayout.vue');
+}
+```
+</CodeGroup>
+
+<Note>
+  A Vue component can also be created on its own, without the PHP configuration file, with `php artisan admin:component MyTestLayout`. Answer `layout` when asked for the component type.
+</Note>
+
+<Tip>
+  Components are loaded recursively from `resources/views/admin/components`. The directory is configurable in the [administration configuration](/admin/configuration#vue-component-directory).
+</Tip>
+
+## Registering the layout
+
+Assign the PHP configuration file to the admin model through the `$layouts` property.
+
+```php app/Article.php
+class Article extends AdminModel
+{
+    protected $layouts = [
+        \App\Admin\Layouts\MyExampleLayout::class,
+    ];
+}
+```
+
+A Vue component needs no PHP configuration file — register it directly, where the array key is the position.
+
+```php app/Article.php
+class Article extends AdminModel
+{
+    protected $layouts = [
+        'form-top' => 'MyTopLayout.vue',
+        'form-bottom' => 'MyBottomLayout.vue',
+    ];
+}
+```
+
+<Note>
+  In this case, create the standalone Vue component with `php artisan admin:component MyTestLayout` and answer `layout` when asked for the component type.
+</Note>
+
+## The Vue component
+
+Through the `props` attribute the component receives the record being edited, the newly created record and other information you can work with.
+
+```html resources/views/admin/components/layouts/MyCustomLayout.vue
+<template>
+    <div>
+        <h2 v-if="!row.id">Please open any row.</h2>
+        <h2 v-else>You are editing row number {{ row.id }}</h2>
+    </div>
+</template>
+
+<script type="text/javascript">
+export default {
+    props : ['model', 'row', 'rows'],
+}
+</script>
+```

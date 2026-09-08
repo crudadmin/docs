@@ -15,14 +15,27 @@
         "groups": [
           {
             "group": "Getting started",
+            "icon": "rocket",
             "pages": [
-              "index"
+              "index",
+              "admin/how-it-works",
+              "admin/installation",
+              "admin/configuration",
+              "admin/license",
+              "admin/contact"
             ]
           },
           {
-            "group": "CrudAdmin",
+            "group": "Admin interface",
+            "icon": "layout-dashboard",
             "pages": [
-              "admin/model/index"
+              "admin/model/index",
+              "admin/model/parameters",
+              "admin/model/fields",
+              "admin/model/actions",
+              "admin/model/layouts",
+              "admin/model/relations",
+              "admin/model/localization"
             ]
           },
           {
@@ -31,6 +44,14 @@
             "pages": [
               "admin/validation/index",
               "admin/validation/request"
+            ]
+          },
+          {
+            "group": "Frontend",
+            "icon": "globe",
+            "pages": [
+              "admin/frontend/sluggable",
+              "admin/frontend/files"
             ]
           }
         ]

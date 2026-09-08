@@ -1,17 +1,68 @@
 ---
-title: 'Admin Model'
-description: 'This documentation describes how Admin Models powers whole crudadmin journey.'
-icon: 'codepen'
+title: "Admin Model"
+description: "What an admin model is, what it gives you over a plain Eloquent model, and how to create one."
+icon: "codepen"
 ---
 
-## Creating model
+An admin model is a regular Laravel [Eloquent model](https://laravel.com/docs/master/eloquent) from the MVC architecture. The difference is that an admin model carries parameters and settings from which CrudAdmin generates the database, the forms and the validation.
 
-You can create extended version of Eloquent via following command.
+<Tip>
+  For the bigger picture of how the generation works, read [How it works](/admin/how-it-works).
+</Tip>
+
+## What you get
+
+1. The whole database and the administration interface are generated from the admin model settings.
+2. Relations between models are mapped automatically. You no longer write relation methods — calling a method named after the related model binds the relation, for example `$article->gallery()` or `$article->gallery`.
+3. `$fillable` and `$casts` are filled automatically from the defined fields.
+4. And more.
+
+## Creating an admin model
+
+Admin models are created the same way as regular Laravel models, with **php artisan**.
 
 ```bash
-php artisan admin:model Customer
+php artisan admin:model Article
 ```
 
-```php app/Models/Model.php
-...
+The command creates `Article.php` in the `app` directory.
+
+```php app/Article.php
+<?php
+
+namespace App;
+
+use Admin\Models\Model as AdminModel;
+
+class Article extends AdminModel
+{
+    /*
+     * Model created date, for ordering tables in the administration
+     */
+    protected $migration_date = '2017-11-05 10:00:00';
+
+    /*
+     * Template name
+     */
+    protected $name = 'Articles';
+
+    /*
+     * Automatic form and database generation
+     */
+    protected $fields = [
+        'name' => 'name:Article name|type:string|required|max:90',
+        'content' => 'name:Content|type:editor|required',
+    ];
+}
 ```
+
+## Next steps
+
+<Columns cols={2}>
+  <Card title="Model parameters" icon="sliders" href="/admin/model/parameters">
+    Every parameter that shapes how the model behaves in the administration.
+  </Card>
+  <Card title="Fields" icon="text-cursor-input" href="/admin/model/fields">
+    Field types, their parameters, groups and tabs.
+  </Card>
+</Columns>

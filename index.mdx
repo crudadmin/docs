@@ -1,28 +1,84 @@
 ---
 title: "Introduction"
-description: "CrudAdmin is a Laravel administration built on top of Eloquent models. Define a model once and get migrations, an admin interface, validation and an API for free."
+description: "CrudAdmin is a Laravel-based system that generates the database, the administration interface, forms and validation from a single model definition."
 ---
 
-CrudAdmin extends Eloquent models with a field definition. From that single definition it generates database migrations, the administration interface, validation rules and the frontend forms, so the model stays the only place you describe your data.
+CrudAdmin is built on top of the **Laravel** framework and gives your project one consistent structure to program against.
 
-## Getting started
+It is designed for developers and companies building web and mobile database applications. It removes the repetitive steps of a project — **database design, user interface, form validation** and working with data — so you describe your data once and get the rest.
+
+## What it covers
+
+A Laravel model with an extra layer of parameters is called an **Admin model**. Once the admin model exists, everything below is generated from it.
 
 <Columns cols={2}>
-  <Card title="Admin models" icon="codepen" href="/admin/model">
-    Define fields, options and relations on an extended Eloquent model.
+  <Card title="User interface" icon="layout-dashboard">
+    Generates the administration interface your client uses to manage the system.
   </Card>
-  <Card title="Validation" icon="ruler" href="/admin/validation">
-    Reuse the rules defined in your admin model to validate any request.
+  <Card title="Authentication" icon="circle-user">
+    Generates login, user management and user roles.
+  </Card>
+  <Card title="Permissions" icon="users">
+    Administrator groups with per-module permissions.
+  </Card>
+  <Card title="Database design" icon="database">
+    Designs the relational database without writing migrations, and keeps it in sync as the project changes.
+  </Card>
+  <Card title="Forms" icon="text-cursor-input">
+    Builds every form in the administration and stores the submitted data.
+  </Card>
+  <Card title="Validation" icon="circle-alert">
+    Validates every form on the backend and the frontend, with no extra configuration.
+  </Card>
+  <Card title="File uploads" icon="image">
+    Stores uploaded files and images, and resizes images on the frontend.
+  </Card>
+  <Card title="Localization" icon="languages">
+    Creates the language table and links it to models and fields. With the Gettext extension it also translates static texts in blade templates, JavaScript and Vue components.
+  </Card>
+  <Card title="Data listings" icon="table">
+    Builds the record tables, including creating, editing, deleting, publishing and reordering records.
+  </Card>
+  <Card title="Field types" icon="pencil">
+    Text, textarea, number, decimal, rich-text editor, date, time, select, checkbox and file uploads — plus your own custom components.
+  </Card>
+  <Card title="Relations" icon="key">
+    Generates every relation type in the database and wires it into the interface. No relation methods to write by hand.
+  </Card>
+  <Card title="Simple installation" icon="terminal">
+    Installs into Laravel through **composer**. Admin models are created with `php artisan`.
   </Card>
 </Columns>
 
-## Packages
+## Where to start
 
 <Columns cols={2}>
-  <Card title="Helpers package" icon="download" href="/helpers/installation">
-    Install `crudadmin/helpers` and configure authentication, OTP, registration and login.
+  <Card title="How it works" icon="workflow" href="/admin/how-it-works">
+    The path from an admin model to a working administration.
   </Card>
-  <Card title="Development structure" icon="folder-tree" href="/development">
-    The project structure and conventions shared across our applications.
+  <Card title="Installation" icon="download" href="/admin/installation">
+    Requirements and the installation steps.
   </Card>
 </Columns>
+
+## History
+
+CrudAdmin was first released in early **2016**. It grew out of a large, complex project, where it was written to speed up development.
+
+The potential of the system was clear early on, so the core was split off into a separate project and gradually adopted across more projects.
+
+## Who uses CrudAdmin
+
+After several years of development, CrudAdmin runs **hundreds of web applications, e-shops, information systems and mobile applications** that connect to its API for their data.
+
+It is used by a number of **Slovak** and **Czech** companies, and it is intended to grow into the global market.
+
+## Testing
+
+CrudAdmin ships with automated **unit** and **integration** tests covering most of the functionality in the system.
+
+Before every release, its components are checked on several test environments. Integration tests boot the application automatically and verify its behaviour in a browser.
+
+<Note>
+  All new versions of the system are backwards compatible.
+</Note>

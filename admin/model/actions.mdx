@@ -1,0 +1,229 @@
+---
+title: "Actions and buttons"
+description: "Custom buttons that run an action over one record or a group of records, and return a message, a redirect or your own component."
+icon: "mouse-pointer-click"
+---
+
+Sometimes a module needs to run an action over a record or a group of records. In an order, for example, you may need to change the order status, which also sends a notification to the courier.
+
+Custom buttons cover those cases. They are rendered in the record table, and clicking one sends a request to the server where you can run any action and return a message to the user.
+
+## Creating a button
+
+```bash
+php artisan admin:button ChangeOrderStatusButton
+```
+
+The command creates the button configuration file in `app/Admin/Buttons/ChangeOrderStatusButton.php`.
+
+## Registering a button
+
+Assign the button to an admin model through the `$buttons` property.
+
+```php app/Order.php
+use App\Admin\Buttons\ChangeOrderStatusButton;
+
+class Order extends AdminModel
+{
+    protected $buttons = [
+        ChangeOrderStatusButton::class,
+    ];
+}
+```
+
+## How the button is rendered
+
+Once registered, the button appears in the side panel of every record.
+
+<Frame>
+  <img src="/images/buttons/model-button-action.png" alt="Custom button in the record side panel" />
+</Frame>
+
+If the button can be applied to several selected records, it is placed in the action bar once records are selected.
+
+<Frame>
+  <img src="/images/buttons/model-button-actionbar.png" alt="Custom action in the action bar above selected records" />
+</Frame>
+
+## Configuring the button
+
+A button is a PHP class holding its properties and the method that runs when it is clicked.
+
+```php app/Admin/Buttons/ChangeOrderStatusButton.php
+class ChangeOrderStatusButton extends Button
+{
+    public $type = 'button';
+
+    // Name of the button on hover
+    public $name = 'DummyButton';
+
+    // Button classes
+    public $class = 'btn-default';
+
+    // Button icon
+    public $icon = 'fa-gift';
+}
+```
+
+### Type `(required)`
+
+There are three types of action.
+
+| Type | Behaviour |
+| --- | --- |
+| `button` | A simple button in the record side panel. |
+| `action` | Available only after selecting records, and can run over a group of them. |
+| `multiple` | Runs over a single record as well as a group of records. |
+
+```php
+public $type = 'button';
+```
+
+<Warning>
+  For an action that runs over several records, `fire($row)` is not enough — it receives a single record. Define `fireMultiple($rows)` as well, which receives the selected records.
+</Warning>
+
+### Name `(required)`
+
+```php
+public $name = 'Send delivery email';
+```
+
+### Class and colour
+
+One of `fa-default`, `fa-primary`, `fa-success`, `fa-warning`, `fa-error`.
+
+```php
+public $class = 'fa-default';
+```
+
+### Icon
+
+```php
+public $icon = 'fa-check';
+```
+
+## Running the action
+
+`fire` runs the action over a single record clicked from the side panel. `fireMultiple` only needs to be defined for actions that can run over several records. Both return a response in the form of a message or your own component.
+
+```php app/Admin/Buttons/ChangeOrderStatusButton.php
+use Illuminate\Support\Collection;
+use Admin\Models\Model as AdminModel;
+
+class ChangeOrderStatusButton extends Button
+{
+    public function __construct($row)
+    {
+        $this->class = $row->status == 'new' ? 'btn-success' : 'btn-default';
+
+        $this->active = $row->status == 'new';
+    }
+
+    public function fire(AdminModel $row)
+    {
+        $row->update([ 'status' => 'sent' ]);
+        $row->notify(new SendOrderNotification($row));
+
+        return $this->message('Your action is done!');
+    }
+
+    public function fireMultiple(Collection $rows)
+    {
+        return $this->error('Your multiple rows action callback.');
+    }
+}
+```
+
+<Tip>
+  In `__construct` you can mutate the default behaviour of the button for the specific record passed to it. Use the `active` property there to disable the button for a given record.
+</Tip>
+
+### Message title and text
+
+To return plain text or HTML, use one of `message`, `success`, `error` or `warning`.
+
+```php
+return $this->title('My title')
+            ->message('Your action is done!');
+```
+
+### Redirect
+
+```php
+return $this->redirect('https://google.com');
+```
+
+### New window
+
+```php
+return $this->open('https://google.com');
+```
+
+### Custom Vue or blade component
+
+```php
+return $this->title('This is your stats result')
+            ->component('MyComponentName.vue');
+```
+
+<Note>
+  Create the component with `php artisan admin:component MyComponentName` and choose the `button` component type.
+</Note>
+
+<Tip>
+  Components are loaded recursively from `resources/views/admin/components`. The directory is configurable in the [administration configuration](/admin/configuration#vue-component-directory). For a component in another location, use an absolute path.
+</Tip>
+
+<Tip>
+  With a larger number of components, use subdirectories. Call a component from a subdirectory by its name, or by its relative path — `component('subdirectory/MyComponentName.vue')`.
+</Tip>
+
+## Actions with a confirmation
+
+Sometimes the user has to be warned before an action runs. The `question` method receives the confirmation request first and returns the confirmation response as a message or a component. Once confirmed, `fire` or `fireMultiple` runs.
+
+The example below asks a question through a component with an input, whose value is then sent to `fire`.
+
+```php app/Admin/Buttons/MyButton.php
+public function question()
+{
+    $person = Article::first();
+
+    return $this->title('Fill your age')
+                ->component('FillAgeComponent.vue', [
+                    'person' => $person,
+                ]);
+}
+```
+
+```html resources/views/admin/components/FillAgeComponent.vue
+<template>
+    <div>
+        <label>How old are you?</label>
+        <input type="text" v-model="request.age" class="form-control">
+
+        <p>My name is {{ data.person.username }}</p>
+        <p>I am {{ request.age||'???' }} years old.</p>
+    </div>
+</template>
+
+<script type="text/javascript">
+export default {
+    props : ['model', 'row', 'rows', 'request', 'data'],
+}
+</script>
+```
+
+```php app/Admin/Buttons/MyButton.php
+public function fire()
+{
+    $message = 'You are '.request('age').' years old';
+
+    return $this->success($message);
+}
+```
+
+<Tip>
+  The second argument of `component($component, $data)` passes data that is available in the Vue component through the `data` prop.
+</Tip>
