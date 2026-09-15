@@ -57,6 +57,14 @@ This installs Mintlify's documentation skill for tools like Claude Code, Cursor 
 
 The Mintlify GitHub app propagates changes from this repo to the deployment. Changes are deployed to production automatically after pushing to `main`.
 
+`docs.crudadmin.com` is a static export hosted on our own server. After pushing to `main`, deploy it on the server:
+
+```bash
+ssh crudadmin 'cd sub/docs && bash deploy'
+```
+
+The `deploy` script pulls `main`, builds the site with `mint export` and replaces `public/`, which nginx serves.
+
 ## Need help?
 
 ### Troubleshooting

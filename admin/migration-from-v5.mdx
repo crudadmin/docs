@@ -39,14 +39,14 @@ Keep the CrudAdmin 5 constraint in `require`, for example `"crudadmin/crudadmin"
 
 ## 2. Store the credentials
 
-CrudAdmin 5 projects use a shared CrudAdmin 5 access. It can download only CrudAdmin 5 versions.
+CrudAdmin 5 projects use a shared CrudAdmin 5 access. It is public, and it can download only CrudAdmin 5 versions.
 
 ```json auth.json
 {
     "http-basic": {
         "packages.crudadmin.com": {
-            "username": "CRUDADMIN_V5_USERNAME",
-            "password": "CRUDADMIN_V5_TOKEN"
+            "username": "adminv5",
+            "password": "ca_tVimol4iMYTp6zBTbG7YjjlGeqguUvEeOIbpIvyLqWKReaWZ"
         }
     }
 }
@@ -67,13 +67,13 @@ Store them in one of these places:
 The same credentials can be stored with composer. Use `--global` for all projects on the computer:
 
 ```bash
-composer config --global --auth http-basic.packages.crudadmin.com CRUDADMIN_V5_USERNAME CRUDADMIN_V5_TOKEN
+composer config --global --auth http-basic.packages.crudadmin.com adminv5 ca_tVimol4iMYTp6zBTbG7YjjlGeqguUvEeOIbpIvyLqWKReaWZ
 ```
 
 On a server or in CI:
 
 ```bash
-export COMPOSER_AUTH='{"http-basic":{"packages.crudadmin.com":{"username":"CRUDADMIN_V5_USERNAME","password":"CRUDADMIN_V5_TOKEN"}}}'
+export COMPOSER_AUTH='{"http-basic":{"packages.crudadmin.com":{"username":"adminv5","password":"ca_tVimol4iMYTp6zBTbG7YjjlGeqguUvEeOIbpIvyLqWKReaWZ"}}}'
 ```
 
 See [storing the credentials](/admin/license#storing-the-credentials) for more details about each option.
@@ -117,6 +117,10 @@ Every server and CI job which runs `composer install` needs the credentials from
     A computer with access to the CrudAdmin GitHub organization can still clone the packages directly from GitHub, and composer silently falls back to it. Other computers can not. Complete all steps, so every environment downloads from `packages.crudadmin.com`.
   </Accordion>
 </AccordionGroup>
+
+## Support for older versions
+
+Do you need help with CrudAdmin 5 or an older version? Send your question to [sales@gogoldev.com](mailto:sales@gogoldev.com) and we will get back to you by e-mail.
 
 ## Upgrading to CrudAdmin 6
 

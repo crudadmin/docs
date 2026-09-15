@@ -5,3 +5,9 @@
 # Draft content
 drafts/
 *.draft.mdx
+
+# Deployment
+deploy
+public/
+public.old/
+.export/

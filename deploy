@@ -1,0 +1,26 @@
+#!/bin/bash
+
+#Deploys docs.crudadmin.com: builds a static export of the documentation into public/, which nginx serves.
+#Run on the server from the repository root: bash deploy
+set -e
+
+cd "$(dirname "$0")"
+
+git pull
+
+rm -rf .export
+mkdir .export
+
+npx --yes mint export --output .export/docs.zip
+unzip -q .export/docs.zip -d .export/public
+
+#Files of the export which are not part of the website
+rm -rf .export/public/serve.js .export/public/Start* .export/public/.gitignore .export/public/.mintignore .export/public/.DS_Store
+
+#Swap the directories, so the website is never served half copied
+rm -rf public.old
+[ -d public ] && mv public public.old
+mv .export/public public
+rm -rf public.old .export
+
+echo "Documentation deployed"
