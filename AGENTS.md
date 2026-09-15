@@ -21,7 +21,7 @@ The site has three tabs, each backed by its own directory.
 
 | Group | Pages |
 | --- | --- |
-| Getting started | `index`, `admin/how-it-works`, `admin/installation`, `admin/configuration`, `admin/license`, `admin/contact` |
+| Getting started | `index`, `admin/how-it-works`, `admin/installation`, `admin/configuration`, `admin/license`, `admin/migration-from-v5`, `admin/contact` |
 | Admin interface | `admin/model/index`, `admin/model/parameters`, `admin/model/fields`, `admin/model/actions`, `admin/model/layouts`, `admin/model/relations`, `admin/model/localization` |
 | Validation | `admin/validation/index`, `admin/validation/request` |
 | Frontend | `admin/frontend/sluggable`, `admin/frontend/files` |

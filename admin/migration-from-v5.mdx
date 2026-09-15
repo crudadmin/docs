@@ -1,0 +1,123 @@
+---
+title: "Migration from v5"
+description: "How to keep installing CrudAdmin 5 in existing projects from the new packages.crudadmin.com repository."
+icon: "arrow-right-left"
+---
+
+CrudAdmin packages are no longer downloaded from Packagist and GitHub. Both CrudAdmin 6 and CrudAdmin 5 are distributed from the private composer repository `packages.crudadmin.com`.
+
+Existing CrudAdmin 5 projects keep working until composer has to download the packages again, for example on a new server, in CI, or after the composer cache is cleared. Then the installation fails, because the old download links point to GitHub. Follow the steps below once in every CrudAdmin 5 project.
+
+<Info>
+  CrudAdmin 5 stays under the MIT license. Nothing changes in the code of your project, and the `license_key` in `config/admin.php` stays the same. Only the place composer downloads the packages from changes.
+</Info>
+
+## What changes
+
+| Package | Downloaded from |
+| --- | --- |
+| `crudadmin/crudadmin`, `crudadmin/framework`, `crudadmin/resources` | `packages.crudadmin.com` |
+| `crudadmin/autoajax`, `crudadmin/helpers`, `crudadmin/socialite` and other helper packages | Packagist, unchanged |
+
+## 1. Add the repository
+
+Add `packages.crudadmin.com` to `composer.json` of the project:
+
+```json composer.json
+"repositories": [
+    { "type": "composer", "url": "https://packages.crudadmin.com" }
+]
+```
+
+Or with composer:
+
+```bash
+composer config repositories.crudadmin composer https://packages.crudadmin.com
+```
+
+Keep the CrudAdmin 5 constraint in `require`, for example `"crudadmin/crudadmin": "^5.0"`.
+
+## 2. Store the credentials
+
+CrudAdmin 5 projects use a shared CrudAdmin 5 access. It can download only CrudAdmin 5 versions.
+
+```json auth.json
+{
+    "http-basic": {
+        "packages.crudadmin.com": {
+            "username": "CRUDADMIN_V5_USERNAME",
+            "password": "CRUDADMIN_V5_TOKEN"
+        }
+    }
+}
+```
+
+<Warning>
+  Never put the credentials into `composer.json` or any other versioned file.
+</Warning>
+
+Store them in one of these places:
+
+| Option | Where | Recommended for |
+| --- | --- | --- |
+| Global `auth.json` | the composer home directory, `composer config --global home` | your computer, all projects at once |
+| Project `auth.json` | next to `composer.json`, ignored by git | a single project |
+| `COMPOSER_AUTH` | environment variable | servers, deployment and CI |
+
+The same credentials can be stored with composer. Use `--global` for all projects on the computer:
+
+```bash
+composer config --global --auth http-basic.packages.crudadmin.com CRUDADMIN_V5_USERNAME CRUDADMIN_V5_TOKEN
+```
+
+On a server or in CI:
+
+```bash
+export COMPOSER_AUTH='{"http-basic":{"packages.crudadmin.com":{"username":"CRUDADMIN_V5_USERNAME","password":"CRUDADMIN_V5_TOKEN"}}}'
+```
+
+See [storing the credentials](/admin/license#storing-the-credentials) for more details about each option.
+
+## 3. Update composer.lock
+
+`composer.lock` still contains the old GitHub download links. Update the CrudAdmin packages once, so the lock file points to `packages.crudadmin.com`:
+
+```bash
+composer update "crudadmin/crudadmin" "crudadmin/framework" "crudadmin/resources"
+```
+
+Composer keeps the versions allowed by your constraints. Check that the lock file uses the new repository:
+
+```bash
+grep -o 'https://packages.crudadmin.com/dist/[^"]*' composer.lock
+```
+
+The command prints one link for each of the three packages. Commit the updated `composer.lock`.
+
+## 4. Update your servers
+
+Every server and CI job which runs `composer install` needs the credentials from step 2, usually as `COMPOSER_AUTH` in the environment of the deployment user. Deploy the updated `composer.lock` after that.
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="The 'packages.crudadmin.com/packages.json' URL required authentication (HTTP 401)">
+    Composer did not find the credentials, or they are not valid. Check that the key in `auth.json` is exactly `packages.crudadmin.com`, without `https://`, and that `COMPOSER_AUTH` is set in the environment which runs composer.
+  </Accordion>
+
+  <Accordion title="Could not find a version of package crudadmin/crudadmin">
+    The credentials do not include the requested major version. The shared CrudAdmin 5 access downloads only CrudAdmin 5, check the constraint in `composer.json`.
+  </Accordion>
+
+  <Accordion title="The download from api.github.com fails with 404">
+    `composer.lock` still points to GitHub. Run the update from step 3 and deploy the new lock file.
+  </Accordion>
+
+  <Accordion title="The installation works on one computer but fails on another">
+    A computer with access to the CrudAdmin GitHub organization can still clone the packages directly from GitHub, and composer silently falls back to it. Other computers can not. Complete all steps, so every environment downloads from `packages.crudadmin.com`.
+  </Accordion>
+</AccordionGroup>
+
+## Upgrading to CrudAdmin 6
+
+CrudAdmin 6 is commercial software and needs a license of its own, the shared CrudAdmin 5 access does not include it. See [License](/admin/license), or contact [sales@gogoldev.com](mailto:sales@gogoldev.com).
