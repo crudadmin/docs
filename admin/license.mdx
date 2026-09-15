@@ -66,6 +66,20 @@ composer require crudadmin/crudadmin:^6.0
 
 Composer authenticates every download with the e-mail of your license and a composer token, which you receive together with the license.
 
+A license grants access to selected major versions of CrudAdmin. Composer lists only the versions your license includes.
+
+### CrudAdmin 5
+
+CrudAdmin 5 stays under the MIT license and is free. It is installed from the same repository, with a free license for CrudAdmin 5. To get it, contact [sales@gogoldev.com](mailto:sales@gogoldev.com).
+
+```bash
+composer require crudadmin/crudadmin:^5.0
+```
+
+<Info>
+  Existing CrudAdmin 5 projects need the repository in `composer.json` and the credentials as well. Run `composer update "crudadmin/*"` once, so `composer.lock` downloads the packages from `packages.crudadmin.com`.
+</Info>
+
 <Warning>
   Never put the credentials into `composer.json` or any other versioned file. The composer token grants access to the packages of your license.
 </Warning>
