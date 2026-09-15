@@ -1,26 +1,34 @@
 #!/bin/bash
 
-#Deploys docs.crudadmin.com: builds a static export of the documentation into public/, which nginx serves.
-#Run on the server from the repository root: bash deploy
+#Deploys docs.crudadmin.com. Run locally from the repository root: bash deploy
+#
+#The static export is built locally, the server does not have enough memory for mint export.
+#The built site is uploaded into sub/docs/public of the crudadmin server, which nginx serves.
 set -e
 
 cd "$(dirname "$0")"
 
-git pull
+server="${DOCS_SERVER:-crudadmin}"
 
 rm -rf .export
 mkdir .export
 
-npx --yes mint export --output .export/docs.zip
+if command -v mint > /dev/null; then
+    mint export --output .export/docs.zip
+else
+    npx --yes mint export --output .export/docs.zip
+fi
+
 unzip -q .export/docs.zip -d .export/public
 
 #Files of the export which are not part of the website
 rm -rf .export/public/serve.js .export/public/Start* .export/public/.gitignore .export/public/.mintignore .export/public/.DS_Store
 
-#Swap the directories, so the website is never served half copied
-rm -rf public.old
-[ -d public ] && mv public public.old
-mv .export/public public
-rm -rf public.old .export
+rsync -a --delete .export/public/ "$server:sub/docs/public.new/"
+
+#Swap the directories on the server, so the website is never served half copied
+ssh "$server" 'cd sub/docs && git pull -q && rm -rf public.old && { [ -d public ] && mv public public.old || true; } && mv public.new public && rm -rf public.old'
+
+rm -rf .export
 
 echo "Documentation deployed"

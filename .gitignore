@@ -4,5 +4,6 @@ node_modules
 
 # Static export served by nginx, built by the deploy script
 /public
+/public.new
 /public.old
 /.export
