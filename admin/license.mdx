@@ -50,6 +50,86 @@ Set your license key in the CrudAdmin configuration.
 
 To obtain a license key, contact [sales@gogoldev.com](mailto:sales@gogoldev.com).
 
+## Installing the licensed packages
+
+CrudAdmin 6 is downloaded from the private composer repository `packages.crudadmin.com`, not from Packagist. Add the repository to `composer.json` of your project:
+
+```json composer.json
+"repositories": [
+    { "type": "composer", "url": "https://packages.crudadmin.com" }
+]
+```
+
+```bash
+composer require crudadmin/crudadmin:^6.0
+```
+
+Composer authenticates every download with the e-mail of your license and a composer token, which you receive together with the license.
+
+<Warning>
+  Never put the credentials into `composer.json` or any other versioned file. The composer token grants access to the packages of your license.
+</Warning>
+
+### Storing the credentials
+
+Composer reads the credentials from `auth.json` or from the `COMPOSER_AUTH` environment variable. All options use the same content:
+
+```json auth.json
+{
+    "http-basic": {
+        "packages.crudadmin.com": {
+            "username": "your-license@email.com",
+            "password": "your-composer-token"
+        }
+    }
+}
+```
+
+| Option | Where | Recommended for |
+| --- | --- | --- |
+| Global `auth.json` | the composer home directory | all projects on your computer |
+| Project `auth.json` | next to `composer.json`, ignored by git | a single project |
+| `COMPOSER_AUTH` | environment variable | CI, deployment and production servers |
+
+When both the global and the project `auth.json` exist, composer merges them and the project file wins.
+
+#### Global auth.json
+
+Find the composer home directory:
+
+```bash
+composer config --global home
+```
+
+Create `auth.json` in that directory. When the file already exists, for example with a GitHub token, add `packages.crudadmin.com` into its `http-basic` section instead of overwriting it. Then restrict the file to your user:
+
+```bash
+chmod 600 "$(composer config --global home)/auth.json"
+```
+
+#### Project auth.json
+
+Create `auth.json` next to `composer.json`. The Laravel `.gitignore` already contains `/auth.json`, check that git ignores the file:
+
+```bash
+git check-ignore -v auth.json
+```
+
+When the command prints nothing, add `/auth.json` to `.gitignore` before you commit.
+
+#### COMPOSER_AUTH
+
+On servers and in CI, pass the same JSON through the environment of the deployment user or the CI job:
+
+```bash
+export COMPOSER_AUTH='{"http-basic":{"packages.crudadmin.com":{"username":"your-license@email.com","password":"your-composer-token"}}}'
+composer install
+```
+
+<Tip>
+  In GitHub Actions or GitLab CI, store the JSON as a secret variable and expose it as `COMPOSER_AUTH` in the job.
+</Tip>
+
 ## Earlier versions
 
 CrudAdmin 5 and earlier releases were distributed under the MIT license, and they stay under it. The commercial license applies to every release distributed with the new `LICENSE.md` file.
