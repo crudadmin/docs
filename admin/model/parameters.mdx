@@ -364,6 +364,48 @@ public function setAdminAttributes($attributes = [])
 }
 ```
 
+### Columns loaded by the query
+
+`setAdminAttributes` runs for every row. When a column needs data from another table, a query inside it runs once per row. Load the value in the query of the table instead, with the `scopeAdminRows` scope.
+
+```php app/Models/Package/Package.php
+protected $settings = [
+    'columns.last_version' => [
+        'name' => 'Latest version',
+        'after' => 'name',
+    ],
+];
+
+public function scopeAdminRows($query)
+{
+    $query->addSelect([
+        'last_version' => PackagesRelease::select('version')
+            ->whereColumn('packages_releases.package_id', 'packages.id')
+            ->orderByDesc('released_at')
+            ->limit(1),
+    ]);
+}
+
+public function setAdminRowsResponse()
+{
+    $this->makeVisible('last_version');
+}
+```
+
+The table response contains only the fields of the admin model. A value added to the query is loaded, but it does not reach the response until you make it visible with `makeVisible` in `setAdminRowsResponse`.
+
+<Warning>
+  Without `setAdminRowsResponse`, the column stays empty in the table, even though the query returns the value.
+</Warning>
+
+Visibility can be changed in three methods, which run before the attributes are rendered:
+
+| Method | Runs for |
+| --- | --- |
+| `setAdminResponse` | every response of the record |
+| `setAdminRowResponse` | a single record, when it is opened in the form |
+| `setAdminRowsResponse` | the rows of the table |
+
 ### Custom buttons in the side panel
 
 The side panel of a record, which holds the delete and publish buttons, can be extended through `$buttons`.
