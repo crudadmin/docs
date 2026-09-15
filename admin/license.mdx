@@ -1,20 +1,63 @@
 ---
 title: "License"
-description: "How CrudAdmin is licensed and where the license key is configured."
+description: "How CrudAdmin is licensed and what a license allows you to do."
 icon: "scale"
 ---
 
-**CrudAdmin** is currently released as a free system that requires a free license key, which is present in the system right after installation. The future of the system will be built on paid license keys that unlock its full functionality.
+CrudAdmin is commercial software. It is not open source, and you need a valid license key to use it.
 
-Current users are not affected — projects launched before licensing was introduced stay untouched by any future changes to the sales terms.
+The license covers the core packages:
+
+- `crudadmin/crudadmin`
+- `crudadmin/framework`
+- `crudadmin/resources`
+
+The full license text is in the `LICENSE.md` file of each package.
+
+## What a license allows
+
+With a valid license key, you can:
+
+- Install and use CrudAdmin in the projects covered by your license key.
+- Modify CrudAdmin to the extent your projects need.
+- Deliver CrudAdmin to your client as an integral part of the project you built for them. Your client is bound by the same license.
+
+## What is not allowed
+
+Without a valid license key, or without written permission of the author, you cannot:
+
+- Use CrudAdmin in any project.
+- Copy, distribute, publish, sell or sublicense CrudAdmin, or a modified version of it.
+- Fork or mirror the source code or the built assets into a public or shared repository or package archive.
+- Distribute a derivative work on its own, or build a product that competes with CrudAdmin.
+- Remove or circumvent the license key verification, or the copyright notices.
+- Transfer your license key to another person, company or project.
+
+<Warning>
+  Every copy of CrudAdmin stays subject to the license, including modified copies.
+</Warning>
+
+## License key
+
+Set your license key in the CrudAdmin configuration.
 
 ```php config/admin.php
 /*
  * License key
  */
-'license_key' => 'campaign2019',
+'license_key' => 'your-license-key',
 ```
 
-<Frame>
-  <img src="/images/donate.gif" alt="Donate banner" />
-</Frame>
+To obtain a license key, contact [sales@gogoldev.com](mailto:sales@gogoldev.com).
+
+## Earlier versions
+
+CrudAdmin 5 and earlier releases were distributed under the MIT license, and they stay under it. The commercial license applies to every release distributed with the new `LICENSE.md` file.
+
+## Helper packages
+
+The helper packages stay open source under the MIT license:
+
+- `crudadmin/autoajax`
+- `crudadmin/helpers`
+- `crudadmin/socialite`
