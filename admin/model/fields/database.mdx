@@ -1,0 +1,98 @@
+---
+title: "Database columns"
+description: "Indexes, default values, decimal precision, encrypted columns and how admin:migrate applies field changes."
+---
+
+The column type follows the [field type](/admin/model/fields/types). These parameters change the column itself.
+
+## Indexes
+{/* feature: field.index, field.unique_index, field.fulltext */}
+
+```php
+public function fields()
+{
+    return [
+        'status' => 'name:Status|type:select|options:new,paid|index',
+        'sku' => 'name:SKU|required|unique_index',
+        'number' => 'name:Number|required|unique_index:warehouse_id',
+        'name' => 'name:Name|fulltext',
+        'description' => 'name:Description|type:text|fulltext',
+    ];
+}
+```
+
+<ResponseField name="index">
+  Adds an index on the column. `index` creates `{table}_{column}_index`, `index:warehouse_id,status` creates a composite index starting with the field column. Repeat the parameter for more indexes: `index|index:status`.
+
+  Long index names are shortened automatically to fit the 64 character MySQL limit.
+</ResponseField>
+
+<ResponseField name="unique_index">
+  Adds a unique index on the column. `unique_index:order_id` creates a unique combination with another column. It can be combined with `index` on the same field.
+</ResponseField>
+
+<ResponseField name="fulltext">
+  Adds the column into the fulltext index of the table. All fulltext fields share one index named `{table}_full_fulltext`, which is rebuilt when the set of fulltext fields changes and dropped when no field has `fulltext`.
+</ResponseField>
+
+<Note>
+  Removing `index` or `unique_index` from a field does not drop an existing index.
+</Note>
+
+## Default value
+{/* feature: field.default */}
+
+`default` is used as the column default, prefilled in the create form and merged into API requests by `Model::validator()->addDefaultValues()`.
+
+```php
+'status' => 'name:Status|type:select|options:draft,published|default:draft',
+'stock' => 'name:Stock|type:integer|default:0',
+'active' => 'name:Active|type:checkbox|default:1',
+'price' => 'name:Price|type:decimal|default:9.90',
+```
+
+- A `belongsTo` default only prefills the form, the column default stays `NULL`.
+- JSON columns (`multiple`, `locale`) and `encrypted` fields get no database default, the value is still prefilled in the form and used by `addDefaultValues()`.
+- In a model opened inside a parent record, `default:table.column` prefills the value of a column of the parent record, e.g. `default:categories.name`. It is used only in the form.
+- Date fields accept [`default:CURRENT_TIMESTAMP`](/admin/model/fields/dates#current-date-as-default).
+
+## Decimal precision
+{/* feature: field.decimal_length */}
+
+`decimal_length` sets the precision and the scale of a decimal column, `decimal(8,2)` by default. The step of the form input follows the scale.
+
+```php
+'price' => 'name:Price|type:decimal|decimal_length:10,2|min:0|required',
+'weight' => 'name:Weight (kg)|type:decimal|decimal_length:8,3',
+```
+
+`decimal_length:10:3` is accepted as well.
+
+## Encrypted values
+{/* feature: field.encrypted */}
+
+`encrypted` stores the value encrypted with the application key in a `text` column. The model returns the decrypted value.
+
+```php
+'personal_id' => 'name:Personal ID|encrypted',
+'bank_details' => 'name:Bank details|type:json|encrypted',
+'notes' => 'name:Notes|encrypted:collection',
+```
+
+- A cast type can be given as `encrypted:array`, `encrypted:collection` or `encrypted:object`. `type:json|encrypted` uses `encrypted:array`.
+- String, decimal and date fields stay searchable in the administration by the whole value (case insensitive), a part of the value is not found. The hashes for searching are stored in the `_encrypted_hashes` column.
+
+## Changing fields
+{/* feature: field.column-changes */}
+
+`php artisan admin:migrate` compares the fields with the database and updates the table:
+
+- a new field adds a column,
+- changing `type`, `max` or `default` changes the existing column, stored values are kept,
+- a removed field asks before its column is dropped, use `--auto-drop` in deploy scripts to drop it without asking.
+
+```bash
+php artisan admin:migrate --auto-drop
+```
+
+Nullable columns (`null`) and unsigned columns (`min:0`, `unsigned`) are described in [validation rules](/admin/model/fields/validation), fields without a column in [field types](/admin/model/fields/types#fields-without-a-column).

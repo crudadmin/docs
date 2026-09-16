@@ -1,0 +1,203 @@
+---
+title: "Field types"
+description: "The type parameter decides the database column, the cast, the default validation rules and the form input of a field."
+---
+
+## Choosing a type
+{/* feature: field.type, field-type.unknown */}
+
+The `type` parameter decides the database column, the cast, the default validation rules and the form input.
+A field without `type` is a `string`. Some parameters set the type for you, for example `image` sets `type:file`
+and `belongsTo` sets `type:select`.
+
+Every type adds its default rules (`string` adds `max:255`, `integer` adds `integer|max:4294967295`). Parameters written
+on the field win, so `max:1000` on a string creates `varchar(1000)`.
+
+| Type | Column | Cast | Default rules | Form input |
+| --- | --- | --- | --- | --- |
+| `string` | `varchar(max or 255)` | – | `max:255` | text input |
+| `text` | `text` | – | – | textarea |
+| `longtext` | `longtext` | – | – | textarea |
+| `editor` | `text` | editor | `hidden` | CKEditor |
+| `longeditor` | `longtext` | editor | `hidden` | CKEditor |
+| `gutenberg` | `text` | gutenberg | – | block editor |
+| `integer` | `int` (unsigned when `min` ≥ 0) | `integer` | `integer`, `max:4294967295` | number |
+| `decimal` | `decimal(8,2)` or `decimal_length` | `float` | `numeric` | number |
+| `checkbox` | `tinyint(1)` | `boolean` | `boolean` | checkbox |
+| `password` | `varchar(255)` | – | `hidden` | password input |
+| `color` | `varchar(7)` | – | `max:7` | color picker |
+| `phone` | `varchar(20)` | – | `max:20` | phone input |
+| [`select`](/admin/model/fields/select-options) | `varchar(255)` | – | – | select |
+| [`radio`](/admin/model/fields/select-options) | `varchar(255)` | – | – | radio buttons |
+| [`date`](/admin/model/fields/dates) | `date` | Carbon | date formats, `nullable` | date picker |
+| [`datetime`](/admin/model/fields/dates) | `datetime` | Carbon | date formats, `nullable` | date and time picker |
+| [`time`](/admin/model/fields/dates) | `time` | Carbon | time formats, `nullable` | time picker |
+| [`timestamp`](/admin/model/fields/dates) | `timestamp` | Carbon | date formats, `nullable` | date and time picker |
+| [`file`](/admin/model/fields/uploads) | `varchar(255)` | `AdminFile` | `file`, `max:10240`, `nullable` | file upload |
+| [`uploader`](/admin/model/fields/uploads#uploader) | no column | – | `imaginary` | uploader |
+| `json` | `json` | `json` | `hidden` | none |
+| `geometry` | `point` (SRID 0) | coordinates | – | none |
+| `imaginary` | no column | – | – | none, use `component` |
+
+Columns are nullable unless the field is `required`. A type which is not in this list is skipped by `admin:migrate`
+with an `Unknown field type` message.
+
+## Text
+{/* feature: field-type.string */}
+
+A single line input. `type:string` is the default and does not have to be written.
+
+```php
+'name' => 'name:Name|required|max:120',
+```
+
+Values longer than `max` (255 by default) are refused, empty input is saved as `NULL`.
+
+## Long text
+{/* feature: field-type.text, field-type.longtext */}
+
+A textarea without a length limit. Use `longtext` for content larger than 64 KB.
+
+```php
+'perex' => 'name:Short description|type:text',
+'terms' => 'name:Terms and conditions|type:longtext',
+```
+
+## Rich-text editor
+{/* feature: field-type.editor, field-type.longeditor */}
+
+A [CKEditor](https://ckeditor.com/) input stored as HTML. Use `longeditor` for a `longtext` column.
+
+```php
+'content' => 'name:Content|type:editor|editor_height:400',
+```
+
+Editor fields are hidden in the listing table by default, add [`column_visible`](/admin/model/fields/ui#listing-table) to show them.
+On the website the value is wrapped in `<div data-crudadmin-editor>...</div>`, which enables inline editing for logged
+administrators. In the administration and in console the raw HTML is returned.
+
+## Block editor
+{/* feature: field-type.gutenberg */}
+
+A Gutenberg block editor. Install the `crudadmin/gutenberg` package, which renders the blocks to HTML when the value is read on the website.
+
+```php
+'body' => 'name:Page body|type:gutenberg',
+```
+
+Unlike `editor`, the field is listed in the table unless you add `hidden`.
+
+## Integer
+{/* feature: field-type.integer */}
+
+```php
+'quantity' => 'name:Quantity|type:integer|min:0|required',
+'position' => 'name:Position|type:integer|min:-10',
+```
+
+The value is cast to `int`. The column is unsigned when `min` is `0` or greater, [`unsigned`](/admin/model/fields/validation#length-and-value-limits) is a shortcut for `min:0`.
+
+## Decimal
+{/* feature: field-type.decimal */}
+
+```php
+'price' => 'name:Price|type:decimal|min:0|required',
+'weight' => 'name:Weight (kg)|type:decimal|decimal_length:10,3',
+```
+
+The column is `decimal(8,2)` unless [`decimal_length`](/admin/model/fields/database#decimal-precision) is set. Values are rounded to the scale by the database
+and cast to `float`.
+
+## Checkbox
+{/* feature: field-type.checkbox */}
+
+```php
+'active' => 'name:Active|type:checkbox|default:1',
+```
+
+The value is cast to `bool`. A checkbox missing in the submitted admin form is saved as `false`.
+
+## Boolean
+{/* feature: field-type.boolean */}
+
+`type:boolean` creates the same `tinyint(1)` column as a checkbox, but it has no form input, no cast and no validation rule.
+
+<Warning>
+  `type:boolean` is suggested for deprecation. Use `type:checkbox`.
+</Warning>
+
+## Password
+{/* feature: field-type.password */}
+
+```php
+'password' => 'name:Password|type:password|confirmed|min:8',
+```
+
+- The value is never sent to the administration, it is hidden in the table and in form responses.
+- Leaving the input empty when editing keeps the current password.
+- Only the `password` attribute of an authenticatable model (extending `Admin\Eloquent\BaseAuthenticatable`) is hashed automatically.
+  On other models, and for other password fields, hash the value yourself, for example in a `set{Key}Attribute` mutator.
+
+## Color and phone
+{/* feature: field-type.color, field-type.phone */}
+
+```php
+'label_color' => 'name:Label color|type:color',
+'phone' => 'name:Phone|type:phone',
+```
+
+`color` stores a hex value like `#ff0000` (max 7 characters). `phone` stores up to 20 characters and is rendered as a `tel:` link in the table.
+
+## JSON data
+{/* feature: field-type.json */}
+
+```php
+'settings' => 'name:Settings|type:json|component:ProductSettings',
+```
+
+A `json` column cast to an array, hidden in the table and without a form input, render it with a [custom component](/admin/model/fields/components).
+A JSON string sent in the request is decoded before saving, an invalid JSON string is saved as `NULL`.
+
+## Array
+{/* feature: field-type.array */}
+
+`type:array` creates a `json` column without a cast, without decoding the request and without a form input.
+
+<Warning>
+  `type:array` is suggested for deprecation. Use `type:json`.
+</Warning>
+
+## Geometry
+{/* feature: field-type.geometry */}
+
+```php
+'location' => 'name:Location|type:geometry',
+```
+
+A spatial `point` column. Reading returns `['order' => 1, 'type' => 1, 'lng' => 17.1, 'lat' => 48.15]`.
+Write values with a raw expression:
+
+```php
+use Illuminate\Support\Facades\DB;
+
+$place->location = DB::raw("ST_GeomFromText('POINT(17.1 48.15)')");
+```
+
+The field has no form input and is ignored by the admin search.
+
+## Fields without a column
+{/* feature: field-type.imaginary, field.imaginary */}
+
+`type:imaginary`, or the `imaginary` parameter on any type, adds a form field without a database column. Use it for helper
+fields and custom components. The value is not fillable and a posted value is ignored when saving.
+
+```php
+'preview' => 'name:Preview|type:imaginary|component:ProductPreview',
+'summary' => 'name:Summary|type:text|imaginary|component:OrderSummary',
+```
+
+When an existing field becomes imaginary, `admin:migrate` asks to drop its column (`--auto-drop` drops it without asking).
+
+<Tip>
+  `type:uploader` is a field without a column too, see [uploader](/admin/model/fields/uploads#uploader).
+</Tip>

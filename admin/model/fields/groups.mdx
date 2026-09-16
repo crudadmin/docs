@@ -1,0 +1,415 @@
+---
+title: "Groups and tabs"
+description: "Arrange fields into groups and tabs, share parameters across a group, and change fields of an existing model."
+---
+
+## Grouping fields
+{/* feature: group.payload, group.fields, group.full, group.half, group.third, group.width, group.inline, group.name, group.icon, group.id */}
+
+Groups make complex forms with many fields easier to read. They do not change the database, the fields inside a group are ordinary columns of the model.
+
+A group is created with one of the static methods of `Admin\Fields\Group`:
+
+| Method | Width |
+| --- | --- |
+| `Group::fields([...])` | full width |
+| `Group::full([...])` | full width grid column |
+| `Group::half([...])` | half width |
+| `Group::third([...])` | one third |
+| `Group::inline([...])` | full width, fields in one row |
+| `Group::tab([...])` | a [tab](#tabs) |
+
+and configured by chained methods:
+
+| Method | Description |
+| --- | --- |
+| `name('Billing address')` | heading of the group, the array key of the group can be used instead |
+| `icon('fa-truck')` | Font Awesome icon, the `fa-` prefix is added when missing |
+| `id('billing')` | identifier used by [`mutateFields()`](#changing-fields-of-an-existing-model), the `hidden_groups` setting and CSS |
+| `width(8)` / `grid(8)` | custom width in a 12 column grid, or `full`, `half` |
+| `inline()` | renders the fields in one row, keeps the current width |
+
+### Full width group
+
+This example shows both ways of naming a group.
+
+```php
+use Admin\Fields\Group;
+
+public function fields()
+{
+    return [
+        'name' => 'name:Article name',
+        'Parameters' => Group::fields([
+            'updated_at' => 'name:Updated at|type:date',
+            'created_at' => 'name:Created at|type:date',
+        ]),
+        Group::fields([
+            'a' => 'name:Field a',
+            'b' => 'name:Field b',
+        ])->name('Other parameters')->icon('fa-cog'),
+    ];
+}
+```
+
+<Frame>
+  <img src="/images/model-groups/full-grid.png" alt="Two full width field groups" />
+</Frame>
+
+### Half and third width groups
+
+```php
+public function fields()
+{
+    return [
+        'name' => 'name:Article name',
+        'Parameters' => Group::half([
+            'updated_at' => 'name:Updated at|type:date',
+            'created_at' => 'name:Created at|type:date',
+        ]),
+        'Other parameters' => Group::half([
+            'a' => 'name:Field a',
+            'b' => 'name:Field b',
+        ])->icon('fa-cog'),
+    ];
+}
+```
+
+<Frame>
+  <img src="/images/model-groups/half-grid.png" alt="Two half width field groups side by side" />
+</Frame>
+
+`Group::third()` places three groups side by side.
+
+<Frame>
+  <img src="/images/model-groups/third-grid.png" alt="Three field groups side by side" />
+</Frame>
+
+### Custom width group
+
+`width()` sets the width in a grid divided into 12 parts.
+
+```php
+public function fields()
+{
+    return [
+        'name' => 'name:Article name',
+        'Parameters' => Group::fields([
+            'updated_at' => 'name:Updated at|type:date',
+            'created_at' => 'name:Created at|type:date',
+        ])->width(8),
+        'Other parameters' => Group::fields([
+            'a' => 'name:Field a',
+            'b' => 'name:Field b',
+        ])->icon('fa-cog')->width(4),
+    ];
+}
+```
+
+<Frame>
+  <img src="/images/model-groups/custom-grid.png" alt="Field groups with custom grid widths" />
+</Frame>
+
+### Inline group
+
+`Group::inline()` aligns every field in the group into a single row. `inline()` does the same for a group of another width.
+
+```php
+public function fields()
+{
+    return [
+        'name' => 'name:Article name',
+        'Validity' => Group::inline([
+            'valid_from' => 'name:Valid from|type:date',
+            'valid_to' => 'name:Valid to|type:date',
+        ]),
+    ];
+}
+```
+
+<Frame>
+  <img src="/images/model-groups/inline-grid.png" alt="Field group with inline fields" />
+</Frame>
+
+### Nested groups
+
+Groups can be nested to any depth.
+
+```php
+public function fields()
+{
+    return [
+        'name' => 'name:Article name',
+        'Parameters' => Group::fields([
+            'updated_at' => 'name:Updated at|type:date',
+            'created_at' => 'name:Created at|type:date',
+            'Other parameters' => Group::half([
+                'a' => 'name:Field a',
+                'b' => 'name:Field b',
+            ])->icon('fa-car'),
+            'Additional parameters' => Group::half([
+                'c' => 'name:Field c',
+                'd' => 'name:Field d',
+            ])->icon('fa-cog'),
+        ]),
+        'z' => 'name:Field z',
+    ];
+}
+```
+
+<Frame>
+  <img src="/images/model-groups/recursive-grid.png" alt="Recursively nested field groups" />
+</Frame>
+
+## Column prefix
+{/* feature: group.prefix, field.group-prefix */}
+
+`prefix()` prefixes the column names of all fields in the group, which lets you reuse one set of fields. The array key of a group is only its name, it never prefixes columns.
+
+```php
+public function fields()
+{
+    return [
+        'Billing address' => Group::half($this->addressFields())->prefix('billing'),
+        'Delivery address' => Group::half($this->addressFields())->prefix('delivery'),
+    ];
+}
+
+private function addressFields()
+{
+    return [
+        'street' => 'name:Street|required',
+        'city' => 'name:City|required',
+        'zipcode' => 'name:Zip code|required',
+    ];
+}
+```
+
+The model gets the columns `billing_street`, `billing_city`, `delivery_street` and so on, use these keys in requests and on the model. Nested groups inherit the prefix unless they define their own.
+
+## Shared parameters
+{/* feature: group.add */}
+
+`add()` pushes parameters into every field of the group, including nested groups. A parameter written on the field itself always wins.
+
+```php
+Group::fields([
+    'company_name' => 'name:Company name',
+    'company_id' => 'name:Company ID|max:8',
+    'vat_id' => 'name:VAT ID',
+])->add('hidden|required_if:is_company,1|max:20')->name('Company'),
+```
+
+When `add()` is called more than once, the first call wins for the same parameter. Parameters of a nested group win over parameters inherited from its parent group.
+
+## Conditional groups
+{/* feature: group.if */}
+
+`if()` registers the group only when the condition is true. With `false` the fields are not registered at all and their columns are not created.
+
+```php
+Group::fields([
+    'invoice_subject_id' => 'name:Invoice subject|belongsTo:invoices_subjects,name',
+])->if(config('invoices.multi_subjects', false))->id('billing'),
+```
+
+## Conditional visibility
+{/* feature: group.attributes, field.visible */}
+
+`attributes()` accepts the same syntax as field parameters and hides or shows the whole group or tab in the browser. Shared field parameters are added with [`add()`](#shared-parameters), conditions of the group itself with `attributes()`.
+
+```php
+public function fields()
+{
+    return [
+        'delivery_type' => 'name:Delivery|type:select|options:courier,pickup',
+        Group::half([
+            'street' => 'name:Street',
+            'city' => 'name:City',
+        ])->attributes('hideFromFormIf:delivery_type,pickup'),
+        Group::tab([
+            'tracking_number' => 'name:Tracking number',
+        ])->name('Shipping')->attributes('visibleIf:delivery_type,courier'),
+    ];
+}
+```
+
+Supported attributes are `hideFromForm`, `hideField` and `visible` with their `If`, `IfNot`, `IfIn` and `IfNotIn` [conditions](/admin/model/fields/visibility#conditional-parameters). A tab also accepts `removeFromForm` and `default`, which opens the tab by default.
+
+## Group component
+{/* feature: group.component */}
+
+`component($name, $data)` renders a Vue component at the end of the group or tab. The component receives the `model` and `data` props.
+
+```php
+use App\Models\VehiclesEvent;
+
+Group::tab(VehiclesEvent::class)->name('Drives')->icon('fa-calendar')
+    ->component('EventsCalendar', ['type' => 'drive']),
+```
+
+<Warning>
+  Unlike field components, the file is not loaded from the components directory. Register `EventsCalendar` as a global Vue component in your admin JavaScript.
+</Warning>
+
+## Tabs
+{/* feature: group.tab */}
+
+`Group::tab()` arranges fields into tabs. Tabs support `name()`, `icon()`, `id()`, `attributes()` and `component()` like groups, are always full width and can be nested to any depth.
+
+### Tabs combined with groups
+
+```php
+public function fields()
+{
+    return [
+        'name' => 'name:Article name',
+        'Parameters' => Group::tab([
+            'updated_at' => 'name:Updated at|type:date',
+            'created_at' => 'name:Created at|type:date',
+        ]),
+        'Other parameters' => Group::tab([
+            'a' => 'name:Field a',
+            'b' => 'name:Field b',
+
+            'My group in a tab' => Group::fields([
+                'x' => 'name:Field x|type:date',
+                'y' => 'name:Field y|type:date',
+            ]),
+        ])->icon('fa-cog'),
+    ];
+}
+```
+
+<Frame>
+  <img src="/images/model-groups/tabs-grid.png" alt="Fields arranged into tabs" />
+</Frame>
+
+### A tab from an admin model
+
+A tab can hold a complete child admin model, a model whose `$belongsToModel` points to the current model.
+
+```php
+use App\Models\ArticlesAuthor;
+
+public function fields()
+{
+    return [
+        'name' => 'name:Article name|required',
+        'Authors' => Group::tab(ArticlesAuthor::class)->icon('fa-users'),
+    ];
+}
+```
+
+<Frame>
+  <img src="/images/model-groups/tabs-model.png" alt="A tab containing a whole admin model module" />
+</Frame>
+
+The same child model can be split into more tabs with `where()`. The closure receives the rows query and the opened parent record.
+
+```php
+use App\Models\OrdersItem;
+
+public function fields()
+{
+    return [
+        'number' => 'name:Order number|required',
+        Group::tab(OrdersItem::class)->name('Products')->id('products')
+            ->where(function ($query, $order) {
+                $query->where('type', 'product');
+            }),
+        Group::tab(OrdersItem::class)->name('Services')->id('services')
+            ->where(function ($query, $order) {
+                $query->where('type', 'service');
+            }),
+    ];
+}
+```
+
+## Changing fields of an existing model
+{/* feature: model.mutateFields() */}
+
+When you extend a model from a package, or share fields in a parent class, change its fields in `mutateFields()` instead of copying `fields()`.
+The method receives a fields builder and the edited record, if any.
+
+```php
+use Admin\Fields\Group;
+
+public function mutateFields($fields, $row = null)
+{
+    $fields->field('variant_id', function ($field) {
+        $field->invisible = true;
+    });
+
+    $fields->after('name', [
+        'code' => 'name:Code|required|max:30',
+    ]);
+
+    $fields->push(Group::tab([
+        'stores' => 'name:Stores|belongsToMany:stores,name',
+    ])->name('Stores')->id('stores'));
+
+    $fields->remove('description');
+}
+```
+
+Admin model modules can implement the same `mutateFields($fields, $row)` method.
+
+### Changing a field
+
+<ResponseField name="field($key, $callback)">
+  Changes the parameters of a field. The field is an object, set or `unset()` its parameters. Changing `type` applies the default rules of the new type.
+  `$key` can be an array of keys. Use the final column name, including a group [prefix](#column-prefix).
+
+  ```php
+  $fields->field(['price', 'price_vat'], function ($field) {
+      $field->required = true;
+  });
+  ```
+</ResponseField>
+
+### Adding fields
+
+<ResponseField name="after($key, $fields)">
+  Inserts fields or a group after the field. Aliases `addAfter()` and `pushAfter()`.
+</ResponseField>
+
+<ResponseField name="before($key, $fields)">
+  Inserts fields or a group before the field. Alias `addBefore()`.
+</ResponseField>
+
+<ResponseField name="push($fields)">
+  Appends fields or a group at the end of the form. `push('key', 'name:Field')` appends a single field. Pushing an existing key replaces the field on its original position.
+</ResponseField>
+
+<ResponseField name="pushBefore($fields)">
+  Prepends fields or a group at the beginning of the form. `pushBefore($key, $fields)` inserts them before the field.
+</ResponseField>
+
+`after()` and `before()` also find fields inside groups. They use the key from the fields definition, without the group prefix.
+
+### Removing fields
+
+<ResponseField name="remove($keys)">
+  Removes fields or whole groups by their `id()`, including fields added by another `mutateFields()`. The database columns are dropped by the next migration. Alias `delete()`.
+
+  ```php
+  $fields->remove(['perex', 'seo_group']);
+  ```
+</ResponseField>
+
+### Changing groups
+
+<ResponseField name="group($id, $callback)">
+  Changes a group or tab found by its `id()` at any depth. `$id` can be an array.
+
+  ```php
+  $fields->group('billing', function ($group) {
+      $group->name('Invoice address')->icon('fa-file-invoice')->add('required');
+  });
+  ```
+</ResponseField>
+
+<ResponseField name="pushGroup($id, $fields)">
+  Appends fields or a group at the end of the group.
+</ResponseField>

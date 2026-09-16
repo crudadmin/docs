@@ -1,0 +1,174 @@
+---
+title: "Select options"
+description: "Select and radio fields, their options, multiple values, enum columns and preselected options."
+---
+
+## Select and radio fields
+{/* feature: field-type.select, field-type.radio */}
+
+`select` renders a select and `radio` renders radio buttons. Both store the key of the selected option in a `varchar(255)` column.
+
+```php
+public function fields()
+{
+    return [
+        'status' => 'name:Status|type:select|options:draft,published,archived|required',
+        'size' => 'name:Size|type:radio|options:s,m,l',
+    ];
+}
+```
+
+<Tip>
+  A select filled with the records of another admin model is a [relation field](/admin/model/fields/relations).
+</Tip>
+
+## Options
+{/* feature: field.options */}
+
+The `options` parameter lists values separated by commas. The label is also the stored value, so a label cannot contain a comma or a `|`.
+
+```php
+'status' => 'name:Status|type:select|options:draft,published,archived',
+```
+
+In [array notation](/admin/model/fields#array-notation) options may be any array. Keys are stored, values are displayed.
+
+```php
+'priority' => [
+    'name' => 'Priority',
+    'type' => 'select',
+    'options' => [1 => 'Low', 2 => 'Normal', 3 => 'High'],
+],
+```
+
+<Warning>
+  An array with keys `0, 1, 2…` is treated as a plain list, so `[0 => 'No', 1 => 'Yes']` stores `No` and `Yes`. Start keys from `1` or use string keys.
+</Warning>
+
+A list of rows with an `id` column is keyed by `id`:
+
+```php
+'options' => [
+    ['id' => 'eur', 'name' => 'Euro', 'char' => '€'],
+    ['id' => 'usd', 'name' => 'Dollar', 'char' => '$'],
+],
+```
+
+### Options from the model
+
+Options can also come from the `$options` property, or from the `options()` method for values loaded at runtime. Both are keyed by the field key and win over the `options` parameter of the field. A collection is converted automatically.
+
+```php app/Models/Payment.php
+use App\Models\Branch;
+use App\Models\Country;
+
+protected $options = [
+    'direction' => [
+        'in' => 'Income',
+        'out' => 'Outcome',
+    ],
+];
+
+public function options()
+{
+    return [
+        'country' => Country::pluck('name', 'code'),
+        'branch' => Branch::select('id', 'name', 'city')->get(),
+    ];
+}
+```
+
+For a field whose key ends with `_id`, the options may be returned under the key without the suffix (`category_id` → `category`).
+
+<Note>
+  Options from `$options` and `options()` are loaded only when the admin table is opened, not on every request.
+  The submitted value is not validated against the options, add an `in:` rule when it has to be.
+</Note>
+
+Read the label of a stored value with `getSelectOption()`, or the label of any option key with `getOptionValue()`:
+
+```php
+$payment->getSelectOption('direction'); // "Income"
+$payment->getOptionValue('direction', 'out'); // "Outcome"
+```
+
+Options of a select can also be hidden from a custom component, see [filtering options](/admin/model/fields/components#filtering-options-of-a-select).
+
+## Multiple values
+{/* feature: field.multiple */}
+
+`multiple` allows selecting several values, stored as a JSON array in a `json` column and cast to a collection.
+
+```php
+'labels' => 'name:Labels|type:select|multiple|options:urgent,fragile,gift',
+```
+
+- When the user removes all values an empty array is stored, `required` rejects an empty selection.
+- `max:3` limits the number of selected values in the form.
+- `multiple` is supported by `select`, [`file`](/admin/model/fields/uploads#multiple-files), [`date` and `time`](/admin/model/fields/dates#multiple-dates) fields. Other types get a JSON column too, but no cast and no form support.
+
+## Option label template
+{/* feature: field.option */}
+
+When option values are rows, `option` defines how an option is displayed. Use `:column` placeholders, or a single column name.
+
+```php
+public function fields()
+{
+    return [
+        'currency' => 'name:Currency|type:select|option::name (:char)|required',
+        'category' => 'name:Vehicle type|type:select|option:code',
+    ];
+}
+
+public function options()
+{
+    return [
+        'currency' => [
+            'eur' => ['name' => 'Euro', 'char' => '€'],
+            'usd' => ['name' => 'Dollar', 'char' => '$'],
+        ],
+        'category' => [
+            'car' => ['code' => 'B', 'name' => 'Car'],
+            'truck' => ['code' => 'C', 'name' => 'Truck'],
+        ],
+    ];
+}
+```
+
+The template is applied in the form select and in the table.
+
+## Enum column
+{/* feature: field.enum */}
+
+`enum` creates a MySQL `enum` column from the option keys instead of `varchar`.
+
+```php
+'status' => 'name:Status|type:select|options:pending,attended,canceled|default:pending|enum|index',
+```
+
+Adding an option changes the column on the next `php artisan admin:migrate`.
+`enum` is ignored for `multiple` selects, which always use a JSON column.
+
+## Preselected option
+{/* feature: field.defaultByOption */}
+
+`defaultByOption` preselects an option in the create form. Use an option key, or a column and a value to preselect the first related record matching them.
+
+```php
+'size' => 'name:Size|type:select|options:s,m,l|defaultByOption:m',
+'vat' => 'name:VAT rate|belongsTo:vats,:name (:rate %)|defaultByOption:is_default,1',
+```
+
+It wins over `default`. The column must be a real (not imaginary) field of the related model.
+
+## Unique options
+{/* feature: field.unique_options */}
+
+`unique_options` hides options already used by other records displayed in the table, for example to assign every course only once.
+
+```php
+'course' => 'name:Course|belongsTo:courses,name|unique_options',
+```
+
+The check runs only in the browser and only for loaded rows. Add a `unique` rule for a database guarantee.

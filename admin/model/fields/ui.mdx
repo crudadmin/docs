@@ -1,0 +1,127 @@
+---
+title: "Labels and listing"
+description: "Field labels, help texts, form helpers and the parameters of the listing table."
+---
+
+## Labels and help texts
+{/* feature: field.name, field.title, field.placeholder, field.tooltip, field.label-translations */}
+
+```php
+public function fields()
+{
+    return [
+        'name' => 'name:Product name|title:Shown on the invoice|placeholder:Type the product name|required|max:90',
+        'ean' => 'name:EAN|tooltip:13 digits from the product label|required',
+    ];
+}
+```
+
+<ResponseField name="name" type="required">
+  The label of the field in the form, the column title in the listing and the header in exports.
+  A field without a name is not offered in the listing search.
+
+  `name:Product name`
+</ResponseField>
+
+<ResponseField name="title">
+  A description rendered as small text below the field.
+
+  `title:Shown on the invoice`
+</ResponseField>
+
+<ResponseField name="placeholder">
+  Placed inside the field while it is empty. Falls back to the field name. For a checkbox it is the text next to the box.
+
+  `placeholder:Enter the phone number as +421 xxx xxx xxx`
+</ResponseField>
+
+<ResponseField name="tooltip">
+  A tooltip displayed when hovering the field.
+
+  `tooltip:Visible on the public product page`
+</ResponseField>
+
+`name`, `title` and `placeholder` accept a Laravel translation key, which is translated into the current locale, e.g. `name:catalog.fields.price`.
+All labels, including `tooltip` and `column_name`, are also collected for [Gettext translations](/admin/model/localization).
+
+## Form helpers
+{/* feature: field.counter, field.editor_height */}
+
+<ResponseField name="counter">
+  Displays a `length/max` character counter below the input. Combine it with `max`.
+
+  `name:Perex|type:text|max:160|counter`
+</ResponseField>
+
+<ResponseField name="editor_height">
+  The height of an `editor` field in pixels.
+
+  `name:Content|type:editor|editor_height:400`
+</ResponseField>
+
+## Listing table
+{/* feature: field.limit, field.orderBy, field.phone_link, field.column_name, field.column_visible, field.column_present, field.column_editable, field.unsearchable */}
+
+```php
+public function fields()
+{
+    return [
+        'name' => 'name:Product|limit:60|orderBy:asc',
+        'quantity' => 'name:Quantity|type:integer|required|column_editable',
+        'supplier_code' => 'name:Supplier code|hidden|column_present',
+        'note' => 'name:Internal note|type:text|limit:0|unsearchable',
+    ];
+}
+```
+
+<ResponseField name="column_name">
+  A different column title in the listing and in the table export than the field label in the form.
+  It wins over the `columns.{key}.name` model setting.
+
+  `column_name:Price`
+</ResponseField>
+
+<ResponseField name="limit">
+  The character limit of the value in the listing table. The full value is always loaded, it is shortened in the table only.
+  `limit:0` disables shortening, text fields then keep their line breaks. The default is 40 characters, or 20 when the table has 5 or more columns.
+
+  `limit:80`
+</ResponseField>
+
+<ResponseField name="orderBy">
+  The default ordering of the listing by this column, used when the `orderBy` model setting is not set. Always give the direction.
+
+  `orderBy:asc` or `orderBy:desc`
+</ResponseField>
+
+<ResponseField name="column_visible">
+  Shows the column in the listing by default even when the field is `hidden`. It also adds a `belongsToMany` relation, which has no database column, to the listing.
+
+  `name:Warehouses|belongsToMany:warehouses,name|column_visible`
+</ResponseField>
+
+<ResponseField name="column_present">
+  Loads the value of a `hidden` field into the listing rows without showing the column, so a [column component](/admin/model/fields/components#table-cell-component) or a button can use it.
+
+  `name:Carton|belongsTo:cartons,:ean|hidden|column_present`
+</ResponseField>
+
+<ResponseField name="column_editable">
+  Turns the cell into an inline input. A change saves only this column and is validated by the rules of the field.
+
+  `name:Price|type:integer|required|column_editable`
+</ResponseField>
+
+<ResponseField name="unsearchable">
+  Excludes the column from the listing search, both from the column select and from the search in all columns.
+
+  `name:Internal note|type:text|unsearchable`
+</ResponseField>
+
+<ResponseField name="phone_link">
+  Renders the value of a text column as a clickable `tel:` link. Fields of type `phone` are always rendered as a link.
+
+  `name:Phone|phone_link`
+</ResponseField>
+
+Hiding columns and removing them from the column chooser is described in [visibility and access](/admin/model/fields/visibility#listing-columns).

@@ -1,0 +1,79 @@
+---
+title: "Dates and times"
+description: "Date, time, datetime and timestamp fields, their formats, time picker step, current date defaults and multiple dates."
+---
+
+## Date and time types
+{/* feature: field-type.date, field-type.datetime, field-type.time, field-type.timestamp, field.date-parsing */}
+
+<CodeGroup>
+```php Date
+'published_on' => 'name:Published on|type:date'
+```
+
+```php Time
+'opens_at' => 'name:Opens at|type:time|date_step:30'
+```
+
+```php Date and time
+'starts_at' => 'name:Starts at|type:datetime|date_step:15'
+```
+
+```php Timestamp
+'synced_at' => 'name:Synced at|type:timestamp'
+```
+</CodeGroup>
+
+| Type | Column | Picker |
+| --- | --- | --- |
+| `date` | `date` | date |
+| `datetime` | `datetime` | date and time |
+| `time` | `time` | time |
+| `timestamp` | `timestamp` | date and time |
+
+- Values are cast to `Carbon` instances in the application timezone (`config('app.timezone')`).
+- The date picker sends ISO strings in UTC, they are converted to the application timezone before saving.
+- Values from your code can be given as `Carbon`, `Y-m-d`, `Y-m-d H:i:s`, `d.m.Y`, `d.m.Y H:i` or `H:i` strings.
+- Columns are nullable unless the field is `required`, and invalid values are refused by validation.
+
+## Time picker step
+{/* feature: field.date_step */}
+
+`date_step` sets the minutes step of the time picker of `datetime`, `timestamp` and `time` fields. The default is 15 minutes, 30 for multiple times. Saved values are not rounded.
+
+```php
+'starts_at' => 'name:Starts at|type:datetime|date_step:5',
+```
+
+## Current date as default
+{/* feature: field.default-current-timestamp */}
+
+`default:CURRENT_TIMESTAMP` prefills the current date and time in the create form. It is also the column default of `date`, `datetime` and `timestamp` columns, `time` columns get no database default.
+
+```php
+'created_on' => 'name:Created at|type:datetime|default:CURRENT_TIMESTAMP|column_visible',
+```
+
+## Multiple dates
+{/* feature: field.multiple-dates */}
+
+`multiple` lets the user pick several dates or times. The values are stored as a JSON array and cast to a collection of `Carbon` instances.
+
+```php
+'holidays' => 'name:Holidays|type:date|multiple',
+'opening_hours' => 'name:Opening hours|type:time|multiple|date_step:30',
+```
+
+`date` values are stored as `Y-m-d` and `time` values as `H:i:s`. `datetime` and `timestamp` do not support `multiple`, the parameter is ignored and the field stays a single value field.
+
+## Display format
+{/* feature: field.date_format */}
+
+`date_format` (alias `format`) is the PHP date format used by the date picker and in the listing table. Values in this format are also parsed when assigned from your code.
+
+```php
+'birthday' => 'name:Birthday|type:date|date_format:d.m.Y',
+'opens_at' => 'name:Opens at|type:time|date_format:H:i',
+```
+
+The format changes only how the value is displayed and parsed, the column type and the stored value stay the same.

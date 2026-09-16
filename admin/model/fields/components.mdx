@@ -1,0 +1,126 @@
+---
+title: "Custom components"
+description: "Render a field, a part of the form or a table cell with your own Vue component, without a build step."
+---
+
+## Field component
+{/* feature: field.component */}
+
+When you need your own input, render the field with a Vue component. Components are plain `.vue` files, CrudAdmin loads them without a build step.
+
+Create the component with an `artisan` command:
+
+```bash
+php artisan admin:component ProductDimensions
+```
+
+and assign it to a field:
+
+```php app/Models/Product.php
+public function fields()
+{
+    return [
+        'dimensions' => 'name:Dimensions|type:json|component:ProductDimensions',
+    ];
+}
+```
+
+```html resources/views/admin/components/fields/ProductDimensions.vue
+<template>
+    <div class="form-group">
+        <label>{{ field.name }}</label>
+
+        <input type="number" class="form-control" v-model="width" placeholder="Width" />
+        <input type="number" class="form-control" v-model="height" placeholder="Height" />
+
+        <input type="hidden" :name="field_key" :value="JSON.stringify({ width, height })" />
+    </div>
+</template>
+
+<script>
+export default {
+    props: ['model', 'field', 'field_key', 'row'],
+
+    data() {
+        const value = this.field.value || {};
+
+        return { width: value.width, height: value.height };
+    },
+
+    watch: {
+        width() {
+            this.field.value = { width: this.width, height: this.height };
+        },
+        height() {
+            this.field.value = { width: this.width, height: this.height };
+        },
+    },
+};
+</script>
+```
+
+The component receives the `model`, `field`, `field_key` and `row` props. Field properties are reactive, so the component can also change them, e.g. `this.field.hideFromForm = true`.
+
+### Where components are loaded from
+
+- by name from the directories in the [`components` configuration](/admin/configuration#vue-component-directory), `component:ProductDimensions`,
+- a dot is a subdirectory, `component:Products.Dimensions` loads `Products/Dimensions.vue`,
+- the file name is case-insensitive and found in any subdirectory,
+- an absolute path, `'component:'.resource_path('js/admin/Dimensions.vue')`.
+
+A component that does not exist is skipped.
+
+<Warning>
+  The `<style>` block of the component is not loaded. Put the CSS of your components into a global stylesheet.
+</Warning>
+
+## Rendering next to the native input
+{/* feature: field.sub_component */}
+
+`sub_component` renders the component below the native input instead of replacing it, e.g. to react on the field value.
+
+```php
+'time_from' => 'name:Time from|type:time|date_step:30|sub_component:BranchTimeChange',
+```
+
+A `component` with an empty `<template></template>` behaves the same way: the native input stays and your component runs next to it.
+
+## Table cell component
+{/* feature: field.column_component */}
+
+`column_component` renders the listing cell with your component. The row value is loaded as usual, the `columns.{key}.component` model setting overrides the parameter.
+
+```php
+'quantity' => 'name:Quantity|type:integer|column_component:OrderItemQuantity',
+```
+
+## Filtering options of a select
+{/* feature: frontend.optionsFilter */}
+
+A component can hide options of a select with `model.optionsFilter(key, filter)`.
+The filter is a list of hidden option keys, or a function returning `false` for hidden options.
+
+```html resources/views/admin/components/fields/StageFilter.vue
+<template></template>
+
+<script>
+export default {
+    props: ['model', 'field', 'row'],
+
+    mounted() {
+        this.model.optionsFilter('stage', (key, label, option) => {
+            return (this.row?.available_stages || []).includes(key);
+        });
+    },
+};
+</script>
+```
+
+## Component data
+{/* feature: field.component_data */}
+
+The `component_data` parameter is registered, but it is not passed to the component.
+
+<Warning>
+  `component_data` is suggested for deprecation. Read the values you need from the `field` or `row` props.
+</Warning>

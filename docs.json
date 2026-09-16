@@ -32,7 +32,25 @@
             "pages": [
               "admin/model/index",
               "admin/model/parameters",
-              "admin/model/fields",
+              {
+                "group": "Fields",
+                "icon": "text-cursor-input",
+                "pages": [
+                  "admin/model/fields",
+                  "admin/model/fields/types",
+                  "admin/model/fields/select-options",
+                  "admin/model/fields/relations",
+                  "admin/model/fields/dates",
+                  "admin/model/fields/uploads",
+                  "admin/model/fields/validation",
+                  "admin/model/fields/visibility",
+                  "admin/model/fields/ui",
+                  "admin/model/fields/components",
+                  "admin/model/fields/groups",
+                  "admin/model/fields/localization",
+                  "admin/model/fields/database"
+                ]
+              },
               "admin/model/actions",
               "admin/model/layouts",
               "admin/model/relations",

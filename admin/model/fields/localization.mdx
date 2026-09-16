@@ -1,0 +1,131 @@
+---
+title: "Translatable fields"
+description: "The locale parameter stores a value for every language in one column, with fallbacks, validation and API responses."
+---
+
+## Translatable fields
+{/* feature: field.locale */}
+
+With translatable fields the record exists once in the database, and a translatable column holds a value for every language.
+Add the `locale` parameter to every field you want to translate. [Localization](/admin/model/localization#enabling-localization) has to be enabled.
+
+```php app/Models/Category.php
+public function fields()
+{
+    return [
+        'name' => 'name:Category name|locale|required|max:90',
+        'perex' => 'name:Short description|type:text|locale',
+        'content' => 'name:Content|type:editor|locale',
+        'image' => 'name:Cover image|image|locale',
+    ];
+}
+```
+
+The column stores a JSON object keyed by the language slug:
+
+```json
+{"en": "Shoes", "de": "Schuhe"}
+```
+
+A translated field gets a `json` column. `type:text` and `encrypted` fields keep a `text` column holding the same JSON object.
+
+<Warning>
+  Do not combine `locale` with `belongsTo` or `belongsToMany`. Relation values are not translatable.
+</Warning>
+
+<Tip>
+  To keep separate records for every language instead, use the `$localization` model property, see [unique records per language](/admin/model/localization#unique-records-per-language).
+</Tip>
+
+### Reading translated values
+
+Reading the attribute returns the value of the current language. When the translation is empty, the value of the default
+(first) language is returned, and when it is missing too, the first filled translation.
+
+```php
+use Admin\Facades\Localization;
+
+$category->name; // "Shoes"
+
+Localization::setLocale('de');
+
+$category->name; // "Schuhe"
+```
+
+Assign an array (or a JSON object string) to store all translations at once. Empty (`null`) translations are not stored.
+
+```php
+Category::create([
+    'name' => ['en' => 'Shoes', 'de' => 'Schuhe', 'fr' => null],
+]);
+```
+
+### Arrays and API responses
+
+`toArray()` and `toJson()` return all translations by default, which is what the administration needs.
+In your API, return only the value of the requested language:
+
+```php
+use Admin\Eloquent\AdminModel;
+
+// all models, e.g. in a middleware of your API
+AdminModel::$localizedResponseArray = false;
+
+// or a single model instance
+$category->setLocalizedResponse(false)->toArray();
+```
+
+The `Admin\Helpers\SetApiResponse` middleware does this for you, and switches the language by the `app-locale` request header.
+
+```php routes/api.php
+use Admin\Helpers\SetApiResponse;
+use App\Models\Category;
+
+Route::middleware(SetApiResponse::class)->get('/categories', function () {
+    return Category::get(); // {"name": "Schuhe"} with the "app-locale: de" header
+});
+```
+
+An empty translatable value is returned as `null`.
+
+### Validation
+
+Rules are applied per language. `required` (and every `required_*` rule) is checked only for the default language,
+other languages may stay empty. All other rules, e.g. `max`, are checked for every language.
+
+```php
+'name' => 'name:Category name|locale|required|max:90',
+// name.en => required|max:90
+// name.de => nullable|max:90
+```
+
+Use [`unique_json`](/admin/model/fields/validation#unique-value-in-a-json-column) to check that a translation is unique within its own language.
+
+### Field types
+
+- **file** – a file is uploaded for every language, `multiple` uploads a list of files per language. A `required` file is required only for the default language, and only when the default language has no file yet.
+- **checkbox** – stores `0` or `1` for every language.
+- **select** with static options, including `multiple` – the selected options are stored per language.
+- **date** (also `multiple`) and **editor** – stored and cast per language.
+
+In the administration table the value of the default language is shown, and the search matches words in any language.
+
+### Default values
+
+`default` only prefills the input of the current language in the form. JSON columns have no database default.
+
+### Translating an existing column
+
+When you add `locale` to a field which already has data, `php artisan admin:migrate` lists the values and asks whether to wrap them into the first language:
+
+```text
+- You are updating name column from varchar type to json type for translates purposes.
+1: Shoes => {"en":"Shoes"}
+Would you like to update this varchar values in database to translated format of JSON values? (yes/no) [yes]
+```
+
+If you refuse, the column can not be changed to JSON and the migration fails.
+
+<Tip>
+  Translated slugs are described in [Pretty URLs](/admin/frontend/sluggable#multilanguage-slugs), translated field labels in [labels and help texts](/admin/model/fields/ui#labels-and-help-texts).
+</Tip>

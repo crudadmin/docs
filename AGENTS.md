@@ -22,7 +22,7 @@ The site has three tabs, each backed by its own directory.
 | Group | Pages |
 | --- | --- |
 | Getting started | `index`, `admin/how-it-works`, `admin/installation`, `admin/configuration`, `admin/license`, `admin/migration-from-v5`, `admin/contact` |
-| Admin interface | `admin/model/index`, `admin/model/parameters`, `admin/model/fields`, `admin/model/actions`, `admin/model/layouts`, `admin/model/relations`, `admin/model/localization` |
+| Admin interface | `admin/model/index`, `admin/model/parameters`, Fields subgroup (`admin/model/fields` overview + `admin/model/fields/*`), `admin/model/actions`, `admin/model/layouts`, `admin/model/relations`, `admin/model/localization` |
 | Validation | `admin/validation/index`, `admin/validation/request` |
 | Frontend | `admin/frontend/sluggable`, `admin/frontend/files` |
 
@@ -41,9 +41,10 @@ Project structure and conventions shared across our applications, including the 
 - `images/` — copied 1:1 from the legacy docs, subdirectories preserved (`buttons/`, `database/`, `fields/`, `helpers/`, `model-groups/`, `preview/`, `terminal/`)
 - `logo/`, `favicon.svg` — CrudAdmin branding, do not replace with Mintlify defaults
 
-Three images are not referenced by any page:
+Four images are not referenced by any page:
 
 - `images/languages-mirroring.png` and `images/multiple_columns_languages.png` were unreferenced in the legacy docs too, and are kept for a future page.
+- `images/article-image-dd.png` was a dump of the v5 `Admin\Helpers\File` class, outdated for v6.
 - `images/memo.png` was the icon of the "Edit on Github" link in the legacy `index.html`. Mintlify provides that link natively, so the image is no longer needed and can be removed.
 
 ## Legacy documentation
@@ -96,7 +97,8 @@ Every legacy content page has been migrated:
 - Wrap every image in `<Frame>` with descriptive `alt` text
 - Reference images root-relative without the extension guess: `/images/preview/admin-form.png`
 - Internal links are root-relative without a file extension: `/admin/model/fields`
-- Use `<ResponseField>` for parameter reference lists (see `admin/model/fields.mdx`)
+- Use `<ResponseField>` for parameter reference lists (see `admin/model/fields/ui.mdx`)
+- Mark every documented feature right below its heading with `{/* feature: key */}`, using exact keys from `crudadmin/features/**/*.yaml`
 - Use `<CodeGroup>` when showing the same thing in several variants
 - Callouts by severity: `<Note>` supplementary, `<Info>` context, `<Tip>` recommendation, `<Warning>` destructive or migration-requiring
 - Legacy Docsify callouts map as follows: `!>` → `<Warning>` or `<Info>`, `?>` → `<Tip>`

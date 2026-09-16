@@ -1,0 +1,212 @@
+---
+title: "Visibility and access"
+description: "Hide fields in the listing or the form, make them readonly, and change parameters by a condition, a permission or the interface."
+---
+
+Fields can be hidden from the listing table, hidden or removed from the form, made readonly, or changed per permission and per interface.
+
+| Parameter | Listing column | Form | Posted value saved |
+| --- | --- | --- | --- |
+| `hidden` | hidden | visible | yes |
+| `inaccessible_column` | removed from the column chooser | visible | yes |
+| `hideFromForm` | visible | hidden, still submitted | yes |
+| `removeFromForm` | visible | not rendered | no |
+| `invisible` | hidden | not rendered | no |
+| `inaccessible` | removed from the column chooser | not rendered | no |
+| `disabled` | visible | disabled input | no |
+| `readonly` | visible | readonly input | on create only |
+
+## Listing columns
+{/* feature: field.hidden, field.inaccessible_column */}
+
+<ResponseField name="hidden">
+  The column is not loaded into the listing table. Users can still enable it in the column chooser, and the field stays in the form.
+  Fields of type `editor`, `longeditor`, `password` and `json` are hidden by default.
+
+  Combine it with [`column_visible`](/admin/model/fields/ui#listing-table) to show the column anyway, or with `column_present` to load the value for your own column component without showing the column.
+
+  ```php
+  'note' => 'name:Internal note|type:text|hidden',
+  'product_id' => 'name:Product|belongsTo:products,:name - :ean|hidden|column_present',
+  ```
+</ResponseField>
+
+<ResponseField name="inaccessible_column">
+  The column is removed from the listing and from the column chooser. The field stays in the form and its value is saved.
+</ResponseField>
+
+## Hiding fields in the form
+{/* feature: field.hideFromForm, field.hideField, field.visibleField, field.hideOnCreate, field.hideOnUpdate, field.ifExists, field.ifDoesntExists */}
+
+<ResponseField name="hideFromForm">
+  The field is rendered but hidden. Its current value is still submitted and saved, which makes it useful for values set by another field or by a custom component.
+
+  `hideField` is an alias.
+</ResponseField>
+
+<ResponseField name="visibleField">
+  The opposite of `hideFromForm`, mostly used with a [condition](#conditional-parameters): `visibleFieldIf:type,company` shows the field only for companies.
+</ResponseField>
+
+<ResponseField name="hideOnCreate / hideOnUpdate">
+  Hides the field only when creating, or only when editing a record. The value is still submitted.
+  `ifDoesntExists` is an alias of `hideOnUpdate`.
+
+  Hidden fields are still validated, so `hideOnCreate|required` cannot be submitted when creating a record.
+</ResponseField>
+
+<Warning>
+  `ifExists`, an alias of `hideOnCreate`, is suggested for deprecation. Use `hideOnCreate`.
+</Warning>
+
+## Removing fields from the form
+{/* feature: field.removeFromForm, field.invisible, field.inaccessible, field.removeField, field.keepInRequest */}
+
+<ResponseField name="removeFromForm">
+  The field is not rendered in the form. Any value posted for it is ignored and its `required` rule is skipped,
+  so the value can only be set by your code, for example in `onCreate()` or `setAdminAttributes()`.
+
+  A required column is created as `NOT NULL`. Give such a field a `default`, or set the value in a model event, otherwise creating a record fails.
+</ResponseField>
+
+<ResponseField name="invisible">
+  Removes the field from the form and from the listing. It is a shortcut for `hidden|removeFromForm`.
+</ResponseField>
+
+<ResponseField name="inaccessible">
+  Like `invisible`, and the column is also removed from the column chooser and from the search. Its value is not sent to the administration.
+  Use it for technical columns an administrator should never work with.
+
+  ```php
+  'remember_token' => 'name:Remember token|max:100|inaccessible',
+  ```
+</ResponseField>
+
+<ResponseField name="keepInRequest">
+  Keeps the posted value of a `removeFromForm`, `invisible` or `disabled` field, when you render or fill it yourself.
+
+  ```php
+  'source_table' => 'name:Table|index|invisible|keepInRequest',
+  ```
+</ResponseField>
+
+<Warning>
+  `removeField`, an alias of `removeFromForm`, is suggested for deprecation. Use `removeFromForm`.
+</Warning>
+
+## Readonly and disabled fields
+{/* feature: field.readonly, field.disabled */}
+
+<ResponseField name="readonly">
+  Renders a readonly input. When a record is created the value is submitted, so a default value is saved. When a record is updated, a posted value is ignored.
+
+  ```php
+  'supplier_code' => 'name:Supplier code|readonly',
+  ```
+</ResponseField>
+
+<ResponseField name="disabled">
+  Renders a disabled input. The posted value is ignored, `required` is skipped and changes are not written into the history.
+</ResponseField>
+
+## Conditional parameters
+{/* feature: field.hideFromForm, field.removeFromForm, field.invisible, field.inaccessible, field.inaccessible_column, field.readonly, field.disabled, field.removeField, field.hideField, field.visibleField */}
+
+Parameters `hideFromForm`, `hideField`, `visibleField`, `removeFromForm`, `invisible`, `inaccessible`, `inaccessible_column`, `readonly` and `disabled`
+accept a condition evaluated live in the form while the user edits it. Add one of the postfixes:
+
+| Postfix | Applies when | Example |
+| --- | --- | --- |
+| `If` | the value equals | `hideFromFormIf:type,person` |
+| `IfNot` | the value does not equal | `readonlyIfNot:id,NULL` |
+| `IfIn` | the value is one of the list | `visibleFieldIfIn:status,measured,canceled` |
+| `IfNotIn` | the value is none of the list | `hideFromFormIfNotIn:product_type,regular,variant` |
+
+The first argument selects the value to compare:
+
+| Selector | Compares |
+| --- | --- |
+| `field` | the current value of another field, for multiple selects any selected value in the `In` variants |
+| `field.column` | a column of the option selected in a select or relation field, e.g. `hideFromFormIfNot:delivery_id.multiple_locations,TRUE`. The column is loaded into the options automatically. |
+| `$table.field` | a field of the opened parent record, e.g. `removeFromFormIf:$questions_categories.correct_answers,0` |
+
+Values `NULL` (or an empty value), `TRUE` and `FALSE` are converted to `null` and booleans. `id,NULL` matches a record which is being created:
+
+```php
+public function fields()
+{
+    return [
+        'type' => 'name:Type|type:select|options:person,company|required',
+        'company_name' => 'name:Company|visibleFieldIf:type,company|required_if:type,company',
+        'code' => 'name:Code|readonlyIfNot:id,NULL',
+        'invoice_id' => 'name:Invoice|belongsTo:invoices,number|removeFromFormIf:invoice_id,NULL',
+    ];
+}
+```
+
+<Warning>
+  Conditions are evaluated in the browser only. The backend does not check them, a posted value is always saved.
+  Validate dependent values with rules like `required_if` or `prohibited_if`, or in the model.
+</Warning>
+
+Whole groups and tabs can be hidden by a condition too, see [conditional visibility of groups](/admin/model/fields/groups#conditional-visibility).
+
+## Permissions
+{/* feature: field.hasAccess, field.hasNotAccess */}
+
+With [administrator groups](/admin/configuration#administrator-groups) enabled, parameters can depend on the permissions of the logged administrator.
+The first argument is the permission, the rest are parameters applied when the administrator has it (`hasAccess`) or does not have it (`hasNotAccess`).
+
+| Value | Permission |
+| --- | --- |
+| `update` | a permission of the current model |
+| `products.update` | a permission of another admin model by its table |
+| `products.read.update` | all listed permissions |
+| `*` / `products.*` | every permission of the model |
+
+```php
+'purchase_price' => 'name:Purchase price|type:decimal|hasNotAccess:show_prices,inaccessible',
+'status' => 'name:Status|type:select|options:new,paid|hasNotAccess:orders.update,readonly',
+'note' => 'name:Note|type:text|hasAccess:update,required,title:Visible for editors only',
+```
+
+- Super administrators have every permission, and every administrator has access when administrator groups are disabled.
+- Without a logged administrator (console, migrations, frontend) there is no access, so `hasNotAccess` parameters are applied. Do not change the database schema this way (`locale`, `multiple`, `belongsTo`).
+- Parameters written directly on the field win over the permission parameters.
+
+## Interface scoped parameters
+{/* feature: field.inAdmin, field.inBackend, field.inFrontend, field.inConsole */}
+
+<ResponseField name="inAdmin">
+  Applies the parameter only in the administration, e.g. a field required in the admin form but optional in your frontend form validated by `Model::validator()`.
+
+  ```php
+  'password' => 'name:Password|type:password|min:8|confirmed'.(isset($row) ? '' : '|inAdmin:required'),
+  ```
+</ResponseField>
+
+<ResponseField name="inFrontend">
+  Applies the parameter only outside the administration and console.
+
+  `inFrontend:required`
+</ResponseField>
+
+<ResponseField name="inConsole">
+  Applies the parameter only in console commands, including `admin:migrate`. For example `required|inConsole:null` keeps the column nullable while the admin form requires the value.
+</ResponseField>
+
+String notation accepts one parameter per scope, use the array notation for more:
+
+```php
+'employee_id' => [
+    'name' => 'Employee',
+    'belongsTo' => 'admins,username',
+    'inAdmin' => ['required', 'readonly'],
+],
+```
+
+Parameters written directly on the field, and the default rules of the type like `max:255` for strings, win over scoped parameters.
+
+<Warning>
+  `inBackend`, an alias of `inAdmin`, is suggested for deprecation. Use `inAdmin`.
+</Warning>

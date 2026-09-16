@@ -1,0 +1,140 @@
+---
+title: "Validation rules"
+description: "Laravel rules in field definitions and the parameters which also change the database column or the form."
+---
+
+## Laravel rules
+{/* feature: field.laravel-rules, field.unknown-param */}
+
+Every parameter which is not an admin parameter is passed to the [Laravel validator](https://laravel.com/docs/master/validation#available-validation-rules) as a rule, so `email`, `url`, `in:a,b`, `unique:table,column` or `regex:/pattern/` work as they are.
+
+```php
+public function fields($row = null)
+{
+    return [
+        'email' => 'name:E-mail|required|email|unique:customers,email,'.($row?->getKey() ?: 'NULL'),
+        'website' => 'name:Website|url',
+        'code' => 'name:Code|required|regex:/^[A-Z]{3}[0-9]{2}$/',
+    ];
+}
+```
+
+The same rules validate the admin form and your own requests through [`Model::validator()`](/admin/validation).
+
+<Warning>
+  An unknown parameter becomes a Laravel rule too. A typo such as `phone` on a string field throws `Method validatePhone does not exist` when the record is saved. A parameter value can not contain `|`, use the [array notation](/admin/model/fields#array-notation) or a rule object for such rules.
+</Warning>
+
+## Required fields
+{/* feature: field.required, field.nullable */}
+
+`required` makes the field mandatory. The column is created as `NOT NULL` and the form shows an asterisk. Every optional field gets the `nullable` rule automatically.
+
+```php
+'title' => 'name:Title|required',
+```
+
+- A required `date`, `time` or `file` field refuses an empty value, although these types are nullable by default.
+- A required `file` is not required again when editing a record which already has a file, only after the file is removed.
+- A required [`locale`](/admin/model/fields/localization#validation) field requires only the default language.
+- `required` is skipped in the admin form for `removeFromForm` and `disabled` fields, their posted value is ignored as well.
+- `hideOnCreate` only hides the input, a required field is still validated when creating.
+- When a field becomes `required` and the existing column contains `NULL` values, `admin:migrate` keeps the column nullable and prints a warning.
+- In array notation use a real boolean, `'required' => false` keeps the field optional.
+
+## Nullable column
+{/* feature: field.null */}
+
+`null` creates a nullable column even for a required field. Use it when records are created from code without the value, while the admin form still requires it.
+
+```php
+'invoice_number' => 'name:Invoice number|required|null',
+```
+
+## Length and value limits
+{/* feature: field.max, field.min, field.unsigned */}
+
+<ResponseField name="max">
+  Maximum length of a text, maximum value of a number or maximum size of a file in kilobytes. On `string` and `select` fields it also sets the column length, `max:1000` creates `varchar(1000)`. String fields have `max:255` by default.
+
+  On a `multiple` select it limits the number of selected values in the form, on `multiple` files it limits the size of every file.
+
+  `name:Perex|type:text|max:500`
+</ResponseField>
+
+<ResponseField name="min">
+  Minimum length of a text or minimum value of a number. `min:0` on `integer` and `decimal` fields creates an unsigned column, a negative minimum keeps it signed.
+
+  `name:Balance|type:integer|min:-100`
+</ResponseField>
+
+<ResponseField name="unsigned">
+  Shortcut for `min:0`, negative values are refused and the column is unsigned. A `min` written on the field wins.
+
+  `name:Stock|type:integer|unsigned`
+</ResponseField>
+
+## Conditional required rules
+{/* feature: field.required_if */}
+
+Laravel `required_if`, `required_unless`, `required_with` and `required_without` rules work as usual. The form shows the asterisk dynamically by the current values of the other fields. `required_with_all` and `required_without_all` are validated, but without the asterisk.
+
+```php
+'type' => 'name:Customer type|type:select|options:person,company|required',
+'company_name' => 'name:Company name|required_if:type,company',
+'vat_number' => 'name:VAT number|required_with:company_name',
+```
+
+## Password confirmation
+{/* feature: field.confirmed */}
+
+`confirmed` adds a second input `{key}_confirmation` below the field, both values must match. An empty password on edit is ignored, so the password stays unchanged.
+
+```php
+'password' => 'name:Password|type:password|confirmed|min:8',
+```
+
+## File extensions
+{/* feature: field.extensions */}
+
+`extensions` lists the allowed file extensions of a `file` field. The file content must match one of the listed types as well. With `multiple` every file is checked.
+
+```php
+'import' => 'name:Import|type:file|extensions:xlsx,csv|required',
+```
+
+## Unique value in a JSON column
+{/* feature: field.unique_json */}
+
+`unique_json` checks that a value is unique inside a JSON column. For [`locale`](/admin/model/fields/localization) fields each language is checked separately.
+
+Parameters: `table,column,exceptId,exceptColumn,column,value…`. `column->key` compares a fixed JSON key.
+
+```php
+public function fields($row = null)
+{
+    return [
+        'slug' => 'name:URL|locale|unique_json:articles,slug,'.($row?->getKey() ?: 'NULL'),
+    ];
+}
+```
+
+## Partial updates
+{/* feature: field.sometimes */}
+
+A checkbox with `sometimes` which is missing in the request is not reset to `0` by `Model::validator()->getData()`, so partial API updates keep its value. The admin form always sends unchecked checkboxes as `0`.
+
+```php
+'newsletter' => 'name:Newsletter|type:checkbox|sometimes',
+```
+
+## Arrays and multiple values
+{/* feature: field.array, field.date_format_multiple */}
+
+`multiple` and `multirows` add the `array` rule. Rules of multiple `file`, `date` and `time` fields are applied to every item (`images.*`).
+
+Date types validate values with `date_format_multiple`, which passes when the value matches any of the listed formats (`d.m.Y`, `Y-m-d` and the ISO strings sent by the date picker). You can replace the list for a custom input:
+
+```php
+'season' => 'name:Season|type:date|date_format_multiple:Y,Y-m',
+```
