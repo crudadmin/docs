@@ -20,19 +20,23 @@ example.com/article/my-article
 
 CrudAdmin generates slugs from database values through the `$sluggable` property of the admin model.
 
-```php app/Article.php
+```php app/Models/Article.php
+namespace App\Models;
+
+use Admin\Eloquent\AdminModel;
+
 class Article extends AdminModel
 {
-    /*
-     * Sluggable
-     */
     protected $sluggable = 'name';
 
-    protected $fields = [
-        'name' => 'name:Name|placeholder:Enter the article name|required|max:90',
-        'content' => 'name:Article content|type:editor|required',
-        'image' => 'name:Image|type:file|image|required',
-    ];
+    public function fields()
+    {
+        return [
+            'name' => 'name:Name|placeholder:Enter the article name|required|max:90',
+            'content' => 'name:Article content|type:editor|required',
+            'image' => 'name:Image|image|required',
+        ];
+    }
 }
 ```
 
@@ -47,31 +51,35 @@ class Article extends AdminModel
 </Info>
 
 ## Multilanguage slugs
+{/* feature: field.locale */}
 
-If the field carries the `locale` parameter, which translates the record into several languages, the `slug` column is stored as **JSON**, where each language holds its own slug.
+If the slug source field has the [`locale`](/admin/model/fields/localization) parameter, the `slug` column is stored as **JSON** holding a slug for every language.
+Duplicate slugs get an increment only in the language where they collide, and the column has no database index.
 
-```php
-/*
- * Sluggable
- */
+```php app/Models/Article.php
 protected $sluggable = 'name';
 
-protected $fields = [
-    'name' => 'name:Name|locale|required',
-];
+public function fields()
+{
+    return [
+        'name' => 'name:Name|locale|required',
+    ];
+}
+```
+
+```json
+{"en": "yellow-house", "de": "gelbes-haus"}
 ```
 
 <Frame>
   <img src="/images/article-slug-column-locale.png" alt="Slug column stored as JSON with a value per language" />
 </Frame>
 
-<Note>
-  If the record has no translation in the administration, CrudAdmin falls back to the slug of the main language, or any available translated value.
-</Note>
+`Article::findBySlug('yellow-house')` searches the slug of the current language.
 
-<Tip>
-  Translating records and texts is covered in [Localization](/admin/model/localization).
-</Tip>
+<Note>
+  If the record has no translation, CrudAdmin falls back to the slug of the default language, or any available translated value.
+</Note>
 
 ## Selecting a record by its slug
 

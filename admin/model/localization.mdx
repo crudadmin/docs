@@ -218,23 +218,24 @@ Once language versions and static text translations are set up, the interface fo
 
 Enable unique content with the `$localization` property.
 
-```php app/Article.php
+```php app/Models/Article.php
 <?php
+
+namespace App\Models;
+
+use Admin\Eloquent\AdminModel;
 
 class Article extends AdminModel
 {
-    /*
-     * Enable multilanguages
-     */
     protected $localization = true;
 
-    /*
-     * Automatic form and database generation
-     */
-    protected $fields = [
-        'name' => 'name:Name|placeholder:Enter the article name|required|max:90',
-        'content' => 'name:Content|type:editor',
-    ];
+    public function fields()
+    {
+        return [
+            'name' => 'name:Name|placeholder:Enter the article name|required|max:90',
+            'content' => 'name:Content|type:editor',
+        ];
+    }
 }
 ```
 
@@ -242,6 +243,10 @@ To select the records of the language version the client is currently on, the mo
 
 ```php app/Http/Controllers/ArticleController.php
 <?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Article;
 
 class ArticleController extends Controller
 {
@@ -259,21 +264,20 @@ class ArticleController extends Controller
 </Warning>
 
 ### Mirrored content
+{/* feature: field.locale */}
 
-With mirrored content the record exists once in the database, but each language version holds a different value in the column.
+With mirrored content the record exists once in the database, and each translatable column holds a value for every language. Add the `locale` parameter to the fields you want to translate.
 
-Enable it with the `locale` parameter on the field you want to translate.
-
-```php
-protected $fields = [
-    'name' => 'name:Project title|type:string|locale',
-];
+```php app/Models/Project.php
+public function fields()
+{
+    return [
+        'name' => 'name:Project title|locale|required',
+        'content' => 'name:Content|type:editor|locale',
+    ];
+}
 ```
 
-<Info>
-  A translated field switches its column type to **JSON**, holding the values of every language version.
-</Info>
+The column stores a JSON object keyed by the language slug. Reading the attribute returns the value of the current language, with a fallback to the default language.
 
-<Tip>
-  If the client is on a non-default language and the record has no translated value, the system falls back to the default language value.
-</Tip>
+Fallbacks, validation, API responses and converting existing columns are described in [Translatable fields](/admin/model/fields/localization).
