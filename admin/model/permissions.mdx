@@ -1,0 +1,222 @@
+---
+title: "Permissions"
+description: "Restrict creating, editing and deleting records, protect reserved records and check administrator permissions."
+icon: "shield-check"
+---
+
+Restrictions on the model apply to every administrator. [User groups](#user-groups) then grant permissions per administrator.
+
+## Creating records
+{/* feature: model.insertable */}
+
+Set to `false` to forbid creating new records. The add button is hidden, the server refuses the form request and the `insert` permission is no longer offered in user groups.
+
+```php
+protected $insertable = false;
+```
+
+## Editing records
+{/* feature: model.editable */}
+
+Set to `false` to forbid editing records. The server refuses the form request. The `update` permission stays available in user groups.
+
+```php
+protected $editable = false;
+```
+
+### Read-only preview
+{/* feature: model.displayable */}
+
+To let administrators open records of a read-only module in a disabled form, enable `$displayable`.
+
+```php
+protected $editable = false;
+
+protected $displayable = true;
+```
+
+<Info>
+  Administrators with the `read` permission but without `update` always open records as a preview.
+</Info>
+
+## Deleting records
+{/* feature: model.deletable, model.canDelete() */}
+
+Set to `false` to forbid deleting records. The delete button is not rendered and the `delete` permission is not offered in user groups.
+
+```php
+protected $deletable = false;
+```
+
+A single record can refuse deletion in `canDelete()`. Only `true` allows deleting.
+
+```php
+public function canDelete()
+{
+    return $this->orders()->doesntExist();
+}
+```
+
+When a selected record can not be deleted, the delete button shows an error and deletes none of the selected records.
+
+### Delete options
+
+Instead of `true`, an array of options changes how records are deleted.
+
+```php
+protected $deletable = [
+    // Remove soft deleted records permanently
+    'force' => true,
+
+    // Delete records of child models ($belongsToModel) together with the record
+    'deep' => true,
+
+    // Delete child records without their onDelete() hooks and rules
+    'deepEvents' => false,
+
+    // Delete only / skip these child models
+    'only' => [OrdersItem::class],
+    'except' => [OrdersLog::class],
+
+    // Detach belongsToMany relations and clear belongsTo columns pointing to the record
+    'detach' => true,
+];
+```
+
+<Warning>
+  An empty array disables deleting, the same as `false`.
+</Warning>
+
+### Checking deletion in code
+{/* feature: model.canBeDeleted() */}
+
+`canBeDeleted()` combines `canDelete()`, the `delete` permission of the logged administrator, `$deletable`, `$minimum` and `$reserved`. Custom buttons can use the same check as the delete button.
+
+```php
+$this->active = $row->canBeDeleted();
+```
+
+Pass `['reserved' => false]` to skip the reserved check.
+
+## Reserved records
+{/* feature: model.reserved */}
+
+List the ids of records which must never be deleted, for example a default language or the main administrator account. Every other record in the module can still be deleted.
+
+```php
+protected $reserved = [1, 2];
+```
+
+When the ids are not known in advance, return them from a `reserved()` method instead:
+
+```php
+public function reserved($row = null)
+{
+    return static::where('system', true)->pluck('id')->all();
+}
+```
+
+The delete button of a reserved record stays in the table, but it is disabled. The server checks the reserved ids again when the record is being deleted, so the record is protected even when the request does not come from the button.
+
+The ids can also be changed by a `setReservedProperty($ids)` mutator, on the model itself or in a model module.
+
+<Info>
+  Reserved records only restrict deleting. They can still be edited, published or hidden.
+</Info>
+
+## User groups
+
+Enable user groups with [`admin_roles`](/admin/configuration#administrator-roles). A **User groups** module appears in the administration, where each group is granted permissions per module: `read`, `insert`, `update`, `publishable` and `delete`.
+
+- Super administrators have full access.
+- Other administrators get the merged permissions of all their groups.
+- Without `read` the module table stays empty and records can not be opened. Without `insert` or `update` the form requests are refused, without `update` records can not be reordered.
+- Permissions follow the resolved model parameters, a module with `insertable()` returning `false` offers no `insert` permission.
+
+### Checking permissions
+{/* feature: model.hasAccess() */}
+
+```php
+admin()->hasAccess(Order::class);            // at least one permission
+admin()->hasAccess(Order::class, 'update');  // specific permission
+admin()->hasAccess(Order::class, '*');       // every permission of the module
+admin()->hasAccess(Order::class, 3);         // group with id 3 is assigned
+```
+
+Without user groups and for super administrators the check always passes. For a model which is not registered, `'*'` returns `false`.
+
+### Custom permissions
+{/* feature: model.setModelPermissions(), model.defaultModelPermissions() */}
+
+Add your own permission keys to a module. They appear in the user group editor and can be checked with `hasAccess()`. `defaultModelPermissions()` returns the default keys of the module.
+
+```php
+public function setModelPermissions($permissions)
+{
+    $permissions['revert_import'] = [
+        'name' => _('Revert import'),
+        'title' => _('Administrator can revert imported stock.'),
+        'danger' => true,
+    ];
+
+    unset($permissions['publishable']);
+
+    return $permissions;
+}
+```
+
+```php
+if ( admin()->hasAccess(StockImport::class, 'revert_import') ) {
+    // ...
+}
+```
+
+Groups store only keys returned by the module, keys removed later are ignored. An inactive module has no permissions.
+
+### Own account only
+{/* feature: model.canViewAllRowsAccordingToLoggedUser() */}
+
+In the administrators module, users without the **View other users** (`view_others`) permission see and edit only their own account, and the module opens as a single form. Override `canViewAllRowsAccordingToLoggedUser()` on the auth model to add your own rules.
+
+```php
+public function canViewAllRowsAccordingToLoggedUser()
+{
+    if ( parent::canViewAllRowsAccordingToLoggedUser() ) {
+        return true;
+    }
+
+    return $this->manages_team === true;
+}
+```
+
+### Restricting records by assignment
+{/* feature: model.filterRowsByColumns() */}
+
+When administrators belong to a company, branch or school, return the assignment columns from `filterRowsByColumns()` on the auth model. Every module then shows only related records.
+
+```php app/Models/User.php
+public function fields()
+{
+    return [
+        'school_id' => 'name:School|belongsTo:schools,name',
+    ];
+}
+
+public function filterRowsByColumns()
+{
+    return ['school_id'];
+}
+```
+
+- `schools` lists only the assigned school, child models of `School` are filtered by `school_id`.
+- Other modules are filtered by relation fields with the [`hasAccessFilter`](/admin/model/fields/relations#restricting-rows-by-the-administrator) parameter.
+- A `belongsToMany` column filters by all assigned ids.
+
+<Warning>
+  An administrator without an assigned value sees no related records.
+</Warning>
+
+### Private files
+{/* feature: model.hasFileAccess() */}
+
+Files of a field with the `private` parameter, or of all fields when `$privateUploads = true`, are served in the administration only to logged administrators with the `read` permission of the module. See [private files](/admin/model/uploads#private-files).

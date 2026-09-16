@@ -1,0 +1,247 @@
+---
+title: "Rules, events and modules"
+description: "Reusable admin rules, hooks after admin actions, Eloquent events and modules extending admin models."
+icon: "zap"
+---
+
+## Admin rules
+{/* feature: model.rules */}
+{/* feature: command.admin:rule */}
+
+Rules are reusable classes with hooks running before and after records are created, updated, deleted or published.
+
+```bash
+php artisan admin:rule SetInvoiceNumber
+```
+
+The class is created in `app/Admin/Rules` and registered on the model:
+
+```php app/Models/Invoice.php
+use App\Admin\Rules\SetInvoiceNumber;
+
+protected $rules = [
+    SetInvoiceNumber::class,
+];
+```
+
+```php app/Admin/Rules/SetInvoiceNumber.php
+namespace App\Admin\Rules;
+
+use Admin\Eloquent\AdminModel;
+use Admin\Eloquent\AdminRule;
+
+class SetInvoiceNumber extends AdminRule
+{
+    public function creating(AdminModel $row)
+    {
+        $row->number = date('Y').str_pad($row->newQuery()->count() + 1, 5, '0', STR_PAD_LEFT);
+    }
+
+    public function updated(AdminModel $row)
+    {
+        if ( $row->getOriginal('paid_at') === null && $row->paid_at ) {
+            // send a notification...
+        }
+    }
+}
+```
+
+Rules can also be returned by a `rules($row)` method, or extended with `setRulesProperty($rules)`.
+
+### Rule hooks
+
+| Method | Runs |
+| --- | --- |
+| `fire` | before every create, update, delete and publish toggle |
+| `creating` / `create` | before a new record is inserted |
+| `updating` / `update` | before an existing record is saved |
+| `deleting` / `delete` | before a record is deleted |
+| `publishing`, `unpublishing` | before the publish button changes the state |
+| `fired` | after every action |
+| `created` | once, after the record is inserted and its relations are synced |
+| `updated` | after the record is saved and its relations are synced, `getOriginal()` returns the previous values |
+| `deleted` | after the record is deleted |
+| `published`, `unpublished` | after the publish button changed the state |
+
+Every method receives the record. Saving the record inside a rule does not run the rules again.
+
+Stop the action with an error:
+
+```php
+public function deleting(AdminModel $row)
+{
+    if ( $row->orders()->exists() ) {
+        autoAjax()->error(_('The customer has orders and can not be deleted.'))->throw();
+    }
+}
+```
+
+### Where rules run
+
+```php
+// Run in the administration (default true)
+public $admin = true;
+
+// Run outside the administration, e.g. Model::create() in a controller (default false)
+public $frontend = false;
+```
+
+Rules with `$frontend = true` also run in console (commands, queues, scheduler).
+
+Disable rules for one record, or silence some of them:
+
+```php
+$row = (new Invoice)->disableAllAdminRules();
+$row->fill($data)->save();
+
+$row->silentRules(['created'])->save();
+$row->checkForModelRules(['created'], true, true); // run silenced rules later
+```
+
+### Changing the admin form
+
+```php
+// Change validation rules of the admin form
+public function validate($rules, $update, $model, $request)
+{
+    $rules['price'][] = 'max:100000';
+
+    return $rules;
+}
+
+// Change request data before save
+public function fill(array $row)
+{
+    $row['code'] = strtoupper($row['code'] ?? '');
+
+    return $row;
+}
+```
+
+`$this->isFieldDirty('price')` returns `true` when the field was changed in the admin form.
+
+## Admin hooks
+{/* feature: model.onCreate(), model.onUpdate(), model.onDelete() */}
+
+Methods called only by actions in the administration, not by `Model::create()`, `update()` or `delete()` in your code.
+
+```php app/Models/Partner.php
+public function onCreate($row)
+{
+    // the record, its relations and uploaded files are saved
+}
+
+public function onUpdate($row)
+{
+    Cache::forget('partners.list');
+}
+
+public function onDelete($row)
+{
+    // the record is deleted and its files are removed
+}
+```
+
+| Hook | Called |
+| --- | --- |
+| `onCreate($row)` | after the form creates a record, with belongsToMany relations synced, before `created` rules |
+| `onUpdate($row)` | after the form updates a record, with relations synced, before `updated` rules |
+| `onDelete($row)` | after the delete button deleted the record, removed its files and ran `deleted` rules |
+
+## Eloquent events
+{/* feature: model.eloquentEvents */}
+
+Standard [Eloquent events](https://laravel.com/docs/eloquent#events) fire for admin actions too, before the admin hooks: `saving`, `creating`, `created`, `saved`, then `onCreate`, and `deleting`, `deleted`, then `onDelete`. Use them for logic which has to run everywhere.
+
+```php
+protected static function booted()
+{
+    static::saved(fn ($row) => Cache::forget('partners.list'));
+}
+```
+
+## Modules
+{/* feature: model.modules */}
+{/* feature: command.admin:module */}
+
+Modules are reusable classes extending admin models with fields, parameters, scopes and responses.
+
+```bash
+php artisan admin:module BannerModule
+```
+
+The class is created in `app/Admin/Modules`. Modules in the [module directories](/admin/configuration#model-and-module-directories) are loaded for **all** admin models, `isActive()` decides for which of them the module runs.
+
+```php app/Admin/Modules/BannerModule.php
+namespace App\Admin\Modules;
+
+use Admin\Core\Eloquent\Concerns\AdminModelModule;
+use Admin\Core\Eloquent\Concerns\AdminModelModuleSupport;
+use Admin\Fields\Group;
+
+class BannerModule extends AdminModelModule implements AdminModelModuleSupport
+{
+    public function isActive($model)
+    {
+        return $model->getProperty('banner') === true;
+    }
+
+    public function mutateFields($fields, $row = null)
+    {
+        $fields->push(
+            Group::tab([
+                'banner_title' => 'name:Banner title|locale|max:90',
+                'banner_image' => 'name:Banner image|image',
+            ])->name('Banner')->icon('fa-image')
+        );
+    }
+}
+```
+
+```php app/Models/Page.php
+protected $banner = true;
+```
+
+`$this->getModel()` returns the model, or the listed row, the module currently runs for.
+
+### Registering a module on one model
+
+```php app/Models/Product.php
+public function __construct(array $attributes = [])
+{
+    $this->addModule(PriceModule::class);
+
+    parent::__construct($attributes);
+}
+```
+
+`AdminModel::addGlobalModule(PriceModule::class)` in a service provider adds a module to all models.
+
+<Warning>
+  `protected $modules = [...]` replaces the default modules (SEO, filter states, history, global relations). Use `addModule()` instead.
+</Warning>
+
+### Module hooks
+
+| Method | Description |
+| --- | --- |
+| `isActive($model)` | required, the module runs only when it returns `true` |
+| `boot()` | once, when model parameters are booted |
+| `mutateFields($fields, $row)` | add or change fields, see [changing fields](/admin/model/fields/groups#changing-fields-of-an-existing-model) |
+| `mutateBootedFields($fields, $row, $model)` | change the final field arrays, must return `$fields` |
+| `set{Property}Property($value)` | change a [model parameter](/admin/model/parameters#dynamic-parameters), runs after the model mutator |
+| `scopeAdminRows($query)` | [filter admin table rows](/admin/model/listing#filtering-rows-in-the-administration) |
+| `scope{Name}($query, $value)` | [request scope](/admin/model/listing#request-scopes) |
+| `setAdminAttributes`, `setAdminRowAttributes`, `setAdminRowsAttributes` | [change row attributes](/admin/model/listing#row-attributes) |
+| `setAdminResponse`, `setAdminRowResponse`, `setAdminRowsResponse` | [prepare the row before serialization](/admin/model/listing#columns-loaded-by-the-query) |
+| `adminModelRender(&$data)` | [change the module definition](/admin/model/listing#changing-the-module-definition), `$data` by reference |
+| `requestMutator($request, $model, $fields, $rules)` | change the admin form request before save |
+
+```php
+public function requestMutator($request, $model, $fields, $rules)
+{
+    if ( $request->has('code') ) {
+        $request->merge(['code' => strtoupper($request->get('code'))]);
+    }
+}
+```

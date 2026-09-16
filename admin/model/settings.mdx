@@ -1,0 +1,269 @@
+---
+title: "Settings"
+description: "Reference of the $settings parameter: form texts, table columns, table and grid, search, pagination and form behaviour."
+icon: "settings-2"
+---
+
+## Defining settings
+{/* feature: model.settings */}
+
+Settings control texts, the table, the grid, search and form behaviour of a module. Define them in the `$settings` property, or in the `settings()` method when values depend on runtime conditions.
+
+```php app/Models/Order.php
+protected $settings = [
+    'title.update' => 'Order no. :number',
+    'columns.client_id.name' => 'Customer',
+    'grid.default' => 'full',
+];
+```
+
+```php app/Models/Product.php
+public function settings()
+{
+    return [
+        'increments' => admin()?->isSuperAdmin() ?? false,
+        'search.autosave' => true,
+        'form.modal' => ['enabled' => true, 'width' => 900],
+    ];
+}
+```
+
+When the `settings()` method exists, the `$settings` property is ignored. The method is evaluated on every request of the administration, so it can read config, the logged administrator or the request.
+
+Settings can be written as nested arrays or with dot keys. Both forms produce the same result and can be mixed. When the same path is declared twice, the later value wins.
+
+```php
+protected $settings = [
+    'grid' => ['default' => 'full'],
+    'grid.big.disabled' => true,
+];
+```
+
+To extend the settings of a model from a module or a parent class, use the `setSettingsProperty` mutator:
+
+```php
+public function setSettingsProperty($settings)
+{
+    return array_merge($settings, [
+        'form.actions' => true,
+        'title.update' => ':number - :name',
+    ]);
+}
+```
+
+Texts in `title.*`, `buttons.*` and `columns.*.name` are translated with gettext, so write them in the source language of the administration.
+
+<Info>
+  Most settings only change the administration interface, they do not restrict the server. `'editable' => false` makes the form read-only, but updates are still accepted. Use the [`$editable`](/admin/model/permissions#editing-records) parameter to forbid them.
+</Info>
+
+## Form texts
+{/* feature: settings.title.rows, settings.title.create, settings.title.insert, settings.title.update, settings.title.tab, settings.buttons.create, settings.buttons.insert, settings.buttons.update, settings.buttons.show-history */}
+
+```php app/Models/Client.php
+protected $settings = [
+    'title.rows' => 'Clients',
+    'title.create' => 'New client',
+    'title.update' => 'Editing client :name (no. :id)',
+    'title.tab' => 'Basic information',
+    'buttons.create' => 'Add client',
+    'buttons.insert' => 'Create client',
+    'buttons.update' => 'Save client',
+    'buttons.show-history' => 'Changes',
+];
+```
+
+| Key | Where it is shown | Default |
+| --- | --- | --- |
+| `title.rows` | heading above the table | model name |
+| `title.create` | heading of the new record form | "Add new" |
+| `title.insert` | same as `title.create`, wins when both are set | — |
+| `title.update` | heading of an opened record | `name`, `title`, `username` or `number` of the record |
+| `title.tab` | name of the first tab holding fields outside of tabs | "General" |
+| `buttons.create` | add new record button above the table | "Add new" |
+| `buttons.insert` | submit button of the new record form | "Send" |
+| `buttons.update` | submit button of an opened record | "Save" |
+| `buttons.show-history` | history button in the form header | "Show changes" |
+
+Every `:column` placeholder in `title.update` is replaced by the value of the opened record. Values of `select` and `radio` fields are replaced by the option label, translatable values by the first language.
+
+Set `'buttons.create' => false` to hide the add button.
+
+### Unsupported keys
+{/* feature: settings.title.edit, settings.grid.header */}
+
+<Warning>
+  `title.edit` and `grid.header` are not read by the administration and are suggested for deprecation. Use `title.update` instead of `title.edit`.
+</Warning>
+
+## Columns
+{/* feature: settings.columns */}
+{/* feature: settings.columns.*.name, settings.columns.*.hidden, settings.columns.*.limit, settings.columns.*.before, settings.columns.*.after, settings.columns.*.add_before, settings.columns.*.add_after, settings.columns.*.clickable, settings.columns.*.format, settings.columns.*.type, settings.columns.*.sortBy, settings.columns.*.title */}
+
+```php app/Models/Product.php
+protected $settings = [
+    'columns.name.name' => 'Product',
+    'columns.name.clickable' => false,
+    'columns.code.hidden' => true,
+    'columns.description.limit' => 60,
+    'columns.price.add_after' => ' €',
+    'columns.price.after' => 'name',
+    'columns.stock.before' => 'price',
+    'columns.released_at.format' => 'd.m.Y',
+];
+```
+
+| Key | Effect |
+| --- | --- |
+| `name` | column header, also used in the [table download](/admin/model/listing#table-download) |
+| `hidden` | the column is turned off by default, the administrator can turn it on in the columns list |
+| `limit` | maximum length of the text in the cell, `0` shows the whole text |
+| `before` / `after` | moves the column before or after another column (`client` matches `client_id` too) |
+| `add_before` / `add_after` | text added before or after a non-empty value, for example a unit |
+| `clickable` | `false` does not open the record when the cell is clicked |
+| `format` | date format of the value, also for columns added by `setAdminAttributes` |
+| `type` | `integer` sorts the column numerically |
+| `sortBy` | sorts the column by the values of another column |
+
+<Warning>
+  `columns.*.title` is not read by the administration and is suggested for deprecation. Use `name`.
+</Warning>
+
+### Adding new columns
+{/* feature: settings.columns.*.encode, settings.columns.*.component, settings.columns.*.column_visible */}
+
+A column which is not a field adds a new column to the table. Its value is added by [`setAdminAttributes`](/admin/model/listing#row-attributes) or loaded in [`scopeAdminRows`](/admin/model/listing#columns-loaded-by-the-query).
+
+```php
+protected $settings = [
+    'columns.price_vat' => [
+        'name' => 'Price with VAT',
+        'after' => 'price',
+    ],
+    'columns.paid_status' => [
+        'name' => 'Status',
+        'encode' => false,
+    ],
+    'columns.progress' => [
+        'name' => 'Progress',
+        'component' => 'OrderProgressColumn',
+    ],
+];
+```
+
+- `'encode' => false` renders the value as HTML and disables the text limit.
+- `component` renders the cell with a Vue component from the [component directories](/admin/configuration#vue-component-directory). The component receives the `value`, `valueMutated`, `valueLimited`, `field`, `row` and `model` props. Unknown component names are ignored.
+- `'hidden' => true` or `'invisible' => true` adds the column turned off, `'column_visible' => true` forces it on.
+
+## Table and grid
+{/* feature: settings.table, settings.table.small, settings.table.clickable, settings.table.switchcolumns, settings.checking, settings.increments, settings.dates, settings.xls, settings.sortable, settings.orderBy, settings.default, settings.actions, settings.editable, settings.keyName, settings.recursivity.name, settings.recursivity.max_depth */}
+
+```php app/Models/StockMovement.php
+protected $settings = [
+    'increments' => false,
+    'checking' => false,
+    'table.small' => true,
+    'table.switchcolumns' => false,
+    'orderBy' => ['created_at' => 'desc'],
+    'xls' => true,
+];
+```
+
+| Key | Effect |
+| --- | --- |
+| `table` | `false` hides the table, table layouts stay visible |
+| `table.small` | compact table |
+| `table.clickable` | `false` does not open records by clicking the row |
+| `table.switchcolumns` | `false` hides the columns list |
+| `checking` | `false` hides the checkboxes for bulk actions |
+| `increments` | `false` hides the id column and the id search option |
+| `dates` | `true` shows created and updated dates in the row actions |
+| `xls` | `true` adds the [table download](/admin/model/listing#table-download) |
+| `sortable` | `false` disables sorting by clicking column headers, drag and drop is controlled by [`$sortable`](/admin/model/tree#reordering-records) |
+| `orderBy` | initial sort of the table, `['column' => 'asc']` |
+| `actions` | `false` hides the row action buttons |
+| `editable` | `false` shows opened records read-only |
+| `default` | `true` opens this module after login |
+| `keyName` | column used by the administration as the record key instead of `id` |
+| `recursivity.name` | tab name of a model nested in itself |
+| `recursivity.max_depth` | maximum nesting of a model in itself, default `10` |
+
+### Grid
+{/* feature: settings.grid, settings.grids, settings.grid.default, settings.grid.splitmode, settings.grid.{size} */}
+
+The grid defines how the table and the form share the screen: `small`, `big`, `half` (alias `medium`) and `full`.
+
+```php
+protected $settings = [
+    'grid.default' => 'half',        // default size when the administrator has not chosen one
+    'grid.big.disabled' => true,     // disable a single size, or 'grid.full.enabled' => true
+    'grid.enabled' => false,         // hide the size switcher
+    'grids' => ['half', 'full'],     // allow only these sizes
+    'grid.splitmode' => true,        // keep table and form side by side in full size
+];
+```
+
+<Note>
+  A list of sizes can be written as `'grid' => ['half', 'full']` only when no other `grid.*` key is set. Together with `grid.default` use the `grids` key.
+</Note>
+
+## Search, filters and pagination
+{/* feature: settings.search, settings.search.column, settings.search.autosave, settings.pagination, settings.pagination.limit, settings.pagination.limits, settings.filter, settings.filter.items, settings.filter.max_buttons, settings.filter.single */}
+
+```php
+protected $settings = [
+    'search.enabled' => true,          // always show the search bar, false hides it
+    'search.column' => 'number',       // preselected search column
+    'search.autosave' => true,         // remember searches of the administrator
+    'pagination.limit' => 50,          // rows per page, 0 does not load rows at all
+    'pagination.limits' => [25, 50, 100],
+    'pagination.enabled' => false,     // load all rows at once
+    'filter.single' => true,           // only one filter at once
+    'filter.max_buttons' => 3,         // more filters are rendered as a dropdown
+];
+```
+
+By default the search bar appears when the table has at least 3 rows. Filter buttons are defined by [`getFilterStates()`](/admin/model/listing#filter-buttons), which fills `filter.items` automatically. `'filter.enabled' => false` hides them.
+
+## Form behaviour
+{/* feature: settings.form, settings.form.modal, settings.form.actions, settings.form.tabs, settings.form.header, settings.form.footer, settings.form.autocomplete, settings.header, settings.header.visiblePermanently, settings.tabs.default, settings.tabs_autoload, settings.autoreset, settings.refresh_interval, settings.reloadOnUpdate, settings.rows.eachRequestInitial */}
+
+```php app/Models/Booking.php
+protected $settings = [
+    'form.modal' => ['enabled' => true, 'width' => 900],
+    'form.actions' => true,
+    'autoreset' => false,
+    'refresh_interval' => 30000,
+    'reloadOnUpdate' => true,
+];
+```
+
+| Key | Effect |
+| --- | --- |
+| `form` | `false` hides the form, only the table is shown |
+| `form.modal` | opens records in a modal in the full grid, `form.modal.width` sets its width |
+| `form.actions` | shows the row action buttons in the header of an opened record |
+| `form.tabs` / `form.header` / `form.footer` | `false` hides the tabs, the form header or the footer with the submit button |
+| `form.autocomplete` | `autocomplete` attribute of text inputs, default from the [`model.settings.form.autocomplete`](/admin/configuration#default-form-autocomplete) config |
+| `header` | `false` hides the module header with the grid switcher, search and add button |
+| `header.visiblePermanently` | keeps the form header visible for single record modules |
+| `tabs.default` | index of the tab opened by default |
+| `tabs_autoload` | `false` loads child models of a tab only when the tab is opened |
+| `autoreset` | `false` keeps the created record opened instead of resetting the form |
+| `refresh_interval` | automatic refresh of rows in milliseconds, `false` refreshes once per hour, default 60–120 s |
+| `reloadOnUpdate` | reloads all rows after a record is saved |
+| `rows.eachRequestInitial` | every rows request is initial, so field options and `getAdminModelInitialData()` are refreshed |
+
+## File fields in the form
+{/* feature: settings.fields.*.canDownload, settings.fields.*.canDelete, settings.fields.*.options */}
+
+```php
+protected $settings = [
+    'fields.invoice.canDownload' => false,
+    'fields.invoice.canDelete' => false,
+    'fields.brand_id.options' => ['createOption' => true, 'searchable' => true],
+];
+```
+
+- `canDownload` / `canDelete` hide the download link and the remove button of an uploaded file.
+- `options` are passed as props to the select component of the field.

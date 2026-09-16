@@ -80,6 +80,33 @@ public function options()
 
 For a field whose key ends with `_id`, the options may be returned under the key without the suffix (`category_id` → `category`).
 
+#### Options depending on the parent record
+{/* feature: model.options() */}
+
+When the table is opened inside a parent record, `options($row)` receives the parent record. The edited record is not passed, options are loaded once for the whole table.
+
+```php app/Models/OrdersItem.php
+public function options($parent = null)
+{
+    return [
+        'variant_id' => $parent
+            ? ProductsVariant::where('product_id', $parent->product_id)->pluck('name', 'id')
+            : [],
+    ];
+}
+```
+
+Options can be extended by `setOptionsProperty()` of the model or of a [module](/admin/model/rules-events#modules):
+
+```php
+public function setOptionsProperty($options)
+{
+    $options['status']['archived'] = _('Archived');
+
+    return $options;
+}
+```
+
 <Note>
   Options from `$options` and `options()` are loaded only when the admin table is opened, not on every request.
   The submitted value is not validated against the options, add an `in:` rule when it has to be.

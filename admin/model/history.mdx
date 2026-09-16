@@ -1,0 +1,57 @@
+---
+title: "Change history"
+description: "Record changes of admin model records, preview older versions and store changes made outside the administration."
+icon: "history"
+---
+
+## Enabling history
+{/* feature: model.history, model.hasRowHistory(), model.makeHistorySnapshot() */}
+
+History has to be enabled in the [configuration](/admin/configuration#change-history) and on every model that should record its changes.
+
+```php config/admin.php
+'history' => true,
+```
+
+```php app/Models/Order.php
+protected $history = true;
+```
+
+Run `php artisan admin:migrate` after enabling it in the configuration.
+
+<Frame>
+  <img src="/images/preview/history-support.png" alt="Change history of a record" />
+</Frame>
+
+- Creating a record stores its values, every update stores only the changed fields.
+- Disabled fields are not tracked.
+- The history button of the record lists all changes and lets you preview or delete a version. Fields with changes get a history icon in the form.
+- The first update of a record created before history was enabled stores its previous values first.
+- With `history` disabled in the configuration, nothing is recorded for any model.
+
+## Records without history
+
+Disable history for individual records with `hasRowHistory()`.
+
+```php
+public function hasRowHistory()
+{
+    return $this->getAttribute('status') !== 'draft';
+}
+```
+
+## Changes made in code
+
+Changes made outside the administration can be stored from code.
+
+```php
+$original = $order->getRawOriginal();
+
+$order->update(['status' => 'shipped']);
+
+$order->makeHistorySnapshot($original);
+
+$order->logHistoryAction('export', ['data' => ['format' => 'xlsx']]);
+```
+
+With [`history_actions`](/admin/configuration#change-history) enabled, viewing, publishing, deleting and sign-ins are logged for every model.

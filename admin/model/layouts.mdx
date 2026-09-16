@@ -7,6 +7,7 @@ icon: "layout-template"
 Layout snippets let you place your own components into the existing administration interface.
 
 ## Creating a layout
+{/* feature: command.admin:layout */}
 
 A layout is made of two files — a PHP configuration file and the component template assigned to it. Both are created with an `artisan` command.
 
@@ -27,6 +28,10 @@ php artisan admin:layout MyCustomLayout
 The first file is the PHP class holding the settings of the component.
 
 ```php app/Admin/Layouts/MyExampleLayout.php
+namespace App\Admin\Layouts;
+
+use Admin\Helpers\Layout;
+
 class MyExampleLayout extends Layout
 {
     public $position = 'form-top';
@@ -43,7 +48,7 @@ class MyExampleLayout extends Layout
 
 ### Position
 
-The `$position` property decides where the generated component is placed.
+The `$position` property decides where the component is placed. A layout without `$position` is placed on `top`.
 
 ```php
 public $position = 'form-top';
@@ -53,12 +58,17 @@ public $position = 'form-top';
 | --- | --- |
 | `top` | Before the module panel |
 | `bottom` | After the module panel |
-| `form-top` | Top of the form |
-| `form-bottom` | Bottom of the form |
+| `mutators` | Invisible component for scripts reacting to form changes |
+| `form-before` / `form-after` | Before / after the form |
+| `form-top` / `form-bottom` | Top / bottom inside the form |
 | `form-header` | Form header |
+| `form-header-left` / `form-header-right` | Left / right part of the form action bar |
 | `form-footer` | Form footer |
-| `table-header` | Header of the record table |
-| `table-footer` | Footer of the record table |
+| `table-before` / `table-after` | Before / after the record table |
+| `table-header` / `table-footer` | Header / footer of the record table |
+| `table-header-actions` | Action bar of the table |
+| `actions-grid-before` / `actions-grid` / `actions-grid-after` | Around the grid size switcher |
+| `model-builder` | Replaces the whole module view, e.g. dashboards or calendars |
 
 ### Supplying the component
 
@@ -80,42 +90,60 @@ public function build()
 ```
 </CodeGroup>
 
-<Note>
-  A Vue component can also be created on its own, without the PHP configuration file, with `php artisan admin:component MyTestLayout`. Answer `layout` when asked for the component type.
-</Note>
-
 <Tip>
   Components are loaded recursively from `resources/views/admin/components`. The directory is configurable in the [administration configuration](/admin/configuration#vue-component-directory).
 </Tip>
 
 ## Registering the layout
+{/* feature: model.layouts */}
 
-Assign the PHP configuration file to the admin model through the `$layouts` property.
+Assign layout classes to the admin model through the `$layouts` property.
 
-```php app/Article.php
+```php app/Models/Article.php
+use App\Admin\Layouts\ArticleStatsLayout;
+
 class Article extends AdminModel
 {
     protected $layouts = [
-        \App\Admin\Layouts\MyExampleLayout::class,
+        ArticleStatsLayout::class,
     ];
 }
 ```
 
-A Vue component needs no PHP configuration file — register it directly, where the array key is the position.
+A Vue component needs no PHP class. Use the position as the key, one position can hold more components.
 
-```php app/Article.php
-class Article extends AdminModel
+```php app/Models/Order.php
+class Order extends AdminModel
 {
     protected $layouts = [
-        'form-top' => 'MyTopLayout.vue',
-        'form-bottom' => 'MyBottomLayout.vue',
+        'table-before' => 'OrdersCalendar',
+        'form-top' => ['RecalculateVatPrices', 'SetPricesFromProduct'],
+        'form-header-right' => 'orders.DeleteInHeader',
     ];
 }
 ```
 
-<Note>
-  In this case, create the standalone Vue component with `php artisan admin:component MyTestLayout` and answer `layout` when asked for the component type.
-</Note>
+Create a standalone component with `php artisan admin:component OrdersCalendar` and answer `layout` when asked for the component type.
+
+A module without a table can replace the whole module view:
+
+```php app/Models/Dashboard.php
+class Dashboard extends AdminModel
+{
+    protected $skipMigration = true;
+
+    protected $icon = 'fa-chart-line';
+
+    protected $layouts = [
+        'model-builder' => 'Dashboard',
+    ];
+}
+```
+
+- `build()` returning `null` skips the layout, so a layout can decide at runtime not to render.
+- Unknown positions are ignored.
+- When the component file is not found, the Vue app uses a [globally registered component](/admin/frontend/vue#registering-components) with that name.
+- Layouts can be resolved at runtime with a `layouts()` method, and extended with `setLayoutsProperty($layouts)`.
 
 ## The Vue component
 
@@ -129,9 +157,9 @@ Through the `props` attribute the component receives the record being edited, th
     </div>
 </template>
 
-<script type="text/javascript">
+<script>
 export default {
-    props : ['model', 'row', 'rows'],
-}
+    props: ['model', 'row', 'rows'],
+};
 </script>
 ```

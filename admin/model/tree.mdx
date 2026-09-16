@@ -1,0 +1,308 @@
+---
+title: "Tree, ordering and publishing"
+description: "Parent and child models, reordering by drag and drop, publishing, single record mode and the menu."
+icon: "git-branch"
+---
+
+## Tree structured models
+{/* feature: model.belongsToModel */}
+
+Tree structuring covers the **many to one** relation, where one record holds further sub-records. Editing the parent record shows a nested module for the records attached to it.
+
+<Frame>
+  <img src="/images/article-belongstomodel.png" alt="Parent record with a nested submodule tab" />
+</Frame>
+
+<Frame>
+  <img src="/images/article-belongstomodel-opened.png" alt="Opened nested submodule of a parent record" />
+</Frame>
+
+The `$belongsToModel` parameter defines the parent admin model. The child model is shown as a tab in the parent form and is not listed in the menu.
+
+```php app/Models/OrdersItem.php
+namespace App\Models;
+
+use Admin\Eloquent\AdminModel;
+
+class OrdersItem extends AdminModel
+{
+    protected $belongsToModel = Order::class;
+}
+```
+
+A required `order_id` column with a foreign key is created. The column name is the snake case parent class name with `_id`, also when the parent uses a custom `$table`.
+
+If a model is a child of several admin models, pass an array. Every parent gets its own nullable column.
+
+```php
+protected $belongsToModel = [Article::class, Blog::class];
+```
+
+Relations are available without defining them, see [selecting related records](/admin/model/relations#selecting-a-relation-in-a-tree-structure).
+
+```php
+$order->items;   // hasMany (hasOne for a single child model)
+$item->order;    // belongsTo
+```
+
+The parent record is available while the child form is loaded, e.g. to change fields by the parent.
+
+```php
+public function fields($row = null)
+{
+    $order = $this->getParentRow();
+
+    return [
+        'price' => 'name:Price ('.($order?->currency ?? 'EUR').')|type:decimal',
+    ];
+}
+```
+
+<Tip>
+  A child model can also be placed into a [tab](/admin/model/fields/groups#a-tab-from-an-admin-model) of the parent form.
+</Tip>
+
+<Warning>
+  Tree structures require a naming convention. Every model carries an English name in the singular. A child model starts with the parent name in the plural, followed by its own name in the singular. An order model named **Order** has an items model named **OrdersItem**. If that model has nested variants, the model is named **OrdersItemsVariant**.
+</Warning>
+
+When a parent is added to a table that already has rows, `php artisan admin:migrate` asks for a parent id for the existing rows. Fill them in code instead with a hook named by the column.
+
+```php
+public function onRequiredOrderIdRelation($table, $schema, $command)
+{
+    DB::table($this->getTable())->update(['order_id' => Order::min('id')]);
+}
+```
+
+### Recursive trees
+{/* feature: model.withRecursiveRows, model.onRecursiveDragAndDrop() */}
+
+A model related to itself builds a tree of unlimited depth, e.g. categories. Rows can be dragged between levels.
+
+```php
+protected $belongsToModel = self::class;
+```
+
+The root table lists rows without a parent, nested rows are loaded under their parent. Set `$withRecursiveRows` to load all rows at once.
+
+```php
+protected $withRecursiveRows = true;
+```
+
+`onRecursiveDragAndDrop()` is called for a row moved under another parent (`null` for the root level).
+
+```php
+public function onRecursiveDragAndDrop($id, $recursiveKey, $parentId)
+{
+    Cache::forget('categories.tree');
+}
+```
+
+### Children created before the parent
+{/* feature: model.withoutParent, model.nullableRelation */}
+
+`$withoutParent` allows adding child rows in the form of a new, unsaved parent. They are attached when the parent is saved.
+
+```php
+protected $withoutParent = true;
+```
+
+`$nullableRelation` only makes the foreign column nullable, e.g. for rows imported without a parent. The form is not changed.
+
+```php
+protected $nullableRelation = true;
+```
+
+### Child form inside the parent form
+{/* feature: model.inParent */}
+
+A single child model can be merged into the parent form. Both records are validated and saved in one request, a missing child record is created when the parent is updated.
+
+```php
+class OrdersInvoice extends AdminModel
+{
+    protected $belongsToModel = Order::class;
+
+    protected $single = true;
+
+    protected $inParent = true;
+}
+```
+
+### Relation to any model
+{/* feature: model.globalRelation */}
+
+`$globalRelation` makes a model attachable under any parent without a foreign key, e.g. notes or attachments. The parent is stored in the `_table` and `_row_id` columns, which are hidden when the model is serialized on the website.
+
+```php
+protected $globalRelation = true;
+```
+
+```php
+Attachment::where('_table', 'orders')->where('_row_id', $order->id)->get();
+```
+
+## Reordering records
+{/* feature: model.sortable, model.onUpdateOrder() */}
+
+Rows of every admin model can be reordered by **drag and drop**. The position is stored in an indexed `_order` column and rows are ordered by `_order DESC`, so a new row appears on top. Set the property to `false` to disable reordering.
+
+```php
+protected $sortable = false;
+```
+
+<Info>
+  Reordering is also disabled when [`$orderBy`](/admin/model/listing#default-order-of-records) uses another column than `_order`, and in [single record mode](#single-record-mode). No `_order` column is created then, and reorder requests are refused.
+</Info>
+
+A new row gets the next position after all existing rows. When reordering is enabled on a table that already has rows, the rows are numbered during `php artisan admin:migrate`.
+
+React to a finished reorder with `onUpdateOrder()`, e.g. to flush a cached menu. A returned value is sent as the response.
+
+```php
+public function onUpdateOrder()
+{
+    Cache::forget('navigation');
+}
+```
+
+## Publishing records
+{/* feature: model.publishable, model.withUnpublished(), model.setGlobalPublishable() */}
+
+Publishing is enabled on every admin model by default. The table gets an indexed `published_at` column, and each row gets a publish / hide button. Set the property, or a `publishable()` method, to `false` to turn publishing off.
+
+```php
+protected $publishable = false;
+```
+
+New rows are published immediately with the current date. Outside of the administration (website, console, queues) the model returns only rows with `published_at` in the past, so a row can be scheduled by saving a future date.
+
+```php
+Article::create(['name' => 'Draft', 'published_at' => null]);              // hidden on the website
+Article::create(['name' => 'Tomorrow', 'published_at' => now()->addDay()]); // visible from tomorrow
+
+Article::get();                    // only published rows
+Article::withUnpublished()->get(); // all rows
+```
+
+The publishing scope can be turned off for the whole request or for one model, e.g. in a preview controller.
+
+```php
+use Admin\Eloquent\AdminModel;
+
+AdminModel::setGlobalPublishable(false);    // all models
+Article::setGlobalModelPublishable(false);  // only articles
+```
+
+<Info>
+  The administration always lists all rows. Publishing more selected rows toggles every row by its own state.
+</Info>
+
+### Admin preview state
+{/* feature: model.publishableState, model.withTemporaryPublished() */}
+
+<Warning>
+  `$publishableState` is suggested for deprecation. Avoid it in new projects.
+</Warning>
+
+`$publishableState` adds a third state to the publish button, a row visible only to logged administrators. The button cycles **hidden → admin preview → published**. A nullable JSON `published_state` column is created.
+
+```php
+protected $publishableState = true;
+```
+
+Preview rows are returned on the website while an administrator is logged in. They can be shown without login too:
+
+```php
+(new Article)->withTemporaryPublished();           // all models
+(new Article)->withTemporaryPublished('articles'); // only the articles table
+
+$article->isAdminPublished(); // published, or preview with a logged administrator
+```
+
+## Single record mode
+{/* feature: model.single */}
+
+`$single` sets `$minimum` and `$maximum` to 1. The table is hidden and the page contains only the form of one record.
+
+```php
+protected $single = true;
+```
+
+The value can be computed by a method:
+
+```php
+public function single()
+{
+    return admin()?->hasAccess(static::class, 'all_branches') === false;
+}
+```
+
+<Info>
+  Single models are not sortable, so no `_order` column is created. Publishing is not changed. A single child model is related to its parent as `hasOne`, e.g. `$order->invoice`.
+</Info>
+
+<Tip>
+  Useful for static pages such as **About us** or **Contact**, or for application settings that do not need more than one row.
+</Tip>
+
+## Menu
+
+### Module group
+{/* feature: model.group */}
+
+An admin model can be assigned to a menu group defined in the [configuration](/admin/configuration#module-groups). Use dot notation for nested groups.
+
+```php
+protected $group = 'settings';
+
+protected $group = 'shop.catalog'; // "Catalog" group inside "Shop"
+```
+
+<Frame>
+  <img src="/images/group-settings.png" alt="Admin model assigned to a menu group" />
+</Frame>
+
+A group missing in the configuration uses its key as the name. The group can also be returned by a `group()` method.
+
+### Menu visibility
+{/* feature: model.inMenu */}
+
+Root models are listed in the menu, child models only inside their parent. `$inMenu` overrides it.
+
+```php
+protected $inMenu = true;  // child model listed in the menu too
+protected $inMenu = false; // hidden from the menu, the page stays accessible by URL
+```
+
+## Initially hidden tabs and groups
+{/* feature: model.hidden_tabs, model.hidden_groups */}
+
+Tabs and field groups with an `id` can be hidden when the form opens, and shown later from a custom component.
+
+```php
+protected $hidden_tabs = ['shipping'];
+
+protected $hidden_groups = ['company'];
+
+public function fields()
+{
+    return [
+        'name' => 'name:Name|required',
+        Group::tab([
+            'address' => 'name:Address',
+        ])->id('shipping')->name('Shipping'),
+        Group::fields([
+            'vat_id' => 'name:VAT ID',
+        ])->id('company'),
+    ];
+}
+```
+
+```js
+model.showTab('shipping');
+model.setGroupVisibility('company', true);
+```
+
+A child model tab is identified by its table name.

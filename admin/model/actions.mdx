@@ -9,18 +9,20 @@ Sometimes a module needs to run an action over a record or a group of records. I
 Custom buttons cover those cases. They are rendered in the record table, and clicking one sends a request to the server where you can run any action and return a message to the user.
 
 ## Creating a button
+{/* feature: command.admin:button */}
 
 ```bash
 php artisan admin:button ChangeOrderStatusButton
 ```
 
-The command creates the button configuration file in `app/Admin/Buttons/ChangeOrderStatusButton.php`.
+The command creates the button class in `app/Admin/Buttons/ChangeOrderStatusButton.php`. Subdirectories in the name become namespaces, `admin:button Orders/SendInvoice` creates `App\Admin\Buttons\Orders\SendInvoice`.
 
 ## Registering a button
+{/* feature: model.buttons */}
 
-Assign the button to an admin model through the `$buttons` property.
+Assign the button to an admin model through the `$buttons` property. Buttons can also be returned by a `buttons()` method, or extended with `setButtonsProperty($buttons)`.
 
-```php app/Order.php
+```php app/Models/Order.php
 use App\Admin\Buttons\ChangeOrderStatusButton;
 
 class Order extends AdminModel
@@ -31,15 +33,13 @@ class Order extends AdminModel
 }
 ```
 
-## How the button is rendered
-
 Once registered, the button appears in the side panel of every record.
 
 <Frame>
   <img src="/images/buttons/model-button-action.png" alt="Custom button in the record side panel" />
 </Frame>
 
-If the button can be applied to several selected records, it is placed in the action bar once records are selected.
+A button that can run over several records is placed in the action bar once records are checked.
 
 <Frame>
   <img src="/images/buttons/model-button-actionbar.png" alt="Custom action in the action bar above selected records" />
@@ -47,69 +47,61 @@ If the button can be applied to several selected records, it is placed in the ac
 
 ## Configuring the button
 
-A button is a PHP class holding its properties and the method that runs when it is clicked.
+A button is a PHP class holding its properties and the methods that run when it is clicked.
 
 ```php app/Admin/Buttons/ChangeOrderStatusButton.php
+namespace App\Admin\Buttons;
+
+use Admin\Helpers\Button;
+
 class ChangeOrderStatusButton extends Button
 {
     public $type = 'button';
 
     // Name of the button on hover
-    public $name = 'DummyButton';
+    public $name = 'Send delivery email';
 
-    // Button classes
+    // Bootstrap button class
     public $class = 'btn-default';
 
-    // Button icon
-    public $icon = 'fa-gift';
+    // Font Awesome icon
+    public $icon = 'fa-truck';
 }
 ```
 
-### Type `(required)`
+### Type
 
-There are three types of action.
+Where the button is available depends on its type and on the methods it defines. The default type is `button`.
 
 | Type | Behaviour |
 | --- | --- |
-| `button` | A simple button in the record side panel. |
-| `action` | Available only after selecting records, and can run over a group of them. |
-| `multiple` | Runs over a single record as well as a group of records. |
+| `button` | Shown in the record side panel, runs `fire($row)`. |
+| `action` | Shown in the side panel when it has `fire()`, and in the action bar of checked records when it has `fireMultiple()`. |
+| `multiple` | Shown in the action bar of checked records, runs `fireMultiple($rows)`. |
 
 ```php
-public $type = 'button';
-```
+public $type = 'multiple';
 
-<Warning>
-  For an action that runs over several records, `fire($row)` is not enough — it receives a single record. Define `fireMultiple($rows)` as well, which receives the selected records.
-</Warning>
-
-### Name `(required)`
-
-```php
-public $name = 'Send delivery email';
+// The action bar shows the button from 2 checked records
+public $minimum = 2;
 ```
 
 ### Class and colour
 
-One of `fa-default`, `fa-primary`, `fa-success`, `fa-warning`, `fa-error`.
+A Bootstrap button class: `btn-default`, `btn-primary`, `btn-success`, `btn-warning`, `btn-danger`.
 
 ```php
-public $class = 'fa-default';
-```
-
-### Icon
-
-```php
-public $icon = 'fa-check';
+public $class = 'btn-success';
 ```
 
 ## Running the action
 
-`fire` runs the action over a single record clicked from the side panel. `fireMultiple` only needs to be defined for actions that can run over several records. Both return a response in the form of a message or your own component.
+`fire` runs the action over a single record clicked in the side panel. `fireMultiple` runs over the checked records. Both return a response in the form of a message or your own component.
 
 ```php app/Admin/Buttons/ChangeOrderStatusButton.php
+use Admin\Eloquent\AdminModel;
+use Admin\Helpers\Button;
 use Illuminate\Support\Collection;
-use Admin\Models\Model as AdminModel;
 
 class ChangeOrderStatusButton extends Button
 {
@@ -122,108 +114,127 @@ class ChangeOrderStatusButton extends Button
 
     public function fire(AdminModel $row)
     {
-        $row->update([ 'status' => 'sent' ]);
+        $row->update(['status' => 'sent']);
         $row->notify(new SendOrderNotification($row));
 
-        return $this->message('Your action is done!');
+        return $this->message('The order has been sent.');
     }
 
     public function fireMultiple(Collection $rows)
     {
-        return $this->error('Your multiple rows action callback.');
+        $rows->each->update(['status' => 'sent']);
+
+        return $this->success($rows->count().' orders have been sent.');
     }
 }
 ```
 
-<Tip>
-  In `__construct` you can mutate the default behaviour of the button for the specific record passed to it. Use the `active` property there to disable the button for a given record.
-</Tip>
+In `__construct` you can change the button for the record passed to it. `$active = false` hides the button for that record, and the server refuses to run it for the record.
 
 ### Message title and text
 
 To return plain text or HTML, use one of `message`, `success`, `error` or `warning`.
 
 ```php
-return $this->title('My title')
-            ->message('Your action is done!');
+return $this->title('Order sent')
+            ->message('The courier has been notified.');
 ```
 
 ### Redirect
 
 ```php
-return $this->redirect('https://google.com');
+return $this->redirect('https://example.com/orders');
+```
+
+A `RedirectResponse` returned from `fire()` works the same way:
+
+```php
+return redirect()->route('orders.print', $row);
 ```
 
 ### New window
 
 ```php
-return $this->open('https://google.com');
+return $this->open('https://example.com/orders/print');
 ```
 
-### Custom Vue or blade component
+### Open a record
+
+`open()` with a model opens that record in a modal instead of a URL.
 
 ```php
-return $this->title('This is your stats result')
-            ->component('MyComponentName.vue');
+public function fire(AdminModel $row)
+{
+    $invoice = $row->createInvoice();
+
+    return $this->open($invoice);
+}
 ```
 
-<Note>
-  Create the component with `php artisan admin:component MyComponentName` and choose the `button` component type.
-</Note>
+### Custom Vue component
 
-<Tip>
-  Components are loaded recursively from `resources/views/admin/components`. The directory is configurable in the [administration configuration](/admin/configuration#vue-component-directory). For a component in another location, use an absolute path.
-</Tip>
+```php
+return $this->title('Order statistics')
+            ->component('OrderStats.vue');
+```
 
-<Tip>
-  With a larger number of components, use subdirectories. Call a component from a subdirectory by its name, or by its relative path — `component('subdirectory/MyComponentName.vue')`.
-</Tip>
+Create the component with `php artisan admin:component OrderStats` and choose the `button` component type. Components are resolved as described in [component directories](/admin/configuration#vue-component-directory), e.g. `component('orders/OrderStats.vue')` for a subdirectory.
 
 ## Actions with a confirmation
 
-Sometimes the user has to be warned before an action runs. The `question` method receives the confirmation request first and returns the confirmation response as a message or a component. Once confirmed, `fire` or `fireMultiple` runs.
+The `question` method receives the first request and returns a confirmation as a message or a component. Once confirmed, `fire` or `fireMultiple` runs.
 
 The example below asks a question through a component with an input, whose value is then sent to `fire`.
 
-```php app/Admin/Buttons/MyButton.php
-public function question()
+```php app/Admin/Buttons/PostponeDelivery.php
+public function question(AdminModel $row)
 {
-    $person = Article::first();
-
-    return $this->title('Fill your age')
-                ->component('FillAgeComponent.vue', [
-                    'person' => $person,
+    return $this->title('Postpone delivery')
+                ->component('PostponeDelivery.vue', [
+                    'order' => $row,
                 ]);
+}
+
+public function fire(AdminModel $row)
+{
+    $row->update(['delivery_at' => request('date')]);
+
+    return $this->success('Delivery postponed to '.request('date').'.');
 }
 ```
 
-```html resources/views/admin/components/FillAgeComponent.vue
+```html resources/views/admin/components/buttons/PostponeDelivery.vue
 <template>
     <div>
-        <label>How old are you?</label>
-        <input type="text" v-model="request.age" class="form-control">
-
-        <p>My name is {{ data.person.username }}</p>
-        <p>I am {{ request.age||'???' }} years old.</p>
+        <p>Order no. {{ data.order.number }}</p>
+        <label>New delivery date</label>
+        <input type="date" v-model="request.date" class="form-control">
     </div>
 </template>
 
-<script type="text/javascript">
+<script>
 export default {
-    props : ['model', 'row', 'rows', 'request', 'data'],
-}
+    props: ['model', 'row', 'rows', 'request', 'data'],
+};
 </script>
 ```
 
-```php app/Admin/Buttons/MyButton.php
-public function fire()
-{
-    $message = 'You are '.request('age').' years old';
+The second argument of `component($component, $data)` passes data available in the Vue component through the `data` prop.
 
-    return $this->success($message);
+### Multi-step actions
+
+`action('method')` in a response makes the next confirmation call that method of the button.
+
+```php app/Admin/Buttons/SyncOrdersButton.php
+public function question(AdminModel $row)
+{
+    return $this->warning('Download orders from the e-shop?')->action('confirmSync');
+}
+
+public function confirmSync(AdminModel $row)
+{
+    $count = $row->syncOrders();
+
+    return $this->success("Synchronized {$count} orders.");
 }
 ```
-
-<Tip>
-  The second argument of `component($component, $data)` passes data that is available in the Vue component through the `data` prop.
-</Tip>

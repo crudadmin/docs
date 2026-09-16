@@ -1,0 +1,48 @@
+---
+title: "REST API"
+description: "Read and write admin model records through the authenticated admin API."
+icon: "plug"
+---
+
+## Endpoints
+{/* feature: model.adminApi */}
+
+The API is available when the `crudadmin/helpers` authentication package is installed. All routes use the admin guard and the model [permissions](/admin/model/permissions) (`read`, `insert`, `update`, `delete`). Models with `$insertable`, `$editable` or `$deletable` set to `false` refuse the same actions as in the administration.
+
+| Method | URL | Action |
+| --- | --- | --- |
+| GET | `/admin/api/model/{table}` | paginated rows |
+| POST | `/admin/api/model/{table}` | create a row |
+| GET | `/admin/api/model/{table}/{id}` | one row |
+| POST | `/admin/api/model/{table}/{id}` | update the sent columns |
+| DELETE | `/admin/api/model/{table}/{id}` | delete a row |
+| GET | `/admin/api/models` | accessible models with relations |
+
+File fields are returned as URLs, `multiple` file fields as a list of URLs.
+
+## Query parameters
+
+| Parameter | Example | Description |
+| --- | --- | --- |
+| `limit` | `limit=50`, `limit=-1` | page size, `0` or `-1` returns all rows |
+| `_columns` | `_columns=name,price` | selected columns |
+| `_with` | `_with[]=author:name&_with[]=items.product`, `_with=author;comments` | relations with optional columns, a dot for nested relations |
+| `_where` | `_where[price,>=]=10`, `_where[status,in,\|]=new\|paid`, `_where[author_id,notnull]=1` | filters |
+| `_scope` | `_scope[]=active`, `_scope[popular]=100` | model scopes with an optional parameter |
+| `_selector` | `/model/orders/A-2026?_selector=number` | find a row by another column |
+
+## Customizing the response
+
+```php app/Models/Order.php
+public function scopeWithAdminApiResponse($query)
+{
+    $query->where('is_internal', false);
+}
+
+public function setAdminApiResponse()
+{
+    return $this->makeHidden('secret')->append('price_with_vat');
+}
+```
+
+Requests are logged by default, see the [`api` configuration](/admin/configuration#rest-api-logging).

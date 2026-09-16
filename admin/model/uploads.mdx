@@ -1,0 +1,124 @@
+---
+title: "Model uploads"
+description: "Upload settings of an admin model: private files, deleting old files, image compression and uploading files from code."
+icon: "upload"
+---
+
+File fields and their parameters are described in [File uploads](/admin/model/fields/uploads). This page covers the upload behaviour of the whole model.
+
+## Private files
+{/* feature: model.privateUploads */}
+
+The [`private`](/admin/model/fields/uploads#private-files) field parameter stores a file outside the public directory. To make all file fields of a model private, set the property:
+
+```php app/Models/Contract.php
+protected $privateUploads = true;
+```
+
+In the administration, private files are served through `/uploads/{table}/{field}/{filename}` only to logged administrators with the `read` [permission](/admin/model/permissions#private-files) of the model. A guest receives `401`. On the website use the signed [`download()`](/admin/frontend/files#download) link.
+
+## Deleting old files
+{/* feature: model.delete_files */}
+
+When a file is replaced in the form, or a record is deleted, the original files are deleted from the storage, including files of `multiple` fields. Keep them with:
+
+```php app/Models/Invoice.php
+protected $delete_files = false;
+```
+
+Resized copies of images in the cache are removed in both cases. To keep the files of all models, set [`reduce_space`](/admin/configuration#disk-space) to `false`.
+
+## Image compression and maximum size
+{/* feature: model.imageLossyCompression, model.imageMaximumProportions, model.imageLosslessCompression */}
+
+Uploaded `jpg`, `jpeg` and `png` images are post-processed:
+
+1. rotated by EXIF orientation,
+2. resized when larger than `image_max_width` × `image_max_height` (3840 × 2160 by default, the ratio is kept),
+3. JPEG images are encoded with the `image_lossy_compression_quality` quality (85 by default),
+4. optimized by shell tools (`jpegoptim`, `optipng`, `pngquant`, ...) when `image_lossless_compression` is enabled.
+
+Every step can be changed per model:
+
+```php app/Models/Gallery.php
+// JPEG quality in percent, false keeps full quality
+protected $imageLossyCompression = 70;
+
+// Keep the original dimensions of uploaded images
+protected $imageMaximumProportions = false;
+
+// Skip shell optimizers
+protected $imageLosslessCompression = false;
+```
+
+The global defaults are described in the [configuration](/admin/configuration#images).
+
+## Uploading files from code
+{/* feature: model.upload(), model.deleteFiles(), model.getAdminFile(), model.getFieldStorage() */}
+
+`upload($field, $file, $options = [])` stores a file into the directory of a model field, runs the same image processing as the administration and returns the file object. The column value is not changed, assign the filename yourself.
+
+```php app/Http/Controllers/ProfileController.php
+public function avatar(Request $request)
+{
+    $client = client();
+
+    if ( $file = $client->upload('avatar', $request->file('avatar')) ) {
+        $client->update(['avatar' => $file->filename]);
+    } else {
+        return autoAjax()->error($client->getUploadError())->throw();
+    }
+
+    return $client->avatar->url;
+}
+```
+
+The second argument accepts an `UploadedFile`, a path to a local file (the source file is copied) or a URL. When the upload fails, `upload()` returns `false` and `getUploadError()` returns the reason.
+
+| Option | Description |
+| --- | --- |
+| `filename` | stored name, `'Invoice 2026.pdf'` is stored as `invoice-2026.pdf` |
+| `postfix` | `true` appends a random key (`invoice_x8Kd02LmQa.pdf`), default from [`uploads_postfix`](/admin/configuration#upload-filenames) |
+| `disk` | filesystem disk name |
+
+Filenames are slugged and an existing file is never overwritten (`invoice-1.pdf`). The filename can be changed by the [`set{Key}Filename()`](/admin/model/fields/uploads#changing-the-filename) method of the model.
+
+```php
+// Delete all files of the field, or all except the given filenames. The column value is not changed.
+$order->deleteFiles('invoice');
+$order->deleteFiles('gallery', ['photo-1.jpg']);
+
+// File object of a stored filename
+$file = $order->getAdminFile('invoice', 'invoice-2026.pdf');
+
+// Disk and directory of a field
+$order->getFieldStorage('invoice');     // Illuminate\Filesystem\FilesystemAdapter
+$order->getStorageFilePath('invoice');  // "orders/invoice"
+```
+
+## Thumbnail size in the table
+{/* feature: hook.get{Field}AdminThumbnailDimensions */}
+
+Image thumbnails in the table are 50×50 px. Define `get{Field}AdminThumbnailDimensions()`, with the field key in camel case, to change the size. Use `null` for one side to keep the ratio.
+
+```php app/Models/Product.php
+public function getCoverImageAdminThumbnailDimensions()
+{
+    return [120, 80];
+}
+```
+
+## Editor file manager folder
+{/* feature: model.setFieldUploader() */}
+
+With a [file browser](/admin/configuration#file-browser) enabled, editor uploads go into the storage folder of the record. `setFieldUploader()` changes the folder config for a field.
+
+```php app/Models/Article.php
+public function setFieldUploader($data, $field, $rowId)
+{
+    $data['folder_name'] .= '/'.$field;
+    $data['max_size'] = 5000; // KB
+
+    return $data;
+}
+```

@@ -1,85 +1,92 @@
 ---
 title: "Model parameters"
-description: "Parameters and settings of an admin model — the basics, content restrictions and the additional settings that control forms and tables."
+description: "Overview of admin model parameters and the basic properties every model shares: name, icon, dynamic values, cached queries and replication."
 icon: "sliders"
 ---
 
-Every admin model is built from parameters that define how its components are generated in the administration. A freshly created model already contains the most common ones, which you can edit, remove or extend.
+Every admin model is built from parameters that define how the administration, the database and the forms are generated. A freshly created model already contains the most common ones, which you can edit, remove or extend.
 
 <Warning>
-  Any parameter that creates a database column, or changes an existing column or its properties, requires an automatic migration with `php artisan admin:migrate`. The command synchronises the whole relational database.
+  Any parameter that creates a database column, or changes an existing column, requires `php artisan admin:migrate`. See [migrations](/admin/model/migrations).
 </Warning>
 
-## 1. Fields
+## Where parameters are documented
 
-The `$fields` parameter defines every database column, every form input, the validation rules and the data shown in the record listing.
+| Topic | Parameters |
+| --- | --- |
+| [Fields](/admin/model/fields) | `fields()`, field types and field parameters |
+| [Permissions](/admin/model/permissions) | `$insertable`, `$editable`, `$displayable`, `$deletable`, `$reserved`, `canDelete()`, custom permissions |
+| [Listing and search](/admin/model/listing) | `$orderBy`, `$reversed`, `$minimum`, `$maximum`, `$searches`, `$search`, `scopeAdminRows()`, response hooks, filters, exports |
+| [Settings](/admin/model/settings) | `$settings` – texts, columns, table, grid, search and form behaviour |
+| [Tree, ordering and publishing](/admin/model/tree) | `$belongsToModel`, `$sortable`, `$publishable`, `$single`, `$group`, `$inMenu` |
+| [Actions and buttons](/admin/model/actions) | `$buttons` |
+| [Layout snippets](/admin/model/layouts) | `$layouts` |
+| [Change history](/admin/model/history) | `$history` |
+| [Rules and events](/admin/model/rules-events) | `$rules`, `onCreate()`, `onUpdate()`, `onDelete()`, modules |
+| [Model uploads](/admin/model/uploads) | `$privateUploads`, `$delete_files`, image compression, `upload()` |
+| [Migrations](/admin/model/migrations) | `$migration_date`, `$table`, `$timestamps`, `$skipDropping`, `$skipMigration`, migration hooks |
+| [Localization](/admin/model/localization) | `$localization` |
+| [Pretty URLs and SEO](/admin/frontend/sluggable) | `$sluggable`, `$seo` |
+| [REST API](/admin/model/api) | admin API responses |
 
-### Static fields
+## Fields
+{/* feature: model.fields() */}
 
-```php
-protected $fields = [
-    'name' => 'name:Name|placeholder:Enter the article name|type:string|required|max:90',
-    'content' => 'name:Article content|type:editor|required',
-    'image' => 'name:Author photo|type:file|image',
-    'countries' => 'name:Country list|type:select|options:Slovak,Czech,English',
-];
-```
+Fields are returned from the `fields()` method. The method receives the edited record, so rules can depend on it.
 
-### Dynamically generated fields
-
-When fields are generated dynamically, you can change the rules for saving a record — the currently edited record is passed to the method.
-
-<Tip>
-  The example below applies an exception to the unique e-mail rule for the record being edited.
-</Tip>
-
-```php
-public function fields($row)
+```php app/Models/Customer.php
+public function fields($row = null)
 {
     return [
-        'username' => 'name:Full name|type:string|required',
-        'email' => 'name:E-mail|email|required|unique:users,email,'.(isset($row) ? $row->getKey() : 'NULL'),
+        'username' => 'name:Full name|required',
+        'email' => 'name:E-mail|email|required|unique:customers,email,'.($row?->getKey() ?? 'NULL'),
+        'password' => 'name:Password|type:password'.($row ? '' : '|required'),
     ];
 }
 ```
 
-<Tip>
-  The complete field reference is in [Fields](/admin/model/fields).
-</Tip>
+`$row` is `null` when a record is created, and the edited record when it is updated in the administration, in `getValidationRules($row)` and in `validateRequest()` called on a record. Fields resolved for a record do not change the fields returned later without a record.
 
-## 2. Basic parameters
+The complete field reference is in [Fields](/admin/model/fields).
 
-### Creation date
-
-`$migration_date` holds the date and time the model was created. The administration uses it to order the modules and build the structure in the right sequence.
-
-```php
-protected $migration_date = '2017-11-05 10:00:00';
-```
-
-<Info>
-  Required parameter, generated automatically. One date can belong to at most one admin model.
-</Info>
+## Basic parameters
 
 ### Module name
+{/* feature: model.name */}
 
-The name of the section in the administration.
+The name of the module in the sidebar, in the module header and in the change history.
+
+```php app/Models/Article.php
+protected $name = 'Articles';
+```
+
+The value can also be a translation key, it is translated with `trans()`.
 
 ```php
-protected $name = 'Articles';
+protected $name = 'admin.models.articles';
+```
+
+When the name depends on runtime state, leave the property empty and define a `name()` method instead.
+
+```php
+public function name()
+{
+    return _('Articles');
+}
 ```
 
 <Frame>
   <img src="/images/article-modelname.png" alt="Module name in the administration sidebar" />
 </Frame>
 
-<Info>
-  Required parameter, generated automatically.
-</Info>
+<Warning>
+  `$this->name` inside the model returns this property, not the `name` column. Use `$this->getAttribute('name')` in model methods when the table has a `name` column. The same applies to `$title`.
+</Warning>
 
 ### Module description
+{/* feature: model.title */}
 
-The optional description of the section in the administration.
+Optional description shown under the module name. Translation keys are translated with `trans()`.
 
 ```php
 protected $title = 'Edit the list of articles in the blog section.';
@@ -89,374 +96,140 @@ protected $title = 'Edit the list of articles in the blog section.';
   <img src="/images/article-modeltitle.png" alt="Module description under the section heading" />
 </Frame>
 
-### Module group
+### Module icon
+{/* feature: model.icon */}
 
-An admin model can be assigned to a subgroup defined in the [system configuration](/admin/configuration#module-groups).
-
-```php
-protected $group = 'settings';
-```
-
-<Frame>
-  <img src="/images/group-settings.png" alt="Admin model assigned to a menu group" />
-</Frame>
-
-### Localization
-
-Allows a unique translation of the content for every language version of the site.
+Font Awesome icon of the module in the sidebar.
 
 ```php
-protected $localization = true;
+protected $icon = 'fa-truck';
 ```
 
 <Info>
-  Each module gets unique records per language version, and a foreign key to the `languages` table is created automatically.
-</Info>
-
-<Tip>
-  Translating records and texts is covered in [Localization](/admin/model/localization).
-</Tip>
-
-### Relations between models
-
-`$belongsToModel` defines the relationship between two or more admin models.
-
-```php
-protected $belongsToModel = Article::class;
-```
-
-If a model is a child of several admin models at once, pass an array.
-
-```php
-protected $belongsToModel = [Article::class, News::class, Blog::class];
-```
-
-<Info>
-  Foreign keys between the tables are created automatically.
-</Info>
-
-<Tip>
-  Relations and content branching are covered in [Database relations](/admin/model/relations).
-</Tip>
-
-### Automatic URL generation
-
-`$sluggable` generates URL addresses from the value of a column. Useful for content whose URL carries a formatted value that is then used to look the record up.
-
-```php
-protected $sluggable = 'field-name';
-```
-
-<Info>
-  A `slug` column is created in the table, holding the value of the chosen column without diacritics and in **nice URL** form.
-</Info>
-
-<Tip>
-  Generating and resolving URL addresses is covered in [Pretty URLs](/admin/frontend/sluggable).
-</Tip>
-
-### Change history
-
-Enables the history of changes made to records.
-
-```php
-protected $history = true;
-```
-
-<Frame>
-  <img src="/images/preview/history-support.png" alt="Change history of a record" />
-</Frame>
-
-<Info>
-  Change history also has to be enabled in the [administration configuration](/admin/configuration#change-history).
+  Without `$icon`, well known table names get an icon automatically, e.g. a table ending with `articles` gets `fa-file-alt`, `orders` gets `fa-credit-card`.
 </Info>
 
 ### Disabling the module
+{/* feature: model.active */}
 
-When you need the database table without generating an administration interface, or you simply want to hide the module, set the value to `false`.
+Set `$active` to `false` to hide the module from the menu. The table is still migrated, and the module offers no permissions in user groups.
 
 ```php
-protected $active = true;
+protected $active = false;
 ```
 
-### Skipping column removal during migrations
-
-If your admin model is attached to an existing table shared with another project, which contains columns the admin model does not define, list those columns so they are ignored.
+The value can be decided on every request with a method:
 
 ```php
-protected $skipDropping = ['column_x', 'column_y'];
-```
-
-## 3. Content restrictions
-
-Each module needs its own content rules — the **maximum** or **minimum** number of records, whether records can be **reordered** by drag and drop, whether they can be **published** or deleted.
-
-### Creating records
-
-Set to `false` to forbid creating new records in the section.
-
-```php
-protected $insertable = true;
-```
-
-### Editing records
-
-Set to `false` to forbid editing existing records in the section.
-
-```php
-protected $editable = true;
-```
-
-### Deleting records
-
-Set to `false` to forbid deleting existing records in the section.
-
-```php
-protected $deletable = true;
-```
-
-### Reserved records
-
-{/* feature: model.reserved */}
-
-List the ids of records which must never be deleted, for example a default language or the main administrator account. Every other record in the section can still be deleted.
-
-```php
-protected $reserved = [1, 2];
-```
-
-When the ids are not known in advance, return them from a `reserved()` method instead:
-
-```php
-public function reserved($row = null)
+public function active($row = null)
 {
-    return static::where('system', true)->pluck('id')->all();
+    return config('shop.gift_cards.enabled');
 }
 ```
-
-The delete button of a reserved record stays in the table, but it is disabled. The server checks the reserved ids again when the record is being deleted, so the record is protected even when the request does not come from the button.
-
-The ids can also be changed by a `setReservedProperty($ids)` mutator, on the model itself or in a model module.
-
-<Info>
-  Reserved records only restrict deleting. They can still be edited, published or hidden.
-</Info>
-
-### Publishing records
-
-Set to `true` to allow publishing and hiding records in the section.
-
-```php
-protected $publishable = true;
-```
-
-<Info>
-  A `published_at` column is created in the table, holding the publication state of the record.
-</Info>
-
-### Reordering records
-
-Set to `false` to forbid moving records by **drag and drop**. Reordering is enabled on every admin model by default.
-
-```php
-protected $sortable = true;
-```
-
-<Info>
-  An `_order` column is created in the table, holding the position of the record. Records selected through the Eloquent model are ordered by it automatically.
-</Info>
-
-### Minimum number of records
-
-Once the minimum number of records is reached, the administration hides the option to delete records.
-
-```php
-protected $minimum = 0;
-```
-
-<Note>
-  The value `0` means no limit.
-</Note>
-
-### Maximum number of records
-
-Once the maximum number of records is reached, the administration hides the option to add new records.
-
-```php
-protected $maximum = 0;
-```
-
-<Note>
-  The value `0` means no limit.
-</Note>
-
-### Single record mode
-
-`$single` switches the interface into single-record mode by setting `$minimum` and `$maximum` to 1. The record listing is hidden and the page contains only the form for editing one record.
-
-```php
-protected $single = false;
-```
-
-<Info>
-  In this mode `$sortable` and `$publishable` are set to `false`, which affects the database migration.
-</Info>
-
-<Tip>
-  Useful for static pages such as **About us** or **Contact**, or for application settings that do not need more than one row.
-</Tip>
-
-## 4. Additional settings
-
-Additional settings target specific behaviours of the admin model — form texts, table rules and similar options. They are defined in the `$settings` property or the `settings()` method.
-
-```php
-protected $settings = [
-    'columns.column_name' => [
-        'name' => 'XYZ',
-        'hidden' => true,
-    ],
-    'columns.other_column.name' => 'My column name',
-];
-```
-
-<Tip>
-  Settings can be written as a nested array, or with keys where dots separate the nesting.
-</Tip>
-
-### Form texts
-
-```php
-protected $settings = [
-    'title' => [
-        'create' => 'New record',
-        'update' => 'Editing record no. :id',
-    ],
-    'buttons' => [
-        'insert' => 'Create a new record',
-        'create' => 'Submit the new record',
-        'update' => 'Update the record',
-    ],
-];
-```
-
-### Column names and order
-
-Use these parameters to **hide** a column, **limit its text length** or change its default **name**.
-
-```php
-protected $settings = [
-    'columns' => [
-        'field1' => [
-            'name' => 'Column name for field x',
-            'limit' => 4,
-        ],
-        'field2.name' => 'Column name for field y',
-        'field2.after' => 'field1',
-        'field3' => [
-            'before' => 'field1',
-        ],
-    ],
-];
-```
-
-### Adding new columns
-
-You can add columns that carry no value from an existing database column and assign them any value, including **HTML** that will be rendered.
-
-```php
-protected $settings = [
-    'columns' => [
-        'price_vat' => [
-            'name' => 'Price with VAT',
-            'after' => 'field1',
-        ],
-        'paid_status' => [
-            'name' => 'Status',
-            'encode' => false,
-        ],
-    ],
-];
-```
-
-```php
-public function setAdminAttributes($attributes = [])
-{
-    $attributes['price_vat'] = ($this->price * 1.2) . ' €';
-    $attributes['paid_status'] = $this->paid_at
-        ? '<i class="fa fa-check green"></i>'
-        : '<i class="fa fa-times unpaid"></i>';
-
-    return $attributes;
-}
-```
-
-### Columns loaded by the query
-
-`setAdminAttributes` runs for every row. When a column needs data from another table, a query inside it runs once per row. Load the value in the query of the table instead, with the `scopeAdminRows` scope.
-
-```php app/Models/Package/Package.php
-protected $settings = [
-    'columns.last_version' => [
-        'name' => 'Latest version',
-        'after' => 'name',
-    ],
-];
-
-public function scopeAdminRows($query)
-{
-    $query->addSelect([
-        'last_version' => PackagesRelease::select('version')
-            ->whereColumn('packages_releases.package_id', 'packages.id')
-            ->orderByDesc('released_at')
-            ->limit(1),
-    ]);
-}
-
-public function setAdminRowsResponse()
-{
-    $this->makeVisible('last_version');
-}
-```
-
-The table response contains only the fields of the admin model. A value added to the query is loaded, but it does not reach the response until you make it visible with `makeVisible` in `setAdminRowsResponse`.
 
 <Warning>
-  Without `setAdminRowsResponse`, the column stays empty in the table, even though the query returns the value.
+  An inactive module is only hidden. Restrict access with [user group permissions](/admin/model/permissions) when needed.
 </Warning>
 
-Visibility can be changed in three methods, which run before the attributes are rendered:
+## Dynamic parameters
+{/* feature: model.property-resolution */}
 
-| Method | Runs for |
+Callable parameters can be declared as methods. The method wins over the property and is evaluated when the value is needed.
+
+```php
+public function insertable($row = null)
+{
+    return admin()?->hasAccess(static::class, 'import') === false;
+}
+```
+
+A `set{Property}Property()` mutator changes the resolved value. It can be declared on the model, in a parent class or in a [model module](/admin/model/rules-events#modules). Model mutators run first, module mutators receive their result.
+
+```php
+public function setEditableProperty($editable)
+{
+    return $editable && ! $this->isClosedPeriod();
+}
+```
+
+These parameters are resolved this way: `name`, `group`, `fields`, `active`, `inMenu`, `single`, `options`, `searches`, `insertable`, `editable`, `publishable`, `deletable`, `rules`, `settings`, `buttons`, `exports`, `reserved`, `layouts` and `belongsToModel`.
+
+<Warning>
+  Other parameters, for example `$displayable` or `$sortable`, are read from the property only. A `displayable()` or `sortable()` method is ignored.
+</Warning>
+
+## Cached queries
+{/* feature: model.flushableCacheKeys, model.getCached(), model.runCached() */}
+
+Cache small, rarely changed tables (countries, VAT rates, settings) and flush them automatically when a record is saved, deleted or reordered in the administration.
+
+```php app/Models/Country.php
+protected $flushableCacheKeys = ['countries', 'settings'];
+```
+
+```php
+// Rows are cached for a week by default and returned as models
+$countries = Country::where('active', true)->getCached('countries');
+
+// First row or false
+$country = Country::where('code', 'sk')->firstCached('settings', now()->addHour());
+
+// Any value, the duration argument is optional
+$settings = (new Store)->runCached('settings', fn () => Store::first());
+```
+
+Keys are stored as `models.{table}.{key}`. Mass updates through the query builder (`Country::query()->update([...])`) do not flush the cache.
+
+## Replicating records
+{/* feature: model.replicateWithRelations(), model.replicate() */}
+
+`replicateWithRelations()` creates a copy of the record including many to many relations and all records of child models. It is typically used in a [button](/admin/model/actions).
+
+```php app/Admin/Buttons/ReplicateCourse.php
+public function fire(AdminModel $row)
+{
+    $row->replicateWithRelations([
+        'except' => [CoursesStage::class],
+    ]);
+
+    return $this->message(_('Course has been replicated.'));
+}
+```
+
+| Option | Description |
 | --- | --- |
-| `setAdminResponse` | every response of the record |
-| `setAdminRowResponse` | a single record, when it is opened in the form |
-| `setAdminRowsResponse` | the rows of the table |
+| `only` | clone only these child models |
+| `except` | skip these child models |
+| `unpublish` | `false` keeps the publication date of the cloned records, by default the copies are unpublished |
 
-### Custom buttons in the side panel
+Single files are copied with the `cloned_xxxx_` prefix, multiple file fields keep references to the same files.
 
-The side panel of a record, which holds the delete and publish buttons, can be extended through `$buttons`.
+`replicate()` of admin models skips the `_order` column, so the copy gets a new position.
 
-```php
-protected $buttons = [
-    App\Admin\Buttons\MyButton::class,
-];
+## Site tree
+{/* feature: model.sitetree */}
+
+With the [site tree module](/admin/configuration#optional-modules) enabled, records of a model can be linked in the site tree editor. The value is the label column.
+
+```php app/Models/Branch.php
+protected $sitetree = 'name';
+
+public function scopeOnSiteTreeLoad($query)
+{
+    $query->where('visible', true);
+}
+
+public function getTreeAction()
+{
+    return action([BranchController::class, 'show'], $this->slug);
+}
 ```
 
-<Tip>
-  Configuring buttons is covered in [Actions and buttons](/admin/model/actions).
-</Tip>
+## Site builder blocks
+{/* feature: model.getSitebuilderBlocksArray() */}
 
-### Custom layouts in the interface
+<Warning>
+  The site builder is suggested for deprecation. Avoid it in new projects.
+</Warning>
 
-The administration interface can be extended with layout snippets that build on the existing admin components.
-
-```php
-protected $layouts = [
-    App\Admin\Layouts\MyFormLayout::class,
-];
-```
-
-<Tip>
-  Configuring layouts is covered in [Layout snippets](/admin/model/layouts).
-</Tip>
+With the [site builder](/admin/configuration#optional-modules) enabled, `getSitebuilderBlocksArray()` returns the blocks assigned to a record and `renderBuilder()` renders them.

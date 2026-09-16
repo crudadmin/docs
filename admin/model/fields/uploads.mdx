@@ -96,11 +96,7 @@ public function setInvoiceFilename($filename)
 <a href="{{ $order->invoice->download() }}">Download the invoice</a>
 ```
 
-To make all file fields of a model private, set the property:
-
-```php
-protected $privateUploads = true;
-```
+To make all file fields of a model private, use [`$privateUploads`](/admin/model/uploads#private-files). Image compression, deleting old files and uploading from code are described in [Model uploads](/admin/model/uploads).
 
 ## Image size in API responses
 {/* feature: field.resize */}

@@ -4,7 +4,7 @@ description: "What an admin model is, what it gives you over a plain Eloquent mo
 icon: "codepen"
 ---
 
-An admin model is a regular Laravel [Eloquent model](https://laravel.com/docs/master/eloquent) from the MVC architecture. The difference is that an admin model carries parameters and settings from which CrudAdmin generates the database, the forms and the validation.
+An admin model is a regular Laravel [Eloquent model](https://laravel.com/docs/eloquent) from the MVC architecture. The difference is that an admin model carries parameters and settings from which CrudAdmin generates the database, the forms and the validation.
 
 <Tip>
   For the bigger picture of how the generation works, read [How it works](/admin/how-it-works).
@@ -18,51 +18,73 @@ An admin model is a regular Laravel [Eloquent model](https://laravel.com/docs/ma
 4. And more.
 
 ## Creating an admin model
+{/* feature: command.admin:model */}
 
-Admin models are created the same way as regular Laravel models, with **php artisan**.
+Admin models are created with **php artisan**.
 
 ```bash
 php artisan admin:model Article
 ```
 
-The command creates `Article.php` in the `app` directory.
+The command creates `app/Models/Article.php`, or `app/Article.php` when the `Models` directory does not exist.
 
-```php app/Article.php
+```php app/Models/Article.php
 <?php
 
-namespace App;
+namespace App\Models;
 
-use Admin\Models\Model as AdminModel;
+use Admin\Eloquent\AdminModel;
+use Admin\Fields\Group;
 
 class Article extends AdminModel
 {
-    /*
-     * Model created date, for ordering tables in the administration
-     */
-    protected $migration_date = '2017-11-05 10:00:00';
+    protected $migration_date = '2026-01-10 10:00:00';
 
-    /*
-     * Template name
-     */
-    protected $name = 'Articles';
+    protected $name = 'Article';
 
-    /*
-     * Automatic form and database generation
-     */
-    protected $fields = [
-        'name' => 'name:Article name|type:string|required|max:90',
-        'content' => 'name:Content|type:editor|required',
-    ];
+    protected $title = '';
+
+    protected $belongsToModel = null;
+
+    public function fields()
+    {
+        return [
+            'name' => 'name:Name|placeholder:...|required|max:90',
+            'content' => 'name:Content|type:editor|required',
+            'image' => 'name:Image|type:file|image|required',
+        ];
+    }
 }
 ```
+
+| Option | Generated parameter |
+| --- | --- |
+| `--name=Articles` | `$name` |
+| `--title="Blog articles"` | `$title` |
+| `--group=blog`, `-g` | `$group` |
+| `--single`, `-s` | `$single = true` |
+| `--localization`, `-l` | `$localization = true` |
+| `--sortable` | `$sortable = false` |
+| `--publishable`, `-p` | `$publishable = false` |
+| `--minimum=1`, `--maximum=5` | `$minimum`, `$maximum` |
+
+A name starting with the plural of an existing admin model sets the parent: `admin:model ArticlesComment` generates `protected $belongsToModel = Article::class;`. A name ending with `Gallery` generates a multirows image field.
+
+Then create the table with `php artisan admin:migrate`, see [Migrations](/admin/model/migrations).
 
 ## Next steps
 
 <Columns cols={2}>
   <Card title="Model parameters" icon="sliders" href="/admin/model/parameters">
-    Every parameter that shapes how the model behaves in the administration.
+    Overview of every parameter that shapes the model in the administration.
   </Card>
   <Card title="Fields" icon="text-cursor-input" href="/admin/model/fields">
     Field types, their parameters, groups and tabs.
+  </Card>
+  <Card title="Listing and search" icon="list" href="/admin/model/listing">
+    Order, filter and export the records of the table.
+  </Card>
+  <Card title="Permissions" icon="shield-check" href="/admin/model/permissions">
+    Restrict creating, editing and deleting records.
   </Card>
 </Columns>

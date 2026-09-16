@@ -8,52 +8,16 @@ CrudAdmin automates the relations between models. It designs the relational data
 
 ## Tree structured models
 
-Tree structuring covers the **many to one** relation, where one record can hold further sub-records. Editing the parent record in the administration shows a nested form for managing the records attached to it.
-
-<Frame>
-  <img src="/images/article-belongstomodel.png" alt="Parent record with a nested submodule tab" />
-</Frame>
-
-Opening the submodule tab reveals the nested management of the related module.
-
-<Frame>
-  <img src="/images/article-belongstomodel-opened.png" alt="Opened nested submodule of a parent record" />
-</Frame>
-
-The `$belongsToModel` parameter defines the relationship between two or more admin models.
+A child admin model is attached to its parent with `$belongsToModel`. The parent form then shows a nested module for the child records, and the foreign keys and relations are created automatically.
 
 ```php app/Models/OrdersItem.php
-namespace App\Models;
-
-use Admin\Eloquent\AdminModel;
-
 class OrdersItem extends AdminModel
 {
     protected $belongsToModel = Order::class;
 }
 ```
 
-If a model is a child of several admin models at once, pass an array. A gallery model, for example, can belong to news, articles and blog posts, where each of them is a separate table.
-
-```php
-protected $belongsToModel = [Article::class, News::class, Blog::class];
-```
-
-<Tip>
-  Use this relation for a gallery attached to an article, products attached to an order, and anywhere else where relations branch into tree-shaped subsections. A child model can also be placed into a [tab](/admin/model/fields/groups#a-tab-from-an-admin-model) of the parent form.
-</Tip>
-
-<Tip>
-  Tree structuring supports an unlimited number of levels, including a model attached recursively to itself.
-</Tip>
-
-<Info>
-  Foreign keys between the tables are created automatically.
-</Info>
-
-<Warning>
-  Tree structures require a naming convention. Every model carries an English name in the singular. A related model nested under a parent starts with the parent name in the plural, followed by its own name in the singular. An order model named **Order** has a products submodule named **OrdersItem**. If that submodule has a nested variants submodule, the model is named **OrdersItemsVariant**.
-</Warning>
+Parent models, recursive trees, children created before the parent and relations to any model are described in [Tree, ordering and publishing](/admin/model/tree#tree-structured-models).
 
 ## Relations in a field
 

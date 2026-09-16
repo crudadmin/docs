@@ -21,12 +21,12 @@ The site has three tabs, each backed by its own directory.
 
 | Group | Pages |
 | --- | --- |
-| Getting started | `index`, `admin/how-it-works`, `admin/installation`, `admin/configuration`, `admin/license`, `admin/migration-from-v5`, `admin/contact` |
-| Admin interface | `admin/model/index`, `admin/model/parameters`, Fields subgroup (`admin/model/fields` overview + `admin/model/fields/*`), `admin/model/actions`, `admin/model/layouts`, `admin/model/relations`, `admin/model/localization` |
+| Getting started | `index`, `admin/how-it-works`, `admin/installation`, `admin/configuration` (config reference), `admin/commands`, `admin/helpers` (helpers, Admin facade, events), `admin/license`, `admin/migration-from-v5`, `admin/contact` |
+| Admin interface | `admin/model/index`, `admin/model/parameters` (overview + basic parameters), Fields subgroup (`admin/model/fields` overview + `admin/model/fields/*`), `admin/model/permissions`, `admin/model/listing`, `admin/model/settings`, `admin/model/tree`, `admin/model/actions`, `admin/model/layouts`, `admin/model/history`, `admin/model/rules-events`, `admin/model/uploads`, `admin/model/migrations`, `admin/model/relations`, `admin/model/localization`, `admin/model/api` |
 | Validation | `admin/validation/index`, `admin/validation/request` |
-| Frontend | `admin/frontend/sluggable`, `admin/frontend/files` |
+| Frontend | `admin/frontend/sluggable` (slugs + SEO), `admin/frontend/files`, `admin/frontend/vue` |
 
-This mirrors the group order of the legacy Docsify sidebar. Validation is new — it did not exist in the legacy docs.
+The legacy model parameters page is split by topic; `admin/model/parameters` links to every topic page. Validation is new — it did not exist in the legacy docs.
 
 ### Tab: Helpers package — `helpers/`
 
@@ -99,6 +99,7 @@ Every legacy content page has been migrated:
 - Internal links are root-relative without a file extension: `/admin/model/fields`
 - Use `<ResponseField>` for parameter reference lists (see `admin/model/fields/ui.mdx`)
 - Mark every documented feature right below its heading with `{/* feature: key */}`, using exact keys from `crudadmin/features/**/*.yaml`
+- Put keys containing `:` or `*` (commands, `Admin::` helpers, `settings.columns.*`) into a separate mark line, `bin/feature-map` does not parse them yet
 - Use `<CodeGroup>` when showing the same thing in several variants
 - Callouts by severity: `<Note>` supplementary, `<Info>` context, `<Tip>` recommendation, `<Warning>` destructive or migration-requiring
 - Legacy Docsify callouts map as follows: `!>` → `<Warning>` or `<Info>`, `?>` → `<Tip>`

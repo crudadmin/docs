@@ -21,6 +21,8 @@
               "admin/how-it-works",
               "admin/installation",
               "admin/configuration",
+              "admin/commands",
+              "admin/helpers",
               "admin/license",
               "admin/migration-from-v5",
               "admin/contact"
@@ -51,10 +53,19 @@
                   "admin/model/fields/database"
                 ]
               },
+              "admin/model/permissions",
+              "admin/model/listing",
+              "admin/model/settings",
+              "admin/model/tree",
               "admin/model/actions",
               "admin/model/layouts",
+              "admin/model/history",
+              "admin/model/rules-events",
+              "admin/model/uploads",
+              "admin/model/migrations",
               "admin/model/relations",
-              "admin/model/localization"
+              "admin/model/localization",
+              "admin/model/api"
             ]
           },
           {
@@ -70,7 +81,8 @@
             "icon": "globe",
             "pages": [
               "admin/frontend/sluggable",
-              "admin/frontend/files"
+              "admin/frontend/files",
+              "admin/frontend/vue"
             ]
           }
         ]

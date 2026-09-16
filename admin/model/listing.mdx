@@ -1,0 +1,477 @@
+---
+title: "Listing and search"
+description: "Order and limit records, filter the admin table, change row responses, search, filter buttons and exports."
+icon: "list"
+---
+
+This page covers how records are loaded into the admin table. Texts, columns and the look of the table are configured in [settings](/admin/model/settings).
+
+## Default order of records
+{/* feature: model.orderBy, model.reversed */}
+
+`$orderBy` sets the default order of the records. It is registered as a global Eloquent scope, so it applies to the admin table **and** to every query in your application.
+
+```php
+protected $orderBy = ['_order', 'DESC']; // default, newest records first
+```
+
+| Value | Result |
+| --- | --- |
+| `['_order', 'DESC']` | Default. Records can be reordered by drag and drop. |
+| `['name']` | Ascending order by `name`. |
+| `['created_at', 'desc']` | Descending order by `created_at`. |
+| `['orders.created_at', 'desc']` | A qualified column is used as it is, useful when `scopeAdminRows` joins other tables. |
+| `['id', 'asc', true]` | The first load of the table shows the **last** page, e.g. for chat-like lists. Works only with ascending `id` or `_order`. |
+| `null` | No default order. |
+
+<Warning>
+  Any column other than `_order` disables drag and drop reordering and the `_order` column is not created. With `$sortable = false` the default order becomes `['id', 'DESC']`.
+</Warning>
+
+Remove the order in a query with `withoutGlobalScope('order')`:
+
+```php
+Order::withoutGlobalScope('order')->orderBy('number')->get();
+```
+
+`$reversed` flips the direction of `$orderBy`, e.g. to list the oldest records first while keeping drag and drop reordering.
+
+```php
+protected $reversed = true; // _order DESC becomes _order ASC
+```
+
+## Number of records
+
+### Minimum
+{/* feature: model.minimum */}
+
+Once the minimum number of records is reached, records can not be deleted. The delete button is disabled and the server refuses the request.
+
+```php
+protected $minimum = 2;
+```
+
+The value `0` means no limit.
+
+### Maximum
+{/* feature: model.maximum */}
+
+Once the maximum number of records is reached, the administration hides the button for adding new records.
+
+```php
+protected $maximum = 10;
+```
+
+The value `0` means no limit. A child model with `$maximum = 1` is available on the parent as a `hasOne` relation instead of `hasMany`:
+
+```php app/Models/ClientsAddress.php
+protected $belongsToModel = Client::class;
+
+protected $maximum = 1;
+```
+
+```php
+$client->clientsAddress; // single ClientsAddress model or null
+```
+
+<Info>
+  The maximum is applied by the administration interface. Records created by your code are not limited.
+</Info>
+
+`$minimum = 1` together with `$maximum = 1` switches the module into [single record mode](/admin/model/tree#single-record-mode).
+
+## Filtering rows in the administration
+{/* feature: model.scopeAdminRows() */}
+
+`scopeAdminRows` is a query scope applied to every administration request of the module: the table, the record count, opening a record, updating it, buttons and exports. Queries in the rest of the application are not affected.
+
+```php app/Models/Order.php
+public function scopeAdminRows($query)
+{
+    // Operators see only orders of their warehouses
+    if ( admin()->hasAccess(self::class, 'all_warehouses') === false ) {
+        $query->whereIn('orders.warehouse_id', admin()->warehouses->pluck('id'));
+    }
+}
+```
+
+<Info>
+  A record outside the scope can not be opened or updated, the response is 404. When an update moves the record out of the scope, the response still contains the updated record, it disappears on the next table refresh.
+</Info>
+
+A [model module](/admin/model/rules-events#modules) can define `scopeAdminRows($query)` too, both scopes are applied.
+
+## Row responses
+
+### Columns loaded by the query
+{/* feature: model.setAdminResponse(), model.setAdminRowResponse(), model.setAdminRowsResponse() */}
+
+The table response contains only the fields of the admin model. A value added to the query does not reach the response until you make it visible.
+
+```php app/Models/Package.php
+protected $settings = [
+    'columns.last_version' => [
+        'name' => 'Latest version',
+        'after' => 'name',
+    ],
+];
+
+public function scopeAdminRows($query)
+{
+    $query->addSelect([
+        'last_version' => PackagesRelease::select('version')
+            ->whereColumn('packages_releases.package_id', 'packages.id')
+            ->orderByDesc('released_at')
+            ->limit(1),
+    ]);
+}
+
+public function setAdminRowsResponse()
+{
+    $this->makeVisible('last_version');
+}
+```
+
+These methods run before the record is serialized:
+
+| Method | Runs for |
+| --- | --- |
+| `setAdminResponse` | every response of the record |
+| `setAdminRowResponse` | the record opened in the form, and the record returned after saving |
+| `setAdminRowsResponse` | the rows of the table, and the record returned after saving |
+
+`setAdminRowResponse` is also the place to add accessors to the form, `$this->append('full_address')`.
+
+### Row attributes
+{/* feature: model.setAdminAttributes(), model.setAdminRowAttributes(), model.setAdminRowsAttributes() */}
+
+The serialized record can be changed before it is sent to the administration. Every method receives the attributes and **must return** them.
+
+| Method | Runs for |
+| --- | --- |
+| `setAdminAttributes($attributes)` | every response of the record |
+| `setAdminRowAttributes($attributes)` | the record opened in the form, and the record returned after saving |
+| `setAdminRowsAttributes($attributes)` | the rows of the table, and the record returned after saving |
+
+```php app/Models/Order.php
+public function setAdminAttributes($attributes)
+{
+    $attributes['price_vat'] = number_format($this->price * 1.2, 2).' €';
+
+    $attributes['paid_status'] = $this->paid_at
+        ? '<i class="fa fa-check"></i>'
+        : '<i class="fa fa-times"></i>';
+
+    return $attributes;
+}
+```
+
+Values changed in `setAdminRowsAttributes` are sent in a separate `$table` key of the row. The table displays them while the form keeps the original values, so a formatted price does not break the price input.
+
+<Warning>
+  Table rows are serialized twice, with and without table-only changes, so `setAdminAttributes` and `setAdminResponse` run twice per row. Keep them free of side effects and avoid queries inside, load the data in `scopeAdminRows` instead.
+</Warning>
+
+For single record modules (`$single`, `$inParent`) the table is rendered as a form, so `setAdminRowAttributes` runs instead of `setAdminRowsAttributes`.
+
+## Module requests
+
+### Initial data of the module
+{/* feature: model.getAdminModelInitialData(), model.beforeInitialAdminRequest(), model.afterInitialAdminRequest(), model.beforeAdminRequest() */}
+
+`getAdminModelInitialData` sends additional data to the administration when the module is opened. Each key is available in Vue components of the module through `model.getData(key)`.
+
+```php app/Models/AttributesItem.php
+public function getAdminModelInitialData()
+{
+    return [
+        'units' => Unit::pluck('name', 'id'),
+    ];
+}
+```
+
+Other hooks of the table request:
+
+| Method | Runs |
+| --- | --- |
+| `beforeAdminRequest()` | before every table request, parameters changed here (e.g. `$this->maximum`) are sent to the administration |
+| `beforeInitialAdminRequest()` | when the module is opened, returns the initial model object, the model definition overwrites its keys |
+| `afterInitialAdminRequest(array $model)` | when the module is opened, changes and returns the final model object |
+
+### Changing the module definition
+{/* feature: model.adminModelRender() */}
+
+`adminModelRender` receives the whole module definition sent to the administration (`name`, `settings`, `fields`, `insertable`, `maximum`, ...) and must return it. It runs after model modules, which receive the data by reference (`adminModelRender(&$data)`).
+
+```php
+public function adminModelRender(array $data)
+{
+    if ( admin()->hasAccess(static::class, 'insert') === false ) {
+        $data['settings']['buttons']['create'] = false;
+    }
+
+    return $data;
+}
+```
+
+### Table requests
+{/* feature: model.rowsEndpoint */}
+
+The table loads records with `POST /admin/api/rows/{table}`. Parameters:
+
+| Parameter | Description |
+| --- | --- |
+| `page`, `limit` | pagination, `limit` `0` loads only the module definition, a negative value loads all records |
+| `initial` | first load of the module |
+| `search` | list of `{column, query, query_to, interval}` |
+| `scopes` | [request scopes](#request-scopes) |
+| `parentTable`, `parentId` | parent record of a child model |
+
+Records are ordered by `$orderBy`, sorting by a column header happens in the browser.
+
+## Search
+
+### Table search
+{/* feature: model.searchAdminColumns */}
+
+| Column | Search |
+| --- | --- |
+| all columns | every field and `id`, belongsTo relations by their label columns |
+| text | `like`, every word has to match, at least 3 characters (numbers can be shorter) |
+| `id`, select, radio, checkbox, belongsTo | exact value |
+| belongsToMany | related id |
+| `locale` | case and accent insensitive |
+| integer, decimal with interval | range from / to |
+| date, datetime, `created_at` | exact date, with interval from, to or range |
+| imaginary | ignored |
+
+### Custom column search
+{/* feature: hook.set{Column}AdminSearch, model.getSearchAdminColumnOperator() */}
+
+`set{Column}AdminSearch` replaces the search of a column. It is also used when the search runs in all columns. `getSearchAdminColumnOperator` decides how words of the query are combined.
+
+```php app/Models/Product.php
+public function setSupplierIdAdminSearch($query, $search, $searchTo)
+{
+    $query->whereHas('prices', fn ($query) => $query->where('supplier_id', $search));
+}
+
+// Any word of "4006381333931 5901234123457" is enough in EAN columns
+public function getSearchAdminColumnOperator($column)
+{
+    if ( in_array($column, ['ean', 'ean_carton']) ) {
+        return 'orWhere';
+    }
+
+    return parent::getSearchAdminColumnOperator($column);
+}
+```
+
+### Preset searches
+{/* feature: model.searches */}
+
+`$searches` opens the table with prepared search bars. Keys are column names.
+
+```php app/Models/Order.php
+protected $searches = [
+    // Always visible search bar with a placeholder
+    'warehouse_id' => [
+        'static' => true,
+        'placeholder' => 'Select warehouse',
+    ],
+    // Prefilled value
+    'status' => [
+        'value' => 'new',
+    ],
+    // Date range
+    'created_at' => [
+        'value' => '2026-01-01',
+        'value_to' => '2026-01-31',
+        'interval' => true,
+    ],
+];
+```
+
+Use the `searches($row)` method for dynamic values, e.g. the current month.
+
+### Searching in child records
+{/* feature: model.search */}
+
+When the table is searched in a selected column, `search.deep` also finds parent records whose child records match.
+
+```php app/Models/Product.php
+protected $search = [
+    'deep' => [
+        // Relation named by the class basename: $product->carton()
+        Carton::class,
+        // Custom relation name
+        ['model' => ProductsVariant::class, 'relation' => 'variants'],
+    ],
+];
+```
+
+<Info>
+  Child records are searched only when a column is selected in the search bar. When the child model does not have the selected column, all its columns are searched.
+</Info>
+
+### Encrypted fields
+{/* feature: model.hasEncryptedHashes */}
+
+Values of [`encrypted`](/admin/model/fields/database#encrypted-values) string, decimal and date fields are stored with a hash in the `_encrypted_hashes` column, so the table search finds them by the **whole** value, ignoring case and accents. Partial values are not found.
+
+Disable hashes when encrypted values must not be searchable. Encrypted columns of the model are then skipped by the search.
+
+```php
+protected $hasEncryptedHashes = false;
+```
+
+## Filter buttons
+{/* feature: model.getFilterStates() */}
+
+`getFilterStates()` adds filter buttons above the table. The selected filter applies its `query`, and the first state whose `active` closure is true is shown as a colored indicator in the row.
+
+```php app/Models/OrdersItem.php
+public function getFilterStates()
+{
+    return [
+        'paired' => [
+            'name' => _('Paired'),
+            'title' => _('Items paired with a product'),
+            'color' => '#38c172',
+            'icon' => 'fa-link',
+            'query' => fn ($query) => $query->whereNotNull('product_id'),
+            'active' => fn () => $this->product_id !== null,
+        ],
+        'missing' => [
+            'name' => fn () => _('Missing'),
+            'class' => 'btn-danger',
+            'query' => fn ($query) => $query->whereNull('product_id'),
+            'active' => fn () => $this->product_id === null,
+        ],
+    ];
+}
+```
+
+`$this` inside `active` is the listed row. More selected filters are combined, see the [`filter` settings](/admin/model/settings#search-filters-and-pagination) to allow only one.
+
+<Warning>
+  Declaring `protected $modules` on the model replaces the default modules and filter states stop working. Use `$this->addModule()` instead, see [modules](/admin/model/rules-events#modules).
+</Warning>
+
+## Request scopes
+{/* feature: hook.scope{Name} */}
+
+The table request contains `scopes`, each calls a local scope of the model (or of a module) with its value. Filter buttons use them, and custom Vue components can add their own:
+
+```js
+model.setScope('warehouse', warehouseId);
+model.removeScope('warehouse');
+```
+
+```php app/Models/Order.php
+public function scopeWarehouse($query, $warehouseId)
+{
+    $query->where('warehouse_id', $warehouseId);
+}
+```
+
+Scopes are applied to the table rows and to an opened record. Unknown scopes are ignored.
+
+<Warning>
+  Any local scope of the model can be called by an administrator through the request. Do not write local scopes which bypass permissions on admin models.
+</Warning>
+
+## Exports
+{/* feature: model.exports */}
+
+Exports generate a file from the records of the table. They are [Laravel Excel](https://docs.laravel-excel.com) export classes, PDF exports use `mpdf/mpdf`.
+
+```bash
+composer require maatwebsite/excel
+php artisan admin:export StockExport
+```
+
+```php app/Admin/Exports/StockExport.php
+namespace App\Admin\Exports;
+
+use Admin\Contracts\Exports\AdminExport;
+use Maatwebsite\Excel\Concerns\FromCollection;
+use Maatwebsite\Excel\Concerns\WithHeadings;
+
+class StockExport extends AdminExport implements FromCollection, WithHeadings
+{
+    public $name = 'Stock';
+
+    public $icon = 'fa-cubes';
+
+    // xlsx (default), xls, csv, pdf, or any other extension rendered from html()
+    public $format = 'xlsx';
+
+    // Query of the table, already filtered by the search and scopes of the table
+    public function query($query)
+    {
+        return $query->with('product');
+    }
+
+    public function headings(): array
+    {
+        return ['Product', 'Quantity'];
+    }
+
+    public function collection()
+    {
+        return $this->rows()->map(fn ($stock) => [$stock->product->name, $stock->quantity]);
+    }
+}
+```
+
+```php app/Models/ProductsStock.php
+protected $exports = [
+    StockExport::class,
+];
+```
+
+Exports are listed in the export menu of the table, and the generated file respects the current search. Add `?debug=1` to the export URL (`/admin/api/export/{table}/{ExportClass}`) to see the HTML output.
+
+A `question()` method asks for confirmation or custom inputs before the export is generated, the same way as [actions with a confirmation](/admin/model/actions#actions-with-a-confirmation).
+
+### Export of selected records
+
+An export extending `Admin\Contracts\Exports\AdminButtonExport` is rendered as a record button. It generates the file for one record, or a ZIP archive with one file per record when more records are selected.
+
+```php
+class InvoiceExport extends AdminButtonExport
+{
+    public $name = 'Invoice PDF';
+
+    public $format = 'pdf';
+
+    public function html()
+    {
+        return view('exports.invoice', ['invoice' => $this->row])->render();
+    }
+}
+```
+
+## Table download
+{/* feature: model.sheetDownload */}
+
+The [`xls` setting](/admin/model/settings#table-and-grid) adds **Download excel** to the export menu. It downloads all records of the table, with the current search, in the visible columns. Select values are exported as option names, booleans as Yes/No, column headers match the table.
+
+```php
+protected $settings = [
+    'xls' => true,
+];
+
+// Change the exported value of a column
+public function setSheetPriceAttribute($value, $row)
+{
+    return number_format($value, 2, ',', '');
+}
+
+// Change the whole spreadsheet (PhpSpreadsheet) before it is saved
+public function setExcelSheet($spreadsheet, $rows)
+{
+    $spreadsheet->getActiveSheet()->getColumnDimension('A')->setAutoSize(true);
+}
+```
