@@ -215,6 +215,33 @@ Set to `false` to forbid deleting existing records in the section.
 protected $deletable = true;
 ```
 
+### Reserved records
+
+{/* feature: model.reserved */}
+
+List the ids of records which must never be deleted, for example a default language or the main administrator account. Every other record in the section can still be deleted.
+
+```php
+protected $reserved = [1, 2];
+```
+
+When the ids are not known in advance, return them from a `reserved()` method instead:
+
+```php
+public function reserved($row = null)
+{
+    return static::where('system', true)->pluck('id')->all();
+}
+```
+
+The delete button of a reserved record stays in the table, but it is disabled. The server checks the reserved ids again when the record is being deleted, so the record is protected even when the request does not come from the button.
+
+The ids can also be changed by a `setReservedProperty($ids)` mutator, on the model itself or in a model module.
+
+<Info>
+  Reserved records only restrict deleting. They can still be edited, published or hidden.
+</Info>
+
 ### Publishing records
 
 Set to `true` to allow publishing and hiding records in the section.
