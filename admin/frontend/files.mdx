@@ -1,94 +1,75 @@
 ---
 title: "Images and files"
-description: "Uploading files, reading them from a model, resizing images in the template, and the helper methods of the File class."
+description: "Reading uploaded files from a model, resizing images in the template, and the helper methods of the file object."
 icon: "image"
 ---
 
-CrudAdmin automates uploading files and images into the administration. Working with them afterwards — resizing in particular — is handled by a small layer on top.
-
-## Uploading a file
-
-Define a file field in the model.
-
-```php
-protected $fields = [
-    'image' => 'name:Image|type:file|image',
-];
-```
-
-The interface generates the upload field with the matching validation and handles the transfer to the server.
-
-<Frame>
-  <img src="/images/article-image.png" alt="File upload field generated in the administration form" />
-</Frame>
+CrudAdmin stores files uploaded in the administration and gives you a file object to render them, resize images and serve downloads. File fields and their parameters are described in [File uploads](/admin/model/fields/uploads).
 
 ## Reading a file from a model
+{/* feature: helper.admin-file */}
 
 ```php
 $article = Article::find(1);
 
-$image = $article->image;
+$image = $article->image; // Admin\Core\Helpers\Storage\AdminFile
 ```
 
-`$image` holds the image represented by the [Admin\Helpers\File](https://github.com/crudadmin/crudadmin/blob/master/src/Helpers/File.php) class, which simplifies rendering the file in a template and working with it.
-
-<Frame>
-  <img src="/images/article-image-dd.png" alt="Dump of the File helper class instance" />
-</Frame>
-
-Rendered in a template, the class returns the full path to the file on the server.
+Rendered as a string, the file returns its public URL, for example `https://example.com/uploads/articles/image/my-photo.jpg`.
 
 ```blade
 <article>
-    <h2>{{ $article->image }}</h2>
+    <h2>{{ $article->name }}</h2>
     <img src="{{ $article->image }}" alt="">
 </article>
 ```
 
-The `src` attribute holds the full path to the file, for example `https://example.com/uploads/.../my-uploaded-file.png`.
+| Property | Value |
+| --- | --- |
+| `$file->url` | public URL |
+| `$file->filename` | `my-photo.jpg` |
+| `$file->extension` | `jpg` |
+| `$file->exists` | `true` when the file is in the storage |
+| `$file->basepath` | absolute path on the disk |
+
+A `multiple` file field returns a collection of file objects.
 
 ## Resizing images
 
-The [Admin\Helpers\File](https://github.com/crudadmin/crudadmin/blob/master/src/Helpers/File.php) class can resize images directly in the template.
-
-`resize($width, $height)` takes the width as its first argument and the height as its second. With both defined, the image is cropped to the correct ratio. With only one defined, the other is calculated from the ratio.
+`resize($width, $height)` takes the width as its first argument and the height as its second. With both defined, the image is cropped to the exact size. With only one defined, the other is calculated from the ratio.
 
 ```blade
-<article>
-    <h2>{{ $article->image }}</h2>
-    <img src="{{ $article->image->resize(200, 100) }}" alt="">
-</article>
+<img src="{{ $article->image->resize(200, 100) }}" alt="">
+<img src="{{ $article->image->resize(400) }}" alt="">
+<img src="{{ $article->image->resize(null, 300) }}" alt="">
 ```
 
+`resize()` returns a new file object pointing to the resized image. SVG files are returned unchanged.
+
 <Note>
-  The crop runs on the first request for the image and is stored on the server for later requests.
+  The image is resized on the first request and stored in a cache for later requests.
 </Note>
 
 ## Advanced image operations
 
-The File class uses [Intervention Image](http://image.intervention.io/), so it can perform any operation that library supports.
+The file object uses [Intervention Image](https://image.intervention.io/), so it can perform any operation that library supports.
 
 The `image($mutators)` method takes an array whose keys are the function names and whose values are the arguments of those functions.
 
 ```blade
-<article>
-    <h2>{{ $article->image }}</h2>
-    <img src="{{ $article->image->image([
-        'fit' => [200, 200],
-        'blur' => 10
-    ]) }}" alt="">
-</article>
+<img src="{{ $article->image->image([
+    'fit' => [200, 200],
+    'blur' => 10,
+]) }}" alt="">
 ```
 
-<Note>
-  This example crops the image with `fit` and then blurs it with `blur`. See the Intervention Image documentation for [fit](http://image.intervention.io/api/fit) and [blur](http://image.intervention.io/api/blur).
-</Note>
+This example crops the image with `fit` and then blurs it with `blur`.
 
 ## Helper methods
 
 ### delete
 
-Removes the file from the server.
+Removes the file from the storage and returns `true`, or `false` when the file does not exist. The column value is not changed.
 
 ```php
 $row->image->delete();
@@ -96,24 +77,17 @@ $row->image->delete();
 
 ### download
 
-Returns a link that forces the browser to download the file instead of displaying it.
+Returns a signed URL which downloads the file. It works for [private files](/admin/model/fields/uploads#private-files) too.
 
 ```blade
-<a href="{{ $row->image->download() }}">Download the image</a>
+<a href="{{ $row->contract->download() }}">Download the contract</a>
 ```
 
 ### filesize
 
-Returns the exact file size in B/Kb/Mb/Gb depending on its size.
+Returns the size in bytes. Pass `true` for a formatted size.
 
 ```blade
-The formatted file size is {{ $row->image->filesize() }}
-{{-- The formatted file size is 120 MB --}}
-```
-
-Pass `false` for the raw size.
-
-```blade
-The raw file size is {{ $row->image->filesize(false) }}
-{{-- The raw file size is 120000000 --}}
+{{ $row->contract->filesize() }}      {{-- 2048 --}}
+{{ $row->contract->filesize(true) }}  {{-- 2 KB --}}
 ```
