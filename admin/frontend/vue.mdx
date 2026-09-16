@@ -1,0 +1,74 @@
+---
+title: "Vue app"
+description: "Globals, model instances and events available to your Vue components in the administration."
+icon: "component"
+---
+
+The administration is a Vue 3 application. Components referenced from fields, buttons and layouts are loaded from the [component directories](/admin/configuration#vue-component-directory). This page covers the API available to them.
+
+## Registering components
+{/* feature: frontend.window.crudadmin, frontend.global-component-slots */}
+
+Components added to `window.crudadmin.components` before the page loads become global components. Load the script with the [`scripts`](/admin/configuration#branding) configuration.
+
+```js resources/js/admin.js
+const components = import.meta.glob('./components/**/*.vue', { eager: true });
+
+for (const path in components) {
+    const name = path.split('/').pop().replace('.vue', '');
+
+    window.crudadmin.components[name] = components[path].default;
+}
+```
+
+A global component named `AppLogo` replaces the sidebar logo, `RightNavbarSlot` is rendered in the top navbar with the `user` prop.
+
+## Models
+{/* feature: frontend.getFreshModel, frontend.getActiveModel, frontend.model-tree */}
+
+Every admin model is available in the model tree loaded with the administration.
+
+```js
+// new model instance from the model tree
+const orders = reactive(getFreshModel('orders').initialize());
+
+// model already rendered on the page
+const school = getActiveModel('schools');
+```
+
+## Model events
+{/* feature: frontend.model-events */}
+
+`on()` accepts one event or a list and returns a function which removes the listener.
+
+```js
+const off = model.on(['create', 'update', 'delete'], () => reloadCalendar());
+
+onUnmounted(off);
+
+model.fields.date_from.on('change', (value) => {
+    // ...
+});
+```
+
+| Event | Payload |
+| --- | --- |
+| `create`, `onCreate` | created row |
+| `update`, `onUpdate` | updated row |
+| `submit`, `onSubmit` | row after create or update |
+| `delete`, `onDelete` | removed ids, only from the default delete button |
+| `fetched` | model after the first rows request |
+| `buttonActionFire` | `{ rows }` returned by a button |
+| `form.open` / `form.close` | opened row or `null` |
+| `destroy` | model removed from the page |
+| field `change` / `change.row` | new value / value loaded from the row |
+
+## Event hub and stores
+{/* feature: frontend.bus, frontend.stores */}
+
+```js
+$bus.$on('refreshStock', handler);
+$bus.$emit('refreshStock', { id: 1 });
+
+useAppStore().models; // all models
+```

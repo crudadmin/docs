@@ -105,3 +105,40 @@ use App\Http\Requests\CustomerRequest;
 
 Customer::validator()->use(CustomerRequest::class)->validate()->getData();
 ```
+
+## Validating with `validateRequest()`
+{/* feature: model.validateRequest(), model.getValidationRules() */}
+
+`validateRequest()` is a shorter form which validates the current request with the field rules and returns the data mutated the same way as the admin form does.
+
+```php app/Http/Controllers/ContactController.php
+public function send()
+{
+    $data = Contact::validateRequest([
+        'name',
+        'email',
+        'message',
+        'terms' => 'required|accepted', // key => rules replaces the rules of a field or adds a new one
+    ]);
+
+    return Contact::create($data);
+}
+```
+
+| Argument | Description |
+| --- | --- |
+| `$fields` | list of validated keys, a `key => rules` pair replaces or adds rules, `null` validates all fields |
+| `$except` | keys removed from validation |
+| `$mutators` | `false` only validates, no data is returned |
+| `$row` | row passed into `fields($row)`, an existing model uses itself: `$contact->validateRequest()` |
+
+Mutated values are merged back into `request()`. A JSON request receives `422` with errors, other requests are redirected back with errors in session. Translatable fields listed in `$fields` are validated in every language.
+
+The rules of a model are available as an array:
+
+```php
+Contact::make()->getValidationRules();   // rules for a new record
+$contact->getValidationRules($contact);  // rules for an existing record
+```
+
+Fields without `required` get `nullable`, `locale` fields are validated as `name.en` (required only in the default language), `multiple` files as `photos.*`, and a required file field is optional when the record already has a file.

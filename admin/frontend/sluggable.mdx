@@ -1,10 +1,10 @@
 ---
-title: "Pretty URLs"
-description: "Generating slugs from a database column, multilanguage slugs, and selecting records by their slug."
+title: "Pretty URLs and SEO"
+description: "Generating slugs from a field, multilanguage slugs, selecting records by their slug, slug history and SEO meta tags."
 icon: "link"
 ---
 
-Many sites need to show their subpages under generated *nice friendly* URL addresses representing records in the database, instead of selecting records by their id.
+Many sites show their subpages under readable URL addresses instead of selecting records by their id.
 
 <CodeGroup>
 ```text Selecting a record by id
@@ -17,8 +17,9 @@ example.com/article/my-article
 </CodeGroup>
 
 ## Generating slugs
+{/* feature: model.sluggable */}
 
-CrudAdmin generates slugs from database values through the `$sluggable` property of the admin model.
+Set `$sluggable` to the field the slug is generated from. `admin:migrate` adds an indexed `slug` column with the length of that field (nullable when the field is not required), and the slug is regenerated on every save.
 
 ```php app/Models/Article.php
 namespace App\Models;
@@ -27,34 +28,39 @@ use Admin\Eloquent\AdminModel;
 
 class Article extends AdminModel
 {
+    protected $migration_date = '2026-01-10 10:00:00';
+
+    protected $name = 'Articles';
+
     protected $sluggable = 'name';
 
     public function fields()
     {
         return [
-            'name' => 'name:Name|placeholder:Enter the article name|required|max:90',
-            'content' => 'name:Article content|type:editor|required',
-            'image' => 'name:Image|image|required',
+            'name' => 'name:Name|required|max:120',
+            'content' => 'name:Content|type:editor',
         ];
     }
 }
 ```
 
-`$sluggable` holds the column the URL addresses are generated from. A helper column named `slug` is created in the database, holding the generated value after the record is created or updated.
+The value is transliterated, lowercased, and non alphanumeric characters are replaced by dashes: `Žltý kôň & Spol. 2026!` becomes `zlty-kon-spol-2026`.
 
 <Frame>
   <img src="/images/article-slug-column.png" alt="Generated slug column in the database table" />
 </Frame>
 
 <Info>
-  If the generated slug already exists in the database, an incremental value is appended. Three records named **My article** produce the slugs **my-article**, **my-article-1** and **my-article-2**.
+  When the slug already exists, an incremental suffix is appended. Three records named **My article** get the slugs **my-article**, **my-article-2** and **my-article-3**. Saving a record whose name produces the same base keeps its current suffix.
 </Info>
+
+When you add `$sluggable` to a model whose table already contains rows, `admin:migrate` generates slugs for all existing rows. If the field does not exist, the migration prints `Unknown slug column` and no column is created.
 
 ## Multilanguage slugs
 {/* feature: field.locale */}
+{/* feature: model.getSlug() */}
 
-If the slug source field has the [`locale`](/admin/model/fields/localization) parameter, the `slug` column is stored as **JSON** holding a slug for every language.
-Duplicate slugs get an increment only in the language where they collide, and the column has no database index.
+If the slug source field has the [`locale`](/admin/model/fields/localization) parameter, the `slug` column is stored as **JSON** holding a slug for every language. Duplicate slugs get an increment only in the language where they collide, and the column has no database index.
 
 ```php app/Models/Article.php
 protected $sluggable = 'name';
@@ -75,58 +81,137 @@ public function fields()
   <img src="/images/article-slug-column-locale.png" alt="Slug column stored as JSON with a value per language" />
 </Frame>
 
-`Article::findBySlug('yellow-house')` searches the slug of the current language.
-
-<Note>
-  If the record has no translation, CrudAdmin falls back to the slug of the default language, or any available translated value.
-</Note>
-
-## Selecting a record by its slug
-
-### By slug
-
-In the controller, use `findBySlug()` or `findBySlugOrFail()` to look up the record by the slug passed as a URL parameter.
-
-```php app/Http/Controllers/ArticleController.php
-class ArticleController extends Controller
-{
-    /*
-     * example.com/article/{slug}
-     */
-    public function show($slug)
-    {
-        $article = Article::findBySlugOrFail($slug);
-
-        return view('article')->withArticle($article);
-    }
-}
-```
-
-### By slug and id
-
-A record can also be selected by its `slug` and `id` at once. When `findBySlug` or `findBySlugOrFail` receives the record id as its second argument, it verifies the slug from the URL and redirects the client to the correct address with a `301` header if it does not match.
-
-```php app/Http/Controllers/ArticleController.php
-class ArticleController extends Controller
-{
-    /*
-     * example.com/article/{id}/{slug}
-     */
-    public function show($id, $slug)
-    {
-        $article = Article::findBySlugOrFail($slug, $id);
-
-        return view('article')->withArticle($article);
-    }
-}
-```
-
-### Reading the slug value
-
-Use `$article->getSlug()` to access the generated slug of a record.
+`getSlug()` returns the slug of the current language, then the slug of the default language, then any available one.
 
 ```blade
-<a href="{{ action('ArticleController@show', $article->getSlug()) }}">
+<a href="{{ action([ArticleController::class, 'show'], $article->getSlug()) }}">
     {{ $article->name }}
 </a>
 ```
+
+## Selecting a record by its slug
+{/* feature: model.findBySlug(), model.findBySlugOrFail() */}
+
+`findBySlug()` returns the record or `false`, `findBySlugOrFail()` aborts with 404. Both work as query scopes, so previous constraints apply.
+
+```php app/Http/Controllers/ArticleController.php
+class ArticleController extends Controller
+{
+    // example.com/article/{slug}
+    public function show($slug)
+    {
+        $article = Article::with('author')->findBySlugOrFail($slug);
+
+        return view('article', compact('article'));
+    }
+}
+```
+
+Localized slugs are searched in the current language. Records without a slug in the current language are found by the slug of the default language.
+
+An array as the second argument selects columns: `Article::findBySlug($slug, ['id', 'slug', 'name'])`.
+
+### By slug and id
+
+Pass the record id as the second argument. When the slug in the URL is outdated, the visitor is redirected with `301` to the same route with the current slug, and the query string is kept.
+
+```php app/Http/Controllers/ArticleController.php
+// example.com/article/{id}/{slug}
+public function show(int $id, string $slug)
+{
+    $article = Article::findBySlugOrFail($slug, $id);
+
+    return view('article', compact('article'));
+}
+```
+
+## Slug history
+{/* feature: config.sluggable_history, model.sluggable_history */}
+
+With `sluggable_history` enabled, every changed slug is stored in the `sluggable_histories` table, and `findBySlug()` / `findBySlugOrFail()` redirect old URLs with `301` to the current slug.
+
+```php config/admin.php
+'sluggable_history' => true,
+```
+
+Run `php artisan admin:migrate` after enabling it. A single model can opt out:
+
+```php
+protected $sluggable_history = false;
+```
+
+## SEO meta tags
+{/* feature: model.seo, model.seoLocalized */}
+
+`$seo` adds meta tag fields into a separate form tab and the database: `meta_title`, `meta_keywords`, `meta_description`, `meta_canonical_url` and `meta_image` (multiple images).
+
+```php
+protected $seo = true;
+```
+
+Use a group id instead of `true` to place the fields into an existing tab of the form:
+
+```php
+protected $seo = 'listing';
+
+public function fields()
+{
+    return [
+        'name' => 'name:Name|required',
+        Group::tab([
+            'perex' => 'name:Perex|type:text',
+        ])->name('Listing')->id('listing'),
+    ];
+}
+```
+
+With [localization](/admin/model/localization) enabled, title, keywords and description are translatable. Keep them as plain columns with:
+
+```php
+protected $seoLocalized = false;
+```
+
+On website requests all meta attributes are hidden from `toArray()` and JSON responses. The `SEO` helper reads them from a model:
+
+```php
+SEO::setModel($article);
+
+SEO::getTitle();        // meta_title (or name) - app name
+SEO::getDescription();
+```
+
+### Visible meta attributes
+{/* feature: model.seoVisible */}
+
+<Warning>
+  `$seoVisible` is suggested for deprecation. Call `makeVisible()` on the model instead.
+</Warning>
+
+`protected $seoVisible = true;` keeps the meta attributes visible in website responses.
+
+### Editing slugs in the administration
+{/* feature: model.slugUnique */}
+
+Models with `$seo` show the slug in the SEO tab together with the **Automatic url** checkbox (`slug_dynamic`). When it is unchecked, the manually entered slug is kept even when the name changes.
+
+The slug field is validated as unique across records which are not deleted (`unique_json` for localized slugs). Disable the rule when slugs may repeat:
+
+```php
+protected $seo = true;
+
+protected $slugUnique = false;
+```
+
+### SEO of routes
+{/* feature: config.seo, config.seo_separator */}
+
+The `seo` configuration enables the **SEO routes** module, where administrators set meta tags of any URL of the website.
+
+```php config/admin.php
+'seo' => true,
+
+// separator between the page title and the site title in SEO::getTitle()
+'seo_separator' => ' | ',
+```
+
+Run `php artisan admin:migrate` after enabling it.

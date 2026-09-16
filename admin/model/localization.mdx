@@ -7,6 +7,8 @@ icon: "languages"
 This page covers the localization settings in `config/admin.php` and how to use them.
 
 ## Enabling localization
+{/* feature: config.localization */}
+{/* feature: helper.Admin::isEnabledLocalization */}
 
 If the application needs multiple language versions, switch the parameter to `true`. Then run the database migration, which creates the `languages` table and adds the language management module to the administration.
 
@@ -24,21 +26,15 @@ If the application needs multiple language versions, switch the parameter to `tr
 
 ### Forced redirect to the default language
 
-To redirect to the default language version automatically, add the global **middleware** to `app/Http/Kernel.php`.
+To redirect to the default language version automatically, add the middleware in `bootstrap/app.php`.
 
-```php app/Http/Kernel.php
-/**
- * The application's global HTTP middleware stack.
- *
- * These middleware are run during every request to your application.
- *
- * @var array
- */
-protected $middleware = [
-    // ...
+```php bootstrap/app.php
+use Admin\Middleware\LocalizationMiddleware;
+use Illuminate\Foundation\Configuration\Middleware;
 
-    \Admin\Middleware\LocalizationMiddleware::class,
-];
+->withMiddleware(function (Middleware $middleware) {
+    $middleware->append(LocalizationMiddleware::class);
+})
 ```
 
 The client is redirected to the default language version on arrival — `http://example.com/` redirects to `http://example.com/sk`.
@@ -46,6 +42,7 @@ The client is redirected to the default language version on arrival — `http://
 With localization active, **every route** is redirected to the address carrying the language code — `http://example.com/articles` redirects to `http://example.com/sk/articles`.
 
 ### Disabling the forced redirect
+{/* feature: config.localization_remove_default */}
 
 The forced redirect can be turned off. On the default language version, every URL is then available without the language code.
 
@@ -54,14 +51,46 @@ The forced redirect can be turned off. On the default language version, every UR
 ```
 
 <Info>
-  With this parameter, content on the default language is available only without the language code — `http://example.com/articles` instead of `http://example.com/sk/articles`.
+  With this parameter, content on the default language is available only without the language code — `http://example.com/articles` instead of `http://example.com/sk/articles`. A different language saved in the session still redirects to its prefix.
 </Info>
+
+### Localized routes and URLs
+{/* feature: helper.localizedRoutes, helper.localeUrl, helper.switchLocale */}
+
+`localizedRoutes()` registers a routes file with the language prefix, so `/articles` is available as `/en/articles` too.
+
+```php bootstrap/app.php
+use Illuminate\Support\Facades\Route;
+
+->withRouting(
+    using: function () {
+        Route::middleware('web')->group(localizedRoutes('routes/web.php'));
+    },
+)
+```
+
+```blade
+<a href="{{ localeUrl('articles') }}">Articles</a>          {{-- /en/articles --}}
+<a href="{{ switchLocale($language) }}">{{ $language->name }}</a> {{-- current URL with ?_locale=de --}}
+```
+
+### Administration language
+{/* feature: config.locale, config.admin_localization */}
+{/* feature: helper.Admin::isEnabledAdminLocalization */}
+
+```php config/admin.php
+'locale' => 'en',              // default language of the administration (en, sk, cs)
+'admin_localization' => true,  // administrators can switch the administration language
+```
+
+`Admin::isEnabledLocalization()` and `Admin::isEnabledAdminLocalization()` return the state of both switches.
 
 ## Gettext — translating static texts
 
 Together with the Gettext extension, CrudAdmin collects every static source text in the application and makes it translatable as *.po* files for [PoEdit](https://poedit.net/), or through the online editor in the administration.
 
 ### Enabling Gettext
+{/* feature: config.gettext */}
 
 Enable the extension in `config/admin.php`.
 
@@ -74,23 +103,13 @@ To translate in JavaScript and Vue components on the frontend, add the library t
 ```blade resources/views/layout.blade.php
         @gettext
 
-        <script src="{{ mix('js/app.js') }}"></script>
+        @vite('resources/js/app.js')
     </body>
 </html>
 ```
 
-With Vue, add the module that binds the translation functions into the `this` constructor of every component.
-
-```javascript resources/js/app.js
-require('./bootstrap');
-
-window.Vue = require('vue');
-
-Vue.use(Gettext);
-```
-
 <Note>
-  CrudAdmin scans the directories where translatable files may live and reloads every source text on change. The scanned paths are defined in the [advanced configuration](/admin/configuration#gettext-source-paths) and can be overridden with your own list.
+  CrudAdmin scans the directories where translatable files may live and reloads every source text on change. The scanned paths are defined in [Gettext options](#gettext-options).
 </Note>
 
 <Warning>
@@ -106,6 +125,7 @@ Vue.use(Gettext);
 For translations to be picked up, static texts have to be written in the right form. The examples below cover both singular and plural.
 
 #### PHP files
+{/* feature: helper._ */}
 
 PHP files follow the standard functions from the [PHP documentation](http://php.net/manual/en/function.gettext.php).
 
@@ -170,6 +190,35 @@ export default {
 </script>
 ```
 
+### Gettext options
+{/* feature: config.gettext_source_paths, config.gettext_admin_source_paths, config.gettext_supported_codes, config.gettext_json, config.gettext_remove_missing */}
+
+```php config/admin.php
+// Sources scanned for website translations, merged with the package defaults
+// (routes, app/Http, app/Mail, app/Notifications, app/Models, resources/views, resources/js, ...)
+'gettext_source_paths' => [
+    'app/Services',
+    'resources/views',
+],
+
+// Sources scanned for administration translations
+'gettext_admin_source_paths' => ['app/Admin', 'app/Models'],
+
+// Language slugs which can not be resolved to a gettext locale automatically
+'gettext_supported_codes' => [
+    'cz' => 'cs_CZ',
+    'english' => 'en_GB',
+],
+
+// /vendor/js/ca-translates-json.js returns translations as JSON
+'gettext_json' => true,
+
+// Remove translations missing in sources instead of flagging them
+'gettext_remove_missing' => true,
+```
+
+The language slug chosen in the administration is used in the URL, for example `example.com/cz`. Built-in codes resolve `sk` to `sk_SK` and `cz` to `cs_CZ`, five letter codes are used as they are. Register other slugs in `gettext_supported_codes` for translations to work.
+
 ### Managing the translations
 
 The generated interface for uploading files from PoEdit:
@@ -199,6 +248,7 @@ The collected texts opened in PoEdit:
 Once language versions and static text translations are set up, the interface for translating the dynamic content stored in the database can be generated too.
 
 ### Unique records per language
+{/* feature: model.localization */}
 
 - A relation between the model and the `languages` table is created automatically.
 - Each language version holds its own records.
@@ -259,9 +309,38 @@ class ArticleController extends Controller
 }
 ```
 
+`Article::localization($languageId)` filters by a given language. The administration lists only the records of the selected language and stores new records into it. `$localization` has an effect only with `localization` enabled in `config/admin.php`.
+
 <Warning>
   After enabling language versions on a model, run `php artisan admin:migrate` to add the relation to the `languages` table.
 </Warning>
+
+### Records owning a language
+{/* feature: model.HasEntryLocales */}
+
+Models like clients or notifications can remember the language of a record, e.g. to send e-mails in the language of the client. Enable `$localization` and use the `HasEntryLocales` trait.
+
+```php app/Models/Client.php
+use Admin\Eloquent\Concerns\HasEntryLocales;
+
+class Client extends AdminModel
+{
+    use HasEntryLocales;
+
+    protected $localization = true;
+}
+```
+
+```php
+$client->addLocale();   // fills an empty language_id with the current language
+$client->saveLocale();  // updates language_id to the current language
+
+$client->getLocale();   // language of the record, or the first language
+
+$client->withLocale(function () use ($client) {
+    $client->notify(new OrderShipped);
+});
+```
 
 ### Mirrored content
 {/* feature: field.locale */}
@@ -279,5 +358,17 @@ public function fields()
 ```
 
 The column stores a JSON object keyed by the language slug. Reading the attribute returns the value of the current language, with a fallback to the default language.
+
+#### Required translations
+{/* feature: model.getDefaultLanguage() */}
+
+Required rules of a `locale` field apply only to the default (first) language, other languages are optional. The model can choose another language, `null` uses the default one.
+
+```php
+public function getDefaultLanguage()
+{
+    return Language::where('slug', 'en')->first();
+}
+```
 
 Fallbacks, validation, API responses and converting existing columns are described in [Translatable fields](/admin/model/fields/localization).
