@@ -1,0 +1,188 @@
+---
+title: "Helpers and events"
+description: "Global helpers, the Admin facade, admin events and registering admin models and config from packages."
+icon: "wrench"
+---
+
+## Global helpers
+
+### admin()
+{/* feature: helper.admin */}
+
+Returns the logged administrator or `null`.
+
+```php
+if ( admin()?->hasAccess(Order::class, 'update') ) {
+    // ...
+}
+```
+
+Permission checks are described in [Permissions](/admin/model/permissions#checking-permissions).
+
+### autoAjax()
+{/* feature: helper.autoAjax */}
+
+Returns a JSON response builder for messages, errors and store data.
+
+```php
+return autoAjax()->success(_('Saved.'))->store(['cart' => $cart]);
+
+autoAjax()->error(_('The order can not be changed.'))->throw();
+```
+
+See the [bootstrap request](/development/bootstrap) for a larger example.
+
+### Frontend editor
+{/* feature: helper.uploadable, helper.linkable */}
+
+With the [frontend editor](/admin/configuration#frontend-editor) enabled, administrators can replace images and links rendered by these helpers directly on the website. Without the editor, the default values are returned.
+
+```blade
+{{-- image with a key, default asset and optional resize --}}
+<img src="{{ uploadable('hero', 'images/hero.jpg', [1200, 600]) }}" alt="">
+
+{{-- link with a key and default URL --}}
+<a href="{{ linkable('footer.contact', '/contact') }}">Contact</a>
+```
+
+### Other helpers
+{/* feature: helper.trim_end, helper.array_wrap */}
+
+```php
+trim_end('path///', '/');  // 'path'
+array_wrap($value);        // Arr::wrap()
+```
+
+Translation helpers (`_()`, `localeUrl()`, `switchLocale()`, `localizedRoutes()`) are described in [Localization](/admin/model/localization).
+
+### Deprecated helpers
+{/* feature: helper.encryptText, helper.isActiveController */}
+
+<Warning>
+  `encryptText()` (base64 obfuscation of e-mails and phones) and `isActiveController()` (active controller check for Blade menus) are suggested for deprecation.
+</Warning>
+
+## Admin facade
+
+### Request type
+{/* feature: helper.Admin::isAdmin, helper.Admin::isFrontend */}
+
+`Admin::isAdmin()` is true for URLs starting with `/admin`. `Admin::isFrontend()` is true for other HTTP requests, never in console.
+
+```php
+public function scopeVisible($query)
+{
+    if ( Admin::isFrontend() ) {
+        $query->where('visible', true);
+    }
+}
+```
+
+### Models
+{/* feature: helper.Admin::getModel, helper.Admin::getModelByTable, helper.Admin::hasAdminModel */}
+
+```php
+$orders = Admin::getModel('Order');         // new App\Models\Order, the basename is case insensitive
+$class = Admin::getModel('Order', true);    // 'App\Models\Order'
+$model = Admin::getModelByTable('orders');  // new instance or null
+Admin::hasAdminModel('Order');              // true
+```
+
+### Request cache
+{/* feature: helper.Admin::cache */}
+
+A cache living for one request, shared by the whole administration.
+
+```php
+$vatRates = Admin::cache('vat_rates', fn () => VatRate::pluck('rate', 'id'));
+```
+
+### Log
+{/* feature: helper.Admin::log */}
+
+```php
+Admin::log()->info('Stock imported'); // storage/logs/crudadmin.log
+```
+
+Configuration switches are available as `Admin::isEnabledLocalization()`, `Admin::isEnabledAdminLocalization()`, `Admin::isHistoryEnabled()` and `Admin::isRolesEnabled()`, see [Configuration](/admin/configuration).
+
+## Admin events
+{/* feature: helper.Admin::event, helper.Admin::fire, helper.Admin::forgetEvent, helper.Admin::registerEvents */}
+
+```php
+Admin::event('my.event', function (&$value) {
+    $value = strtoupper($value);
+});
+
+$args = [&$value];
+Admin::fire('my.event', $args);
+
+Admin::forgetEvent('my.event');
+
+// class with a register() method
+Admin::registerEvents(\Vendor\Package\Admin\Events::class);
+```
+
+### Migration events
+{/* feature: model-event.migrations.{table}.fire_after_migration, model-event.migrations.{table}.fire_after_all */}
+
+```php
+use Illuminate\Database\Schema\Blueprint;
+
+Admin::event('migrations.orders.fire_after_all', function (Blueprint $table) {
+    $table->index(['client_id', 'created_at']);
+});
+```
+
+`fire_after_migration` runs after the table was migrated, `fire_after_all` after all tables. The `_noScheme` suffix runs the callback without the schema builder. Callbacks run once. For hooks inside the model see [migration hooks](/admin/model/migrations#migration-hooks).
+
+### Generator events
+{/* feature: model-event.admin.command.model.create, model-event.admin.command.module.create */}
+
+`admin:model` fires `admin.command.model.create.stub_path`, `stub`, `namespaces`, `parameters`, `fields` and `options`. `admin:module` fires `admin.command.module.create.stub_path`, `stub` and `options`. Arguments are passed by reference.
+
+```php
+Admin::event('admin.command.model.create.fields', function (&$fields, $command) {
+    $fields['sku'] = 'name:SKU|max:20';
+});
+```
+
+## Extending from packages
+
+### Registering models
+{/* feature: helper.Admin::registerModel, helper.Admin::registerAdminModels */}
+
+```php
+public function boot()
+{
+    Admin::registerAdminModels(__DIR__.'/Models/*', 'Vendor\Package\Models');
+
+    Admin::registerModel(\Vendor\Package\Models\Setting::class);
+}
+```
+
+A model whose class basename is already registered is skipped.
+
+### Merging package config
+{/* feature: helper.AdminHelperServiceProvider::mergeAdminConfigs, helper.AdminHelperServiceProvider::pushComponentsPaths */}
+
+Extend `Admin\Providers\AdminHelperServiceProvider` and merge your defaults. Values from the application `config/admin.php` always win, lists are appended, and package `scripts` are loaded before application scripts.
+
+```php
+use Admin\Providers\AdminHelperServiceProvider;
+
+class PackageServiceProvider extends AdminHelperServiceProvider
+{
+    public function boot()
+    {
+        $this->mergeAdminConfigs([
+            'groups' => fn () => ['store' => [_('Store'), 'fa-shopping-cart']],
+            'modules' => ['Vendor\Package\Admin\Modules' => __DIR__.'/Admin/Modules'],
+            'gettext_source_paths' => [__DIR__.'/Views'],
+        ]);
+
+        // adds __DIR__.'/../Admin/Components' relative to the provider
+        $this->pushComponentsPaths();
+    }
+}
+```

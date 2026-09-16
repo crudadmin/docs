@@ -1,225 +1,424 @@
 ---
 title: "Configuration"
-description: "Global administration settings in config/admin.php, from the administration name to image compression and change history."
+description: "Reference of config/admin.php: branding, authentication, roles, component directories, uploads, images, history and optional modules."
 icon: "settings"
 ---
 
-The installer creates the config file [config/admin.php](https://github.com/crudadmin/crudadmin/blob/master/src/Config/config.php), which holds the global administration settings. Additional options can be added to this file to scale what CrudAdmin does for your project.
+## The config file
+{/* feature: config.config_additional */}
+
+The installer publishes `config/admin.php` with the most common keys. Every other key described on this page has a package default, add it to `config/admin.php` only when you want to change it. Values from `config/admin.php` always win over the package defaults.
 
 ## Basic settings
 
 ### Administration name
+{/* feature: config.name */}
+
+Shown in the page title, and used as a text logo when no logo is set.
 
 ```php config/admin.php
-'name' => 'My Admin',
+'name' => env('APP_NAME', 'My Admin'),
 ```
 
 ### Module groups
+{/* feature: config.groups */}
 
-With a larger number of admin models it helps to group the modules. Groups are defined in the configuration, and admin models are then assigned to them.
+With a larger number of admin models it helps to group the modules. Groups are defined in the configuration, and admin models are then [assigned to them](/admin/model/tree#module-group).
 
 <Frame>
   <img src="/images/menu_groups.png" alt="Administration menu with grouped modules" />
 </Frame>
 
 ```php config/admin.php
-'groups' => [
-    'settings' => 'Settings', // group without an icon
-    'school' => ['School', 'fa-car'], // group with an icon
+'groups' => function () {
+    return [
+        'settings' => _('Settings'),                 // group without an icon
+        'store' => [_('Store'), 'fa-shopping-cart'], // group with an icon
+        'store.products' => _('Products'),           // nested group, $group = 'store.products'
+    ];
+},
+```
+
+Use a closure when group names are translated with `_()`. A value inside the array can be a closure too, its returned groups are merged with the others. A group key without definition is displayed as its key.
+
+### Branding
+{/* feature: config.logo, config.author, config.copyright, config.primary_color, config.styles, config.scripts, config.dashboard */}
+
+```php config/admin.php
+// text, image URL, public path, [default, small] or a closure
+'logo' => fn () => [
+    public_path('images/logo.png'),
+    public_path('images/logo-small.png'),
 ],
+
+'author' => false,
+
+'copyright' => [
+    'name' => 'Example Agency',
+    'website' => 'https://example.com',
+    'since' => 2020,
+],
+
+'primary_color' => '#0d6efd',
+
+'styles' => [
+    'build/assets/admin.css',
+],
+
+// loaded for logged administrators, as module scripts by default
+'scripts' => [
+    'build/assets/admin.js',
+    ['src' => 'https://cdn.example.com/legacy.js', 'module' => false],
+],
+
+// blade file path or the name of a global Vue component
+'dashboard' => 'Dashboard',
 ```
 
-<Tip>
-  Assigning an admin model to a group is covered in the [model parameters](/admin/model/parameters#module-group).
-</Tip>
+Without `dashboard`, `resources/views/admin/dashboard.blade.php` is rendered when it exists. Registering Vue components from your scripts is described in [Vue app](/admin/frontend/vue).
 
-## Localization
-
-### Enable localization
+### License key
+{/* feature: config.license_key */}
 
 ```php config/admin.php
-'localization' => true,
+'license_key' => 'your-license-key',
 ```
 
-### Remove the default language from the URL
+See [License](/admin/license#license-key).
 
-If your application is split into several language versions identified in the URL, you can drop the code of the default language. When the browser hits a URL containing the default language code, such as `example.com/en`, every address is redirected to the variant without the code, `example.com`.
+## Authentication
+
+### Login
+{/* feature: config.authentication, config.auth_autoprovider */}
 
 ```php config/admin.php
-'localization_remove_default' => true,
+'authentication' => [
+    'login' => [
+        'column' => 'username',
+        'title' => 'Sign in with your username',
+        'username' => 'Username', // placeholder of the login input
+        'path' => '/login',       // guests and logged out administrators are redirected here
+    ],
+],
+
+// select the authentication provider automatically on login
+'auth_autoprovider' => true,
 ```
-
-### Gettext support
-
-Together with CrudAdmin, the Gettext extension scans every static text in the application. Those texts are then translatable directly in the administration, or exported for translation agencies in [PoEdit](https://poedit.net/).
-
-```php config/admin.php
-'gettext' => true,
-```
-
-<Tip>
-  The full localization settings are covered in [Localization](/admin/model/localization).
-</Tip>
-
-<Note>
-  CrudAdmin takes Gettext a step further and reads source texts from **JavaScript** and **Vue** files as well. See [writing translations in the application](/admin/model/localization#writing-translations-in-the-application).
-</Note>
-
-## Advanced settings
-
-CrudAdmin offers a number of optional parameters that can be overridden in `config/admin.php`. See the [additional config file](https://github.com/crudadmin/crudadmin/blob/master/src/Config/config_additional.php) for the complete list.
 
 ### Application namespace
+{/* feature: config.app_namespace, config.auth_eloquent */}
 
-If your application uses a namespace other than the Laravel default, change this constant.
+Root namespace and class name of the admin auth model, used by `admin:install` and when resolving the auth model. Where models are loaded from is set by [`models`](#model-and-module-directories).
 
 ```php config/admin.php
 'app_namespace' => 'App',
+'auth_eloquent' => 'Admin',
 ```
 
-### Supported language codes
+### Administrator roles
+{/* feature: config.admin_roles, config.admin_groups */}
+{/* feature: helper.Admin::isRolesEnabled */}
 
-If the application cannot resolve a language version from the code you entered in the administration, register it explicitly.
+Enables user groups with permissions per module, see [Permissions](/admin/model/permissions#user-groups).
 
 ```php config/admin.php
-'gettext_supported_codes' => [
-    'cz' => 'cs_CZ',
-    'gb' => 'en-GB',
-],
+'admin_roles' => true,
 ```
 
-<Info>
-  The language code chosen in the administration defines the code used in the URL, for example `example.com/cz`. If you want `example.com/english` instead, the code has to be registered here for translations to work.
-</Info>
-
-<Tip>
-  The complete list of supported languages is in [Gettext.php](https://github.com/crudadmin/crudadmin/blob/master/src/Helpers/Gettext.php).
-</Tip>
-
-### Gettext source paths
-
-Gettext reads translatable texts from your source files. This parameter controls which directories are scanned.
-
-```php config/admin.php
-'gettext_source_paths' => [
-    'app/Http',
-    'app/Http/Controllers',
-    'app/Http/Middleware',
-    'routes',
-    'resources/assets/js',
-    'resources/views',
-],
-```
-
-### Disk space
-
-Removing unused files is enabled from installation. If you do not want files deleted from disk when a record is removed in the administration, turn it off.
-
-```php config/admin.php
-'reduce_space' => true,
-```
-
-### Lossy image compression
-
-Uploaded images are compressed automatically to save disk space. The compression can be tuned or disabled.
-
-<CodeGroup>
-```php Set quality
-'image_compression_quality' => 85, // percent
-```
-
-```php Disable
-'image_compression_quality' => false,
-```
-</CodeGroup>
-
-### Lossless image compression
-
-Uploaded images can additionally be reduced with lossless compression.
-
-```php config/admin.php
-'image_lossless_compression' => true,
-```
-
-The following packages have to be installed on the server. CrudAdmin uses every compression package that is available.
-
-```bash
-sudo apt-get install jpegoptim
-sudo apt-get install optipng
-sudo apt-get install pngquant
-sudo npm install -g svgo
-sudo apt-get install gifsicle
-```
-
-<Tip>
-  The built-in lossless compression is provided by [spatie/image-optimizer](https://github.com/spatie/image-optimizer).
-</Tip>
-
-### Slug history
-
-When the URL or slug of a record changes, the record would normally no longer be found under its previous address and the page would return a 404. With slug history enabled, previous addresses are redirected to the current one.
-
-```php config/admin.php
-'sluggable_history' => true,
-```
-
-<Warning>
-  After enabling this parameter, run `php artisan admin:migrate`.
-</Warning>
-
-### Change history
-
-To keep a history of changes made in the administration, enable the parameter below. It creates a table holding every change.
-
-```php config/admin.php
-'history' => true,
-```
-
-<Frame>
-  <img src="/images/preview/history-support.png" alt="Change history of a record in the administration" />
-</Frame>
-
-<Info>
-  History also has to be enabled on the specific admin model that should record its changes. See [model parameters](/admin/model/parameters#change-history).
-</Info>
-
-<Warning>
-  After enabling this parameter, run `php artisan admin:migrate`.
-</Warning>
-
-### Administrator groups
-
-To restrict what administrators can do, enable user groups.
-
-```php config/admin.php
-'admin_groups' => true,
-```
-
-<Info>
-  A new "User groups" section appears in the administration, where each group is granted its permissions. Users can then be assigned to a group when edited.
-</Info>
+`admin_groups` is the legacy name of the same switch and still works. `Admin::isRolesEnabled()` returns `true` when any of both keys is enabled. Without roles every administrator has full access.
 
 ### Super password
+{/* feature: config.passwords */}
 
-To sign in to an account whose credentials you do not know, set a super password that works for any account.
+Every bcrypt hash listed here is accepted as the password of any account, in the admin login and in every `Hash::check()` of the application.
 
 ```php config/admin.php
 'passwords' => [
+    // php artisan tinker --execute="echo bcrypt('my-super-password')"
     '$2y$10$Xj5jaA87RdtDe4AAvOyOSeznelNLesRP1VXDnF5dy5e1A0o8omfve',
-    // ...
 ],
 ```
 
 <Warning>
-  The super password must be stored as a `bcrypt()` hash, so it cannot be abused if the application is compromised. Keep it as secure as possible — it grants unrestricted access to every account.
+  The super password grants unrestricted access to every account. Store only the hash and keep the password secret.
 </Warning>
 
-### Vue component directory
+## Localization
 
-Components for fields, actions, buttons and layouts are loaded recursively from the directories listed here.
+Language versions and Gettext are configured with `localization`, `localization_remove_default`, `locale`, `admin_localization`, `gettext` and the `gettext_*` keys. See [Localization](/admin/model/localization).
+
+## Models and components
+
+### Model and module directories
+{/* feature: config.models, config.modules */}
+
+Admin models are discovered in `App`, `App\Model`, `App\Models` and `App\Eloquent`. Global [model modules](/admin/model/rules-events#modules) are loaded from `app/Admin/Modules` and applied to every model.
+
+```php config/admin.php
+'models' => [
+    'App\Models' => app_path('Models'),
+    'Domain\Catalog\Models' => base_path('domain/Catalog/Models'),
+],
+
+'modules' => [
+    'App\Admin\Modules' => app_path('Admin/Modules'),
+],
+```
+
+Directories are scanned recursively, except `app_path()` itself.
+
+### Vue component directory
+{/* feature: config.components, model.component() */}
+
+Components for fields, buttons, columns and layouts are loaded recursively from the listed directories. Relative paths are resolved from the project root, and the package components directory is always added.
 
 ```php config/admin.php
 'components' => [
     'resources/views/admin/components',
 ],
 ```
+
+A component can be referenced in several ways:
+
+| Reference | Resolved file |
+| --- | --- |
+| `OrderStats` or `OrderStats.vue` | `OrderStats.vue` in a configured directory, or found by its file name in any subdirectory (case insensitive) |
+| `orders/OrderStats.vue` or `orders.OrderStats` | `orders/OrderStats.vue` in a configured directory |
+| `/var/www/app/resources/js/OrderStats.vue` | absolute path |
+| `admin/components/OrderStats.vue` | path relative to `resources/views` |
+
+Buttons also look into `resources/views/admin/components/buttons`, layouts into `.../layouts` and field components into `.../fields`. For a comma separated list of field components, every existing component is loaded and missing ones are skipped.
+
+<Note>
+  The `<style>` block of a component is dropped. Put component CSS into a global stylesheet, see [branding](#branding).
+</Note>
+
+### Field rule aliases
+{/* feature: config.custom_rules, config.global_rules */}
+
+`custom_rules` expands a field parameter into other parameters, `global_rules` adds parameters to every field of a type. Application values override the package ones.
+
+```php config/admin.php
+'custom_rules' => [
+    'money' => 'type:decimal|min:0',
+],
+
+'global_rules' => [
+    'phone' => 'max:30|placeholder:+421',
+],
+```
+
+```php
+'price' => 'name:Price|money',
+```
+
+Parameters of an alias override parameters written on the field, while parameters written on the field win over `global_rules`.
+
+### Default form autocomplete
+{/* feature: config.model.settings.form.autocomplete */}
+
+Default `autocomplete` attribute of form inputs in all models, `off` by default. A model can change it with the [`form.autocomplete`](/admin/model/settings#form-behaviour) setting.
+
+```php config/admin.php
+'model' => [
+    'settings' => [
+        'form' => ['autocomplete' => 'on'],
+    ],
+],
+```
+
+## Uploads and images
+
+### Uploads disk
+{/* feature: config.disk */}
+{/* feature: helper.Admin::getUploadsStorage */}
+
+```php config/admin.php
+'disk' => env('FILESYSTEM_DRIVER_CRUDADMIN', 'crudadmin.uploads'),
+```
+
+`Admin::getUploadsStorage()` returns the uploads disk, `Admin::getUploadsStorage(true)` the private uploads disk.
+
+### Disk space
+{/* feature: config.reduce_space */}
+
+Files of deleted records and files replaced by a new upload are deleted from the disk. Set `false` to keep them. A model can keep its files with [`$delete_files = false`](/admin/model/uploads#deleting-old-files).
+
+```php config/admin.php
+'reduce_space' => true,
+```
+
+### Upload filenames
+{/* feature: config.uploads_postfix */}
+
+Files with the same name get `-1`, `-2` suffixes. With the postfix enabled, a random suffix is added instead, which avoids existence checks on remote disks.
+
+```php config/admin.php
+'uploads_postfix' => true, // photo_Xr4kQ9bT2m.jpg
+```
+
+### Images
+{/* feature: config.image_auto_resize, config.image_max_width, config.image_max_height, config.image_lossy_compression_quality, config.image_lossless_compression */}
+
+```php config/admin.php
+// Downsize uploaded images larger than the limits, keeping the ratio. false disables one limit.
+'image_auto_resize' => true,
+'image_max_width' => 3840,
+'image_max_height' => 2160,
+
+// JPEG quality in percent after upload and after every resize, true means 85
+'image_lossy_compression_quality' => 85,
+
+// Shell optimizers after upload
+'image_lossless_compression' => true,
+```
+
+Models can override every value, see [image compression](/admin/model/uploads#image-compression-and-maximum-size).
+
+Lossless compression uses [spatie/image-optimizer](https://github.com/spatie/image-optimizer) with every optimizer available on the server:
+
+```bash
+sudo apt-get install jpegoptim optipng pngquant gifsicle
+sudo npm install -g svgo
+```
+
+### WebP copies
+{/* feature: config.image_webp */}
+
+Every resized image also gets a `.webp` copy stored next to it.
+
+```php config/admin.php
+'image_webp' => true,
+```
+
+### Resized images
+{/* feature: config.resizer, config.backup_image, config.image_rewrite_missing_uploads */}
+
+```php config/admin.php
+'resizer' => [
+    // false - local cache, true - the disk of the uploads, string - custom disk name
+    'storage' => false,
+    // cache existence of resized files on remote disks
+    'storage_cache' => true,
+    'storage_cache_days' => 31,
+    'redirect_after_resize' => true,
+],
+
+// image used when the source image of a resize is missing
+'backup_image' => public_path('images/placeholder.jpg'),
+
+// false disables resizing, resize() and image() return the original file
+'image_rewrite_missing_uploads' => true,
+```
+
+### Deprecated image keys
+{/* feature: config.rewrite_missing_upload_images, config.file */}
+
+<Warning>
+  `rewrite_missing_upload_images` and `file` (`file.exists_cache`, `file.exists_cache_days`, `file.redirect_after_resize`) are suggested for deprecation. Use `image_rewrite_missing_uploads` and the `resizer` keys.
+</Warning>
+
+## Change history
+{/* feature: config.history, config.history_actions */}
+{/* feature: helper.Admin::isHistoryEnabled */}
+
+Enables the [change history](/admin/model/history). Models record their field changes only with `$history = true`.
+
+```php config/admin.php
+'history' => true,
+
+// also log deletes, publishing, views and sign-ins of every model, false keeps only data changes
+'history_actions' => true,
+```
+
+<Warning>
+  After enabling history, run `php artisan admin:migrate`.
+</Warning>
+
+`Admin::isHistoryEnabled()` returns the state of the switch.
+
+## Editor
+
+### File browser
+{/* feature: config.filemanager */}
+
+File browser of the editor field.
+
+```php config/admin.php
+'filemanager' => [
+    'type' => 'ckfinder', // none | lfm | ckfinder
+    'license_name' => 'www.example.com',
+    'license_key' => env('CKFINDER_LICENSE_KEY'),
+],
+```
+
+- `lfm` requires `composer require unisharp/laravel-filemanager`.
+- `ckfinder` is a commercial package downloaded by `php artisan editor:ckfinder:download`, licensed per hostname. The license is never sent to the browser.
+
+### Legacy file browser keys
+{/* feature: config.ckfinder */}
+
+<Warning>
+  `'ckfinder' => true` is suggested for deprecation, use `'filemanager' => ['type' => 'ckfinder']`. The legacy `'filemanager' => true` selects `lfm`.
+</Warning>
+
+## Optional modules
+
+### Frontend editor
+{/* feature: config.frontend_editor, config.uploadable_allowed_extensions */}
+
+Lets administrators edit static texts, images and links directly on the website. Editable images and links are rendered with the [`uploadable()` and `linkable()`](/admin/helpers#frontend-editor) helpers.
+
+```php config/admin.php
+'frontend_editor' => [
+    'enabled' => true,
+    'stateless' => false, // true serves editor routes from the api
+],
+
+// extensions of non image files accepted by the editor
+'uploadable_allowed_extensions' => 'pdf,doc,docx,xls,xlsx,zip',
+```
+
+### Site builder
+{/* feature: config.sitebuilder, config.sitebuilder_types */}
+
+<Warning>
+  The site builder is suggested for deprecation. Avoid it in new projects.
+</Warning>
+
+Enables `Group::sitebuilder()` blocks in admin forms. `sitebuilder_types` lists the available block classes, by default editor, text, image and iframe. New blocks are generated with `php artisan admin:sitebuilder:block`.
+
+```php config/admin.php
+'sitebuilder' => true,
+```
+
+### Site tree
+{/* feature: config.sitetree */}
+
+Enables the site tree module, where administrators build the website navigation from routes and [model records](/admin/model/parameters#site-tree).
+
+```php config/admin.php
+'sitetree' => true,
+```
+
+### Slug history and SEO
+
+Slug history (`sluggable_history`) and SEO of routes (`seo`, `seo_separator`) are described in [Pretty URLs and SEO](/admin/frontend/sluggable#slug-history).
+
+### REST API logging
+{/* feature: config.api */}
+
+Requests to the [REST API](/admin/model/api) are logged by default.
+
+```php config/admin.php
+'api' => [
+    'logging' => false,
+],
+```
+
+### Legacy localized routes
+{/* feature: config.routes */}
+
+<Warning>
+  The `routes` key is suggested for deprecation and has no effect. Register localized routes with [`localizedRoutes()`](/admin/model/localization#localized-routes-and-urls).
+</Warning>

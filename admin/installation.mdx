@@ -6,36 +6,27 @@ icon: "download"
 
 ## Requirements
 
-- Laravel 5.4
-- PHP 7.1
-- MySQL 5.7
+- PHP 8.3 or newer
+- Laravel 11 or newer
+- MySQL or MariaDB
 - Apache or Nginx
 
 ## 1. Install Laravel
 
-Install the [Laravel framework](https://laravel.com/docs/master/installation) first. Once it is installed and the database connection is configured, continue with the next step.
+Install the [Laravel framework](https://laravel.com/docs/installation) first. Once it is installed and the database connection is configured, continue with the next step.
 
 ## 2. Add the CrudAdmin package
 
-The package is published at [packagist.org/packages/crudadmin/crudadmin](https://packagist.org/packages/crudadmin/crudadmin).
+CrudAdmin 6 is installed from the private composer repository, see [installing the licensed packages](/admin/license#installing-the-licensed-packages).
 
 ```bash
-composer require "crudadmin/crudadmin"
+composer require crudadmin/crudadmin:^6.0
 ```
 
-### Registering the package on Laravel 5.4 and older
-
-Add the service provider to `config/app.php` so Laravel loads the package.
-
-```php config/app.php
-Admin\Providers\AppServiceProvider::class
-```
-
-<Note>
-  On **Laravel 5.5** and newer the package registers itself, so you can skip this step.
-</Note>
+The package registers itself through Laravel package discovery.
 
 ## 3. Run the installer
+{/* feature: command.admin:install, command.admin:update */}
 
 ```bash
 php artisan admin:install
@@ -50,7 +41,9 @@ The installer performs the following changes:
 1. Copies the `assets` files with all public files into `/public/vendor/crudadmin`.
 2. Creates the administration config file `/config/admin.php`.
 3. Creates the base database layer with the users table and one demo account. The credentials are printed in the terminal.
-4. Removes the migration `/database/migrations/2014_10_12_100000_create_password_resets_table.php`, which CrudAdmin does not need.
+4. Removes the default users table migration `2014_10_12_000000_create_users_table.php` when it exists, the users table is created by CrudAdmin.
+
+After every `composer update crudadmin/*`, publish the new assets with `php artisan admin:update`. All commands are listed in [Artisan commands](/admin/commands).
 
 ## 4. Done
 

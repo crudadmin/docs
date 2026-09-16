@@ -1,0 +1,58 @@
+---
+title: "Artisan commands"
+description: "Commands for installing, updating, migrating and generating administration classes."
+icon: "terminal"
+---
+
+## Installation and updates
+{/* feature: command.admin:account */}
+{/* feature: command.editor:ckeditor:download, command.editor:ckfinder:download */}
+
+| Command | Description |
+| --- | --- |
+| `admin:install` | Publishes the config and assets, runs migrations and creates the `admin@admin.com` demo account. Safe to run again, an existing demo account is kept. |
+| `admin:update` | Replaces published admin assets with the installed version. Run it after `composer update crudadmin/*`. |
+| `admin:account` | Creates another administrator, asks for the username, e-mail and password. |
+| `editor:ckeditor:download` | Downloads CKEditor, skipped when installed (use `--force`). |
+| `editor:ckfinder:download` | Downloads the CKFinder connector for the [file browser](/admin/configuration#file-browser). |
+
+## Migrations
+{/* feature: command.admin:encrypt-existing */}
+
+| Command | Description |
+| --- | --- |
+| `admin:migrate` | Creates and updates the tables of all admin models, see [Migrations](/admin/model/migrations). |
+| `admin:encrypt-existing` | Encrypts existing plain values of [`encrypted`](/admin/model/fields/database#encrypted-values) fields in all admin models. |
+
+## Generators
+{/* feature: command.admin:export, command.admin:statistics, command.admin:sitebuilder:block, command.admin:component */}
+
+Subdirectories in the name become namespaces, e.g. `admin:button Orders/SendInvoice` creates `App\Admin\Buttons\Orders\SendInvoice`. Existing files are never overwritten.
+
+| Command | Creates |
+| --- | --- |
+| `admin:model Name` | [admin model](/admin/model/index#creating-an-admin-model) |
+| `admin:button Name` | [button](/admin/model/actions#creating-a-button) in `app/Admin/Buttons` |
+| `admin:rule Name` | [admin rule](/admin/model/rules-events#admin-rules) in `app/Admin/Rules` |
+| `admin:module Name` | [model module](/admin/model/rules-events#modules) in `app/Admin/Modules` |
+| `admin:layout Name` | [layout](/admin/model/layouts#creating-a-layout) in `app/Admin/Layouts` with a Vue component or Blade view |
+| `admin:component Name` | Vue component in `resources/views/admin/components/{fields,layouts,buttons,columns}/Name.vue` |
+| `admin:request Name` | [form request](/admin/validation/request) in `app/Http/Requests` |
+| `admin:export Name` | [export](/admin/model/listing#exports) in `app/Admin/Exports` |
+| `admin:statistics Name` | statistics class in `app/Admin/Statistics` |
+| `admin:sitebuilder:block Name` | site builder block in `app/Admin/Sitebuilder` and its Blade view |
+
+## Maintenance
+{/* feature: command.admin:clean, command.admin:dev */}
+
+| Command | Description |
+| --- | --- |
+| `admin:clean` | Shows the upload storage size per model and deletes files not referenced by any record, or referenced only by deleted records. |
+| `admin:dev on\|off` | Turns the development mode of the administration on or off, without an argument it toggles it. |
+
+## Deprecated commands
+{/* feature: command.admin:preresize, command.admin:queue */}
+
+<Warning>
+  `admin:preresize` (resizes all images of a model field into the cache) and `admin:queue` (starts `queue:work` from cron when it is not running) are suggested for deprecation. Resize images on demand with `resize()`, and run queue workers with Supervisor.
+</Warning>

@@ -33,7 +33,7 @@ CrudAdmin builds the whole administration environment from your **admin models**
 </Frame>
 
 <Tip>
-  Icons are picked automatically from the English model names. See [ModelIcons.php](https://github.com/crudadmin/crudadmin/blob/master/src/Traits/ModelIcons.php) for the mapping.
+  Icons are picked automatically from well known table names, or set with [`$icon`](/admin/model/parameters#module-icon).
 </Tip>
 
 ## Form generation and validation
@@ -52,7 +52,7 @@ When a model carries parameters that describe a relationship with other models, 
 
 ### 1. Linking admin models through a relation
 
-This example links two admin models with the [belongsToModel](/admin/model/relations#tree-structured-models) property. Once linked, opening the parent record shows a nested section for the related model.
+This example links two admin models with the [belongsToModel](/admin/model/tree#tree-structured-models) property. Once linked, opening the parent record shows a nested section for the related model.
 
 <Frame>
   <img src="/images/preview/article-relationship-model.png" alt="Two admin models linked with belongsToModel" />
@@ -83,7 +83,7 @@ From the fields in the admin model, CrudAdmin created the database tables, set t
 </Warning>
 
 <Info>
-  Depending on the admin model configuration, CrudAdmin adds extra columns such as the record position, publication date, deletion date, creation date and update date (`_order`, `published_at`, `deleted_at`, `updated_at`). These can be turned off with the [model parameters](/admin/model/parameters).
+  Depending on the admin model configuration, CrudAdmin adds extra columns such as the language, record position, slug, publication date and timestamps (`language_id`, `_order`, `slug`, `published_at`, `created_at`, `updated_at`, `deleted_at`). See [automatic columns](/admin/model/migrations#automatic-columns).
 </Info>
 
 ### 4. The generated interface with a nested relation
