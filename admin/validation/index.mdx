@@ -1,93 +1,107 @@
 ---
 title: 'Validation'
-description: 'This documentation describes how validation is handled with crudadmin. CrudAdmin uses extended automatic validator generator, which helps you automaticaly using defined rules in AdminModel.'
+description: 'Validate any request with the field rules of an admin model.'
 ---
 
-### Creating resource with help of admin model rules.
+## Validating a request with admin model rules
+{/* feature: helper.validator */}
 
-Following methods will use automatic validation rules defined in Customer model. Validation whitelists only fields defined in `only` method, with one extra additional rule attached which does not exist in model.
+`Model::validator()` builds Laravel validation rules from the fields of the admin model and returns the data mutated the same way as the admin form does it (checkboxes become `0`/`1`, empty strings `null`, files are uploaded, locale values are cleaned).
+
+The rules come from the field definitions, see [validation rules](/admin/model/fields/validation).
 
 ```php app/Http/Controllers/CustomerController.php
 <?php
 
-namespace App\Http\Controller;
+namespace App\Http\Controllers;
+
+use App\Models\Customer;
 
 class CustomerController extends Controller
 {
-    /**
-     * Use only given fields from admin model
-     *
-     * @return  array
-     */
     public function register()
     {
-        $data = Customer::validator()->only([
-            'username', 'email', 'password'
-        ])->merge([
-            'license_terms' => 'required',
-        ])->validate()->getData();
+        $data = Customer::validator()
+            ->only(['username', 'email', 'password'])
+            ->merge(['terms' => 'required|accepted'])
+            ->validate()
+            ->getData();
 
-        Customer::create($data);
+        return Customer::create($data);
     }
 }
 ```
+
+`validate()` throws a validation exception. A JSON request receives the standard `422` response with `errors`, other requests are redirected back with errors in session.
+
+The current request is used by default, pass another one with `Customer::validator($request)`. The same method exists on a model instance, `$customer->validator()`.
 
 ## Supported methods
 
 ### `only`
 
-Whitelists fields from admin model which will be automaticlaly validated in incoming request.
+Validates and returns only given fields. A key with rules also merges the rules.
 
 ```php
-$model->validator()->only([
-    'username', 'email', 'password'
-])->validate()->getData()
+Customer::validator()->only(['username', 'email', 'phone' => 'required'])->validate()->getData();
 ```
 
 ### `merge`
 
-Merges additional data with incoming request.
+Adds rules. A new key adds a field which is not in the model (it is also returned by `getData()`), an existing key appends rules to the model rules.
 
 ```php
-$model->validator()->merge([
-    'license_terms' => 'required',
-])->validate()->getData()
+Customer::validator()->merge([
+    'terms' => 'required|accepted',
+    'phone' => 'required',
+])->validate();
 ```
 
 ### `replace`
 
-Replaces existing rules defined in admin model.
+Replaces the model rules of given fields.
 
 ```php
-$model->validator()->replace([
-    'username' => 'max:10',
-])->validate()->getData()
+Customer::validator()->replace([
+    'username' => 'required|max:10',
+])->validate();
 ```
 
 ### `validate`
 
-Validates incoming request and throws validation exception if validation fails.
-
-```php
-$model->validator()->validate()
-```
+Validates the request and returns the validator for chaining.
 
 ### `getData`
 
-Returns validated and processed data in array.
+Returns validated keys only, mutated by the admin request mutators.
 
 ```php
-$data = $model->validator()->validate()->getData();
+$data = Customer::validator()->validate()->getData();
+```
 
-Model::create($data);
+### `get`
+
+Returns one mutated value, with an optional default.
+
+```php
+$email = Customer::validator()->validate()->get('email', 'unknown@example.com');
+```
+
+### `fill`
+
+Fills the model with validated data, additional attributes can be passed.
+
+```php
+$customer = Customer::validator()->validate()->fill(['source' => 'web']);
+$customer->save();
 ```
 
 ### `use`
 
-Uses [Admin Request](/admin/validation/request) class, with defined set of rules which may be shared across multiple places in project.
+Applies an [Admin Request](/admin/validation/request) class.
 
 ```php
 use App\Http\Requests\CustomerRequest;
 
-$model->validator()->use(CustomerRequest::class)->validate()->getData();
+Customer::validator()->use(CustomerRequest::class)->validate()->getData();
 ```

@@ -1,17 +1,16 @@
 ---
 title: 'Admin Request'
-description: 'This documentation describes how validation is handled with crudadmin.'
+description: 'Share validation settings of an admin model across controllers.'
 ---
 
 ## Creating admin request
-
-You can create extended version of Laravel Request via following command.
+{/* feature: helper.admin-model-request */}
 
 ```bash
 php artisan admin:request CustomerRequest
 ```
 
-Following class will be accepted by CrudAdmin validator as predefined settings across project.
+The command creates `app/Http/Requests/CustomerRequest.php`. Each method is optional.
 
 ```php app/Http/Requests/CustomerRequest.php
 <?php
@@ -22,52 +21,49 @@ use Admin\Core\Requests\AdminModelRequest;
 
 class CustomerRequest extends AdminModelRequest
 {
-    /**
-     * Use only given fields from admin model
-     *
-     * @return  array
-     */
+    public function authorize()
+    {
+        return auth()->check();
+    }
+
+    // Validate only these model fields
     public function only()
     {
-        return [
-            // 'field_a', 'field_b'
-        ];
+        return ['firstname', 'lastname', 'email'];
     }
 
-    /**
-     * Use only given fields with validation format, but also merge additional fields
-     *
-     * @return  array
-     */
-    public function rules()
-    {
-        return [
-            // 'field_1' => 'required|min:5',
-        ];
-    }
-
-    /**
-     * Megre additional validation rules into request
-     *
-     * @return  array
-     */
+    // Add new fields or append rules to model fields
     public function merge()
     {
         return [
-            // 'field' => 'name:email'
+            'terms' => 'required|accepted',
         ];
     }
 
-    /**
-     * Replace existing validation rules with attached ones
-     *
-     * @return  array
-     */
+    // Replace rules of model fields
     public function replace()
     {
         return [
-            // 'field' => 'name:email'
+            'email' => 'required|email',
         ];
     }
+}
+```
+
+Use it with `Customer::validator()->use(CustomerRequest::class)` or `->only(CustomerRequest::class)`.
+
+When `authorize()` returns `false`, the request is aborted with `401`.
+
+### `rules`
+
+`rules()` is a shortcut for `only()` + `merge()`: only listed fields are validated, and their rules are appended to the model rules.
+
+```php
+public function rules()
+{
+    return [
+        'phone' => 'required',
+        'coupon' => 'nullable|size:8',
+    ];
 }
 ```
