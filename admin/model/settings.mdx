@@ -98,7 +98,7 @@ Set `'buttons.create' => false` to hide the add button.
 
 ## Columns
 {/* feature: settings.columns */}
-{/* feature: settings.columns.*.name, settings.columns.*.hidden, settings.columns.*.limit, settings.columns.*.before, settings.columns.*.after, settings.columns.*.add_before, settings.columns.*.add_after, settings.columns.*.clickable, settings.columns.*.format, settings.columns.*.type, settings.columns.*.sortBy, settings.columns.*.title */}
+{/* feature: settings.columns.*.name, settings.columns.*.hidden, settings.columns.*.limit, settings.columns.*.before, settings.columns.*.after, settings.columns.*.add_before, settings.columns.*.add_after, settings.columns.*.clickable, settings.columns.*.format, settings.columns.*.type, settings.columns.*.sortBy */}
 
 ```php app/Models/Product.php
 protected $settings = [
@@ -125,9 +125,7 @@ protected $settings = [
 | `type` | `integer` sorts the column numerically |
 | `sortBy` | sorts the column by the values of another column |
 
-<Warning>
-  `columns.*.title` is not read by the administration and is suggested for deprecation. Use `name`.
-</Warning>
+Use `columns.*.name` to customize column headers, for example `columns.price.name`.
 
 ### Adding new columns
 {/* feature: settings.columns.*.encode, settings.columns.*.component, settings.columns.*.column_visible */}

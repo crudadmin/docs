@@ -102,3 +102,8 @@ icon: "arrow-right-left"
 
 - Removed `$seoVisible` and automatic hiding of SEO attributes on frontend requests; remove the property from your models.
 - `meta_title`, `meta_keywords`, `meta_description`, `meta_canonical_url`, `meta_image` and `slug_dynamic` now follow normal model serialization. Use `$hidden` or `makeHidden()` if these fields must stay out of array and JSON responses.
+
+## Removed columns.*.title
+
+- Removed translation support for `columns.*.title`; replace it with `columns.*.name` in model settings (for example, `columns.price.name`).
+- `title` did not change table headers. `name` sets the column header and remains translatable; a field's `column_name` takes precedence.
