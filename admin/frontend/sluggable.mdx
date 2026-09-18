@@ -171,7 +171,7 @@ With [localization](/admin/model/localization) enabled, title, keywords and desc
 protected $seoLocalized = false;
 ```
 
-On website requests all meta attributes are hidden from `toArray()` and JSON responses. The `SEO` helper reads them from a model:
+Meta attributes are included in `toArray()` and JSON responses by default. Use `$hidden` or `makeHidden()` to exclude them. The `SEO` helper reads them directly from a model:
 
 ```php
 SEO::setModel($article);
@@ -179,15 +179,6 @@ SEO::setModel($article);
 SEO::getTitle();        // meta_title (or name) - app name
 SEO::getDescription();
 ```
-
-### Visible meta attributes
-{/* feature: model.seoVisible */}
-
-<Warning>
-  `$seoVisible` is suggested for deprecation. Call `makeVisible()` on the model instead.
-</Warning>
-
-`protected $seoVisible = true;` keeps the meta attributes visible in website responses.
 
 ### Editing slugs in the administration
 {/* feature: model.slugUnique */}

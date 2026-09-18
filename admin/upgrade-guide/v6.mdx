@@ -97,3 +97,8 @@ icon: "arrow-right-left"
 - Publishing now toggles directly between hidden and published, including `SiteTree`. Former preview rows with `published_at = null` stay hidden on the website, even for logged administrators; publish them explicitly when ready.
 - `published_state` is no longer created, cast or read. Review existing preview rows before dropping this obsolete column during migration.
 - For publication checks, use `published_at` (set and not in the future). For a custom preview, use `withUnpublished()` in a controller with your own access checks.
+
+## Removed $seoVisible
+
+- Removed `$seoVisible` and automatic hiding of SEO attributes on frontend requests; remove the property from your models.
+- `meta_title`, `meta_keywords`, `meta_description`, `meta_canonical_url`, `meta_image` and `slug_dynamic` now follow normal model serialization. Use `$hidden` or `makeHidden()` if these fields must stay out of array and JSON responses.
