@@ -36,7 +36,7 @@ Fields can be hidden from the listing table, hidden or removed from the form, ma
 </ResponseField>
 
 ## Hiding fields in the form
-{/* feature: field.hideFromForm, field.hideField, field.visibleField, field.hideOnCreate, field.hideOnUpdate, field.ifDoesntExists */}
+{/* feature: field.hideFromForm, field.visibleField, field.hideOnCreate, field.hideOnUpdate, field.ifDoesntExists */}
 
 <ResponseField name="hideFromForm">
   The field is rendered but hidden. Its current value is still submitted and saved, which makes it useful for values set by another field or by a custom component.
@@ -56,11 +56,13 @@ Fields can be hidden from the listing table, hidden or removed from the form, ma
 </ResponseField>
 
 ## Removing fields from the form
-{/* feature: field.removeFromForm, field.invisible, field.inaccessible, field.removeField, field.keepInRequest */}
+{/* feature: field.removeFromForm, field.invisible, field.inaccessible, field.keepInRequest */}
 
 <ResponseField name="removeFromForm">
   The field is not rendered in the form. Any value posted for it is ignored and its `required` rule is skipped,
   so the value can only be set by your code, for example in `onCreate()` or `setAdminAttributes()`.
+
+  You can also use the `removeField` alias.
 
   A required column is created as `NOT NULL`. Give such a field a `default`, or set the value in a model event, otherwise creating a record fails.
 </ResponseField>
@@ -86,10 +88,6 @@ Fields can be hidden from the listing table, hidden or removed from the form, ma
   ```
 </ResponseField>
 
-<Warning>
-  `removeField`, an alias of `removeFromForm`, is suggested for deprecation. Use `removeFromForm`.
-</Warning>
-
 ## Readonly and disabled fields
 {/* feature: field.readonly, field.disabled */}
 
@@ -106,9 +104,9 @@ Fields can be hidden from the listing table, hidden or removed from the form, ma
 </ResponseField>
 
 ## Conditional parameters
-{/* feature: field.hideFromForm, field.removeFromForm, field.invisible, field.inaccessible, field.inaccessible_column, field.readonly, field.disabled, field.removeField, field.hideField, field.visibleField */}
+{/* feature: field.hideFromForm, field.removeFromForm, field.invisible, field.inaccessible, field.inaccessible_column, field.readonly, field.disabled, field.visibleField */}
 
-Parameters `hideFromForm`, `hideField`, `visibleField`, `removeFromForm`, `invisible`, `inaccessible`, `inaccessible_column`, `readonly` and `disabled`
+Parameters `hideFromForm`, `visibleField`, `removeFromForm`, `invisible`, `inaccessible`, `inaccessible_column`, `readonly` and `disabled`
 accept a condition evaluated live in the form while the user edits it. Add one of the postfixes:
 
 | Postfix | Applies when | Example |
