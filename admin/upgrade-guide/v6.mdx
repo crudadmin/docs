@@ -122,3 +122,8 @@ icon: "arrow-right-left"
 
 - Removed `header.visiblePermanently`; remove it from model settings. Single-record forms can no longer force the header to remain visible through this setting, so review any custom header components or actions.
 - The header still appears automatically for localized fields, the gettext editor or an opened record with history. `form.header = false` still hides it.
+
+## Validation rules are built once
+
+- One `Model::validator()` instance builds its rules and mutated data once, until `only()`, `merge()` or `replace()` change it. Repeated `get()`, `getData()` and `fill()` calls no longer run the request mutators again, so a file of a validated field is uploaded once and a request changed in the meantime is not read again.
+- Fields are resolved for the validated row only when the model or its modules read it. Models building fields dynamically without the `fields($row)` parameter should override `hasRowDependentFields()` and return `true`.

@@ -142,3 +142,7 @@ $contact->getValidationRules($contact);  // rules for an existing record
 ```
 
 Fields without `required` get `nullable`, `locale` fields are validated as `name.en` (required only in the default language), `multiple` files as `photos.*`, and a required file field is optional when the record already has a file.
+
+Fields are resolved for the given row only when the model reads it in `fields($row)`, or when one of its modules does, such as the unique rule of a slug column. Override `hasRowDependentFields()` and return `true` in a model building its fields per record in another way.
+
+One validator instance builds its rules and mutated data once. A change through `only()`, `merge()` or `replace()` builds them again, so the request mutators, including file uploads, run once per state.
