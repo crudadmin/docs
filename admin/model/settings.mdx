@@ -217,7 +217,7 @@ protected $settings = [
 By default the search bar appears when the table has at least 3 rows. Filter buttons are defined by [`getFilterStates()`](/admin/model/listing#filter-buttons), which fills `filter.items` automatically. `'filter.enabled' => false` hides them.
 
 ## Form behaviour
-{/* feature: settings.form, settings.form.modal, settings.form.actions, settings.form.tabs, settings.form.header, settings.form.footer, settings.form.autocomplete, settings.header, settings.header.visiblePermanently, settings.tabs.default, settings.tabs_autoload, settings.autoreset, settings.refresh_interval, settings.reloadOnUpdate, settings.rows.eachRequestInitial */}
+{/* feature: settings.form, settings.form.modal, settings.form.actions, settings.form.tabs, settings.form.header, settings.form.footer, settings.form.autocomplete, settings.header, settings.tabs.default, settings.tabs_autoload, settings.autoreset, settings.refresh_interval, settings.reloadOnUpdate, settings.rows.eachRequestInitial */}
 
 ```php app/Models/Booking.php
 protected $settings = [
@@ -237,7 +237,6 @@ protected $settings = [
 | `form.tabs` / `form.header` / `form.footer` | `false` hides the tabs, the form header or the footer with the submit button |
 | `form.autocomplete` | `autocomplete` attribute of text inputs, default from the [`model.settings.form.autocomplete`](/admin/configuration#default-form-autocomplete) config |
 | `header` | `false` hides the module header with the grid switcher, search and add button |
-| `header.visiblePermanently` | keeps the form header visible for single record modules |
 | `tabs.default` | index of the tab opened by default |
 | `tabs_autoload` | `false` loads child models of a tab only when the tab is opened |
 | `autoreset` | `false` keeps the created record opened instead of resetting the form |
