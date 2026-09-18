@@ -133,3 +133,9 @@ icon: "arrow-right-left"
 - Replace `keepInRequest` with `allowInput` in field definitions, including array notation. The old name is no longer supported.
 - Behavior is unchanged: `allowInput` accepts submitted values for `removeFromForm`, `invisible` and `disabled` fields on create and update. Validation still applies.
 - Without the replacement, these values are ignored; the obsolete parameter may also cause validation errors.
+
+## Replaced settings.keyName with $primaryKey
+
+- Remove `keyName` from `$settings`. The administration now reads the model's actual key through Eloquent `getKeyName()`; configure Laravel's `$primaryKey` property if your database key is not `id`.
+- The old setting only changed frontend behavior. Do not move a display-only column into `$primaryKey`: it changes how Eloquent identifies, updates and deletes records.
+- The model tree now includes `primaryKey`. Update custom frontend code that read `settings.keyName`; the frontend `getKeyName()` method remains available.

@@ -147,7 +147,7 @@ protected $settings = [
 - `'hidden' => true` or `'invisible' => true` adds the column turned off, `'column_visible' => true` forces it on.
 
 ## Table and grid
-{/* feature: settings.table, settings.table.small, settings.table.clickable, settings.table.switchcolumns, settings.checking, settings.increments, settings.dates, settings.xls, settings.sortable, settings.orderBy, settings.default, settings.actions, settings.editable, settings.keyName, settings.recursivity.name, settings.recursivity.max_depth */}
+{/* feature: settings.table, settings.table.small, settings.table.clickable, settings.table.switchcolumns, settings.checking, settings.increments, settings.dates, settings.xls, settings.sortable, settings.orderBy, settings.default, settings.actions, settings.editable, settings.recursivity.name, settings.recursivity.max_depth */}
 
 ```php app/Models/StockMovement.php
 protected $settings = [
@@ -175,7 +175,6 @@ protected $settings = [
 | `actions` | `false` hides the row action buttons |
 | `editable` | `false` shows opened records read-only |
 | `default` | `true` opens this module after login |
-| `keyName` | column used by the administration as the record key instead of `id` |
 | `recursivity.name` | tab name of a model nested in itself |
 | `recursivity.max_depth` | maximum nesting of a model in itself, default `10` |
 
@@ -257,3 +256,14 @@ protected $settings = [
 
 - `canDownload` / `canDelete` hide the download link and the remove button of an uploaded file.
 - `options` are passed as props to the select component of the field.
+
+## Primary key
+{/* feature: model.primaryKey */}
+
+The administration reads the primary key name from Eloquent's `getKeyName()`. Use the standard model property instead of a separate setting:
+
+```php
+protected $primaryKey = 'code';
+```
+
+The default is `id`. This property identifies the model's actual database key; it is not an alternative display column. For a non-incrementing string key, also configure `$incrementing = false` and `$keyType = 'string'` on the model.
