@@ -117,14 +117,9 @@ and cast to `float`.
 
 The value is cast to `bool`. A checkbox missing in the submitted admin form is saved as `false`.
 
-## Boolean
-{/* feature: field-type.boolean */}
-
-`type:boolean` creates the same `tinyint(1)` column as a checkbox, but it has no form input, no cast and no validation rule.
-
-<Warning>
-  `type:boolean` is suggested for deprecation. Use `type:checkbox`.
-</Warning>
+<Note>
+  `type:boolean` was removed in v6. Use `type:checkbox` and review the [upgrade notes](/admin/upgrade-guide/v6#typeboolean).
+</Note>
 
 ## Password
 {/* feature: field-type.password */}

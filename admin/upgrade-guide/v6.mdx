@@ -16,6 +16,14 @@ icon: "arrow-right-left"
 - The database column remains JSON; existing data does not need conversion solely for this replacement.
 - The `array` validation rule and `multiple` parameter remain supported.
 
+### type:boolean
+
+- Removed `type:boolean`; replace it with `type:checkbox` in field definitions, including array notation.
+- The database column remains boolean (`tinyint(1)` on MySQL); existing 0/1 data does not need conversion solely for this replacement.
+- Model and API values are cast to `false`/`true` instead of integers. Review strict comparisons such as `=== 1` and consumers expecting numeric values.
+- Checkbox adds a form input and boolean validation. A missing checkbox in an admin request normally becomes `false`; review partial updates.
+- The `boolean` validation rule remains supported.
+
 ## Removed commands
 
 ### admin:queue
