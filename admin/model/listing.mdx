@@ -169,7 +169,7 @@ public function setAdminAttributes($attributes)
 Values changed in `setAdminRowsAttributes` are sent in a separate `$table` key of the row. The table displays them while the form keeps the original values, so a formatted price does not break the price input.
 
 <Warning>
-  Table rows are serialized twice, with and without table-only changes, so `setAdminAttributes` and `setAdminResponse` run twice per row. Keep them free of side effects and avoid queries inside, load the data in `scopeAdminRows` instead.
+  Every row is serialized once. `setAdminRowsAttributes` then runs on a copy of the serialized attributes and only the values it changed or added are sent in `$table`. The hooks still run for every row of the page, so keep them free of side effects and avoid queries inside, load the data in `scopeAdminRows` instead.
 </Warning>
 
 For single record modules (`$single`, `$inParent`) the table is rendered as a form, so `setAdminRowAttributes` runs instead of `setAdminRowsAttributes`.
