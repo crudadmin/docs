@@ -1,0 +1,17 @@
+---
+title: "Upgrade to v6"
+sidebarTitle: "v6"
+description: "Changes to check when upgrading older projects to CrudAdmin 6."
+icon: "arrow-right-left"
+---
+
+## Removed field types
+
+### type:array
+
+- Removed `type:array`; replace it with `type:json` in field definitions.
+- Values are now automatically decoded into PHP arrays instead of returned as raw JSON strings. Review manual `json_decode()` / `json_encode()` calls and custom casts.
+- `type:json` is hidden from admin table rows by default, which may affect custom table components.
+- Invalid JSON strings in admin requests are decoded to `null`; review validation if malformed input must be rejected.
+- The database column remains JSON; existing data does not need conversion solely for this replacement.
+- The `array` validation rule and `multiple` parameter remain supported.

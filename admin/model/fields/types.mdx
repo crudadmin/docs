@@ -158,14 +158,9 @@ The value is cast to `bool`. A checkbox missing in the submitted admin form is s
 A `json` column cast to an array, hidden in the table and without a form input, render it with a [custom component](/admin/model/fields/components).
 A JSON string sent in the request is decoded before saving, an invalid JSON string is saved as `NULL`.
 
-## Array
-{/* feature: field-type.array */}
-
-`type:array` creates a `json` column without a cast, without decoding the request and without a form input.
-
-<Warning>
-  `type:array` is suggested for deprecation. Use `type:json`.
-</Warning>
+<Note>
+  `type:array` was removed in v6. See [Upgrade guide → v6](/admin/upgrade-guide/v6#typearray) before updating existing fields.
+</Note>
 
 ## Geometry
 {/* feature: field-type.geometry */}

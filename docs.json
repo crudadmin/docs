@@ -29,6 +29,13 @@
             ]
           },
           {
+            "group": "Upgrade guide",
+            "icon": "arrow-right-left",
+            "pages": [
+              "admin/upgrade-guide/v6"
+            ]
+          },
+          {
             "group": "Admin interface",
             "icon": "layout-dashboard",
             "pages": [
