@@ -24,6 +24,24 @@ icon: "terminal"
 | `admin:migrate` | Creates and updates the tables of all admin models, see [Migrations](/admin/model/migrations). |
 | `admin:encrypt-existing` | Encrypts existing plain values of [`encrypted`](/admin/model/fields/database#encrypted-values) fields in all admin models. |
 
+## Performance cache
+{/* feature: command.admin:cache, command.admin:clear */}
+
+| Command | Description |
+| --- | --- |
+| `admin:cache` | Compiles the complete map of admin models, their tables, autoloaded modules, base fields and relations into `bootstrap/cache/crudadmin.php`. |
+| `admin:clear` | Removes the compiled file, models are discovered and built at runtime again. |
+
+Without the cache every request scans the model directories, constructs each model and builds its fields and relations. Packages register their models one by one while service providers boot, so this work is repeated several times per request. With the cache the whole models set is known from the very first moment and regular requests build nothing.
+
+`admin:cache` boots the application in a fresh process, registers all models exactly as a request does and constructs them repeatedly until no new model appears. Compiled base fields and relations are used on frontend and API requests only. The administration, migrations and fields of a given row (`getFields($row)`) are always built at runtime, because they depend on the logged administrator or on the row itself.
+
+The cache is part of `php artisan optimize` and `optimize:clear`, `admin:migrate` refreshes it when it exists, and `admin:update` compiles it in production or with `APP_DEBUG=false`. In debug mode a change of any model directory disables the compiled file until it is compiled again.
+
+<Warning>
+  Compiled fields are bound to the default language and to translations of field names. Run `admin:cache` after changing the default language or the translations of `name`, `title` and `placeholder` attributes.
+</Warning>
+
 ## Generators
 {/* feature: command.admin:export, command.admin:statistics, command.admin:sitebuilder:block, command.admin:component */}
 
