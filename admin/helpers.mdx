@@ -55,12 +55,10 @@ array_wrap($value);        // Arr::wrap()
 
 Translation helpers (`_()`, `localeUrl()`, `switchLocale()`, `localizedRoutes()`) are described in [Localization](/admin/model/localization).
 
-### Deprecated helpers
-{/* feature: helper.encryptText, helper.isActiveController */}
+### Text obfuscation
+{/* feature: helper.encryptText */}
 
-<Warning>
-  `encryptText()` (base64 obfuscation of e-mails and phones) and `isActiveController()` (active controller check for Blade menus) are suggested for deprecation.
-</Warning>
+`encryptText($text)` obfuscates e-mails or phone numbers as base64 for frontend decoding. It is not encryption and should not be used to protect secrets.
 
 ## Admin facade
 

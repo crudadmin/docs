@@ -77,3 +77,10 @@ icon: "arrow-right-left"
 
 - Removed the `inBackend` alias; replace it with `inAdmin` in field definitions, including array notation.
 - The replacement keeps the same admin-only behavior. Leaving `inBackend` in field definitions may cause validation errors because it is no longer a registered field attribute.
+
+## Removed helpers
+
+### isActiveController()
+
+- Removed `isActiveController()` from resources helpers. Existing calls will fail with an undefined-function error.
+- Replace calls with `\Admin\Helpers\Helper::isActive($controller, $text)` to preserve the existing controller matching and optional text output.
