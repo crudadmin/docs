@@ -113,19 +113,6 @@ When a `belongsTo` field is replaced by a `belongsToMany` field, `migrateToPivot
 - `migrateToPivot:main_warehouse_id` reads the given column.
 - Values are imported only when the old field was removed, its column still exists and the pivot table does not exist yet. Confirm dropping the old column in the migration prompt, the values are read before the column is dropped.
 
-## Has one
-{/* feature: field.hasOne */}
-
-`hasOne` turns the relation method of a `belongsTo` field into a Laravel `HasOne` relation. The column and the form stay the same. The parameter must be used without a value.
-
-```php
-'profile' => 'name:Profile|belongsTo:profiles,name|hasOne',
-```
-
-<Warning>
-  `hasOne` is suggested for deprecation. It returns the same record as `belongsTo`, use `belongsTo` instead.
-</Warning>
-
 ## Relation options
 {/* feature: hook.scope{Key}Option, hook.set{Key}Option */}
 

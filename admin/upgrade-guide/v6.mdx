@@ -60,3 +60,10 @@ icon: "arrow-right-left"
 - It never populated component props automatically. Read values from the `field` or `row` props instead, and review custom code that accessed `field.component_data`.
 - Leaving it in field definitions may cause validation errors because it is no longer a registered field attribute.
 - Button `component()` data arguments remain supported.
+
+### hasOne
+
+- Removed the `hasOne` field parameter. Remove `|hasOne` (or the `hasOne` entry in array notation) and keep `belongsTo`.
+- The column and foreign key remain unchanged. The relation now returns Laravel `BelongsTo` instead of `HasOne`; review custom code that calls relation-specific methods or checks its class.
+- Leaving `hasOne` in field definitions may cause validation errors because it is no longer a registered field attribute.
+- Laravel `hasOne()` and automatic relations to single child models (`maximum = 1`) remain supported.
