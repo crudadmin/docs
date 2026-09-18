@@ -63,12 +63,9 @@ model.fields.date_from.on('change', (value) => {
 | `destroy` | model removed from the page |
 | field `change` / `change.row` | new value / value loaded from the row |
 
-## Event hub and stores
-{/* feature: frontend.bus, frontend.stores */}
+## Stores
+{/* feature: frontend.stores */}
 
 ```js
-$bus.$on('refreshStock', handler);
-$bus.$emit('refreshStock', { id: 1 });
-
 useAppStore().models; // all models
 ```

@@ -139,3 +139,8 @@ icon: "arrow-right-left"
 - Remove `keyName` from `$settings`. The administration now reads the model's actual key through Eloquent `getKeyName()`; configure Laravel's `$primaryKey` property if your database key is not `id`.
 - The old setting only changed frontend behavior. Do not move a display-only column into `$primaryKey`: it changes how Eloquent identifies, updates and deletes records.
 - The model tree now includes `primaryKey`. Update custom frontend code that read `settings.keyName`; the frontend `getKeyName()` method remains available.
+
+## Removed $bus
+
+- Removed the global `$bus` and `useEventHub()` APIs. Replace custom listeners with `window.addEventListener()` and emit `CustomEvent` events; payloads are available as `event.detail`. Remove listeners when components unmount.
+- Sidebar and Gutenberg editor switching now use native browser events. Update resources together with the Gutenberg integration; custom code using the old `closeMenu` or `disableGutenbergEditors` events must be updated.
