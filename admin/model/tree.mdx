@@ -199,28 +199,6 @@ Article::setGlobalModelPublishable(false);  // only articles
   The administration always lists all rows. Publishing more selected rows toggles every row by its own state.
 </Info>
 
-### Admin preview state
-{/* feature: model.publishableState, model.withTemporaryPublished() */}
-
-<Warning>
-  `$publishableState` is suggested for deprecation. Avoid it in new projects.
-</Warning>
-
-`$publishableState` adds a third state to the publish button, a row visible only to logged administrators. The button cycles **hidden → admin preview → published**. A nullable JSON `published_state` column is created.
-
-```php
-protected $publishableState = true;
-```
-
-Preview rows are returned on the website while an administrator is logged in. They can be shown without login too:
-
-```php
-(new Article)->withTemporaryPublished();           // all models
-(new Article)->withTemporaryPublished('articles'); // only the articles table
-
-$article->isAdminPublished(); // published, or preview with a logged administrator
-```
-
 ## Single record mode
 {/* feature: model.single */}
 

@@ -90,3 +90,10 @@ icon: "arrow-right-left"
 - Removed the entire Site builder module: `SiteBuilder`, block types, `Group::builder()`, `getSitebuilderBlocksArray()`, `renderBuilder()`, the block selector and its styles. Replace block editing and rendering with your own implementation.
 - Remove `sitebuilder` / `sitebuilder_types` config, `Admin::isEnabledSitebuilder()` calls and the `admin:sitebuilder:block` command from your project. Custom blocks extending `SBType` and published Site builder views need replacing too.
 - Existing block data is not deleted automatically, but CrudAdmin no longer edits or renders it. Migrate any content you still need before upgrading.
+
+## Removed admin preview state
+
+- Removed `$publishableState`, `withTemporaryPublished()` and `isAdminPublished()`. Remove these declarations and calls from project models and code.
+- Publishing now toggles directly between hidden and published, including `SiteTree`. Former preview rows with `published_at = null` stay hidden on the website, even for logged administrators; publish them explicitly when ready.
+- `published_state` is no longer created, cast or read. Review existing preview rows before dropping this obsolete column during migration.
+- For publication checks, use `published_at` (set and not in the future). For a custom preview, use `withUnpublished()` in a controller with your own access checks.
