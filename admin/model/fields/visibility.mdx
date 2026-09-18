@@ -56,11 +56,15 @@ Fields can be hidden from the listing table, hidden or removed from the form, ma
 </ResponseField>
 
 ## Removing fields from the form
-{/* feature: field.removeFromForm, field.invisible, field.inaccessible, field.keepInRequest */}
+{/* feature: field.removeFromForm, field.invisible, field.inaccessible, field.allowInput */}
 
 <ResponseField name="removeFromForm">
-  The field is not rendered in the form. Any value posted for it is ignored and its `required` rule is skipped,
-  so the value can only be set by your code, for example in `onCreate()` or `setAdminAttributes()`.
+  The field is not rendered in the form. By default, any submitted value is ignored and its `required` rule is skipped.
+  Set the value in your code, for example in `onCreate()` or `setAdminAttributes()`, or add `allowInput` to accept a value submitted by your own component:
+
+  ```php
+  'source' => 'name:Source|removeFromForm|allowInput',
+  ```
 
   You can also use the `removeField` alias.
 
@@ -80,11 +84,12 @@ Fields can be hidden from the listing table, hidden or removed from the form, ma
   ```
 </ResponseField>
 
-<ResponseField name="keepInRequest">
-  Keeps the posted value of a `removeFromForm`, `invisible` or `disabled` field, when you render or fill it yourself.
+<ResponseField name="allowInput">
+  Allows a submitted value to be processed even when the field has `removeFromForm`, `invisible` or `disabled`.
+  Applies when creating and updating records. It does not render an input or submit a value automatically; your component must send it. Normal validation still applies.
 
   ```php
-  'source_table' => 'name:Table|index|invisible|keepInRequest',
+  'source_table' => 'name:Table|index|invisible|allowInput',
   ```
 </ResponseField>
 

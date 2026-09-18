@@ -127,3 +127,9 @@ icon: "arrow-right-left"
 
 - One `Model::validator()` instance builds its rules and mutated data once, until `only()`, `merge()` or `replace()` change it. Repeated `get()`, `getData()` and `fill()` calls no longer run the request mutators again, so a file of a validated field is uploaded once and a request changed in the meantime is not read again.
 - Fields are resolved for the validated row only when the model or its modules read it. Models building fields dynamically without the `fields($row)` parameter should override `hasRowDependentFields()` and return `true`.
+
+## Renamed keepInRequest to allowInput
+
+- Replace `keepInRequest` with `allowInput` in field definitions, including array notation. The old name is no longer supported.
+- Behavior is unchanged: `allowInput` accepts submitted values for `removeFromForm`, `invisible` and `disabled` fields on create and update. Validation still applies.
+- Without the replacement, these values are ignored; the obsolete parameter may also cause validation errors.
