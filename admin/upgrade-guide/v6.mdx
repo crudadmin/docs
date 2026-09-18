@@ -72,3 +72,8 @@ icon: "arrow-right-left"
 
 - Removed the `ifExists` field parameter; replace it with `hideOnCreate` in field definitions.
 - Without the replacement, the field is no longer hidden when creating a record. The replacement keeps the same form visibility behavior; backend validation and saving still apply.
+
+### inBackend
+
+- Removed the `inBackend` alias; replace it with `inAdmin` in field definitions, including array notation.
+- The replacement keeps the same admin-only behavior. Leaving `inBackend` in field definitions may cause validation errors because it is no longer a registered field attribute.

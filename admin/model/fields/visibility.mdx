@@ -171,7 +171,7 @@ The first argument is the permission, the rest are parameters applied when the a
 - Parameters written directly on the field win over the permission parameters.
 
 ## Interface scoped parameters
-{/* feature: field.inAdmin, field.inBackend, field.inFrontend, field.inConsole */}
+{/* feature: field.inAdmin, field.inFrontend, field.inConsole */}
 
 <ResponseField name="inAdmin">
   Applies the parameter only in the administration, e.g. a field required in the admin form but optional in your frontend form validated by `Model::validator()`.
@@ -202,7 +202,3 @@ String notation accepts one parameter per scope, use the array notation for more
 ```
 
 Parameters written directly on the field, and the default rules of the type like `max:255` for strings, win over scoped parameters.
-
-<Warning>
-  `inBackend`, an alias of `inAdmin`, is suggested for deprecation. Use `inAdmin`.
-</Warning>
