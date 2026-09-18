@@ -23,3 +23,12 @@ icon: "arrow-right-left"
 - Removed `admin:queue`; remove its calls from cron and the Laravel scheduler.
 - Run Laravel's `php artisan queue:work` with a process manager such as Supervisor instead. Otherwise jobs may remain unprocessed after the upgrade.
 - Move any custom `queue.admin.cli`, `queue.admin.log_path`, `queue.admin.timeout`, `queue.admin.sleep` and `queue.admin.tries` settings to the worker command and process manager configuration; CrudAdmin no longer reads them.
+
+## Configuration changes
+
+### File browser configuration
+
+- Removed the `ckfinder` boolean and boolean `filemanager` settings; use `filemanager.type` (`none`, `lfm` or `ckfinder`). CKFinder itself remains supported.
+- Replace `'ckfinder' => true` with `'filemanager' => ['type' => 'ckfinder']`; keep `license_name` and `license_key` inside that array.
+- Replace `'filemanager' => true` with `'filemanager' => ['type' => 'lfm']`; use `['type' => 'none']` to disable the browser.
+- Old boolean settings no longer enable a file browser. Update project configuration before upgrading.

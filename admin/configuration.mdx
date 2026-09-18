@@ -355,12 +355,8 @@ File browser of the editor field.
 - `lfm` requires `composer require unisharp/laravel-filemanager`.
 - `ckfinder` is a commercial package downloaded by `php artisan editor:ckfinder:download`, licensed per hostname. The license is never sent to the browser.
 
-### Legacy file browser keys
-{/* feature: config.ckfinder */}
-
-<Warning>
-  `'ckfinder' => true` is suggested for deprecation, use `'filemanager' => ['type' => 'ckfinder']`. The legacy `'filemanager' => true` selects `lfm`.
-</Warning>
+Use only the `filemanager` array. Old boolean settings were removed in v6; see the
+[upgrade guide](/admin/upgrade-guide/v6#file-browser-configuration).
 
 ## Optional modules
 
