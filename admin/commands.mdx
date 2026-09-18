@@ -68,9 +68,14 @@ Subdirectories in the name become namespaces, e.g. `admin:button Orders/SendInvo
 | `admin:clean` | Shows the upload storage size per model and deletes files not referenced by any record, or referenced only by deleted records. |
 | `admin:dev on\|off` | Turns the development mode of the administration on or off, without an argument it toggles it. |
 
-## Deprecated commands
+## Pre-resize images
 {/* feature: command.admin:preresize */}
 
-<Warning>
-  `admin:preresize` (resizes all images of a model field into the cache) is suggested for deprecation. Resize images on demand with `resize()`.
-</Warning>
+```bash
+php artisan admin:preresize
+```
+
+- Choose a model, a file field, and the target width and height. Leave one dimension blank to preserve the aspect ratio; two dimensions crop to fit.
+- Reads the field's configured storage, including subdirectories, and prepares images in the standard resize cache immediately. Existing cached sizes are reused; originals are unchanged.
+- Processes JPG, JPEG, PNG, GIF, BMP and WebP files. Other files, including SVG, are skipped.
+- Prints a summary of ready, skipped and failed images. A failed image does not stop the remaining files; any failures produce a nonzero exit code.
