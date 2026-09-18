@@ -36,7 +36,7 @@ Fields can be hidden from the listing table, hidden or removed from the form, ma
 </ResponseField>
 
 ## Hiding fields in the form
-{/* feature: field.hideFromForm, field.hideField, field.visibleField, field.hideOnCreate, field.hideOnUpdate, field.ifExists, field.ifDoesntExists */}
+{/* feature: field.hideFromForm, field.hideField, field.visibleField, field.hideOnCreate, field.hideOnUpdate, field.ifDoesntExists */}
 
 <ResponseField name="hideFromForm">
   The field is rendered but hidden. Its current value is still submitted and saved, which makes it useful for values set by another field or by a custom component.
@@ -54,10 +54,6 @@ Fields can be hidden from the listing table, hidden or removed from the form, ma
 
   Hidden fields are still validated, so `hideOnCreate|required` cannot be submitted when creating a record.
 </ResponseField>
-
-<Warning>
-  `ifExists`, an alias of `hideOnCreate`, is suggested for deprecation. Use `hideOnCreate`.
-</Warning>
 
 ## Removing fields from the form
 {/* feature: field.removeFromForm, field.invisible, field.inaccessible, field.removeField, field.keepInRequest */}

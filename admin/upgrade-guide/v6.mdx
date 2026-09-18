@@ -67,3 +67,8 @@ icon: "arrow-right-left"
 - The column and foreign key remain unchanged. The relation now returns Laravel `BelongsTo` instead of `HasOne`; review custom code that calls relation-specific methods or checks its class.
 - Leaving `hasOne` in field definitions may cause validation errors because it is no longer a registered field attribute.
 - Laravel `hasOne()` and automatic relations to single child models (`maximum = 1`) remain supported.
+
+### ifExists
+
+- Removed the `ifExists` field parameter; replace it with `hideOnCreate` in field definitions.
+- Without the replacement, the field is no longer hidden when creating a record. The replacement keeps the same form visibility behavior; backend validation and saving still apply.
