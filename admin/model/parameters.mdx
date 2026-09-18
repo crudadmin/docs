@@ -224,12 +224,3 @@ public function getTreeAction()
     return action([BranchController::class, 'show'], $this->slug);
 }
 ```
-
-## Site builder blocks
-{/* feature: model.getSitebuilderBlocksArray() */}
-
-<Warning>
-  The site builder is suggested for deprecation. Avoid it in new projects.
-</Warning>
-
-With the [site builder](/admin/configuration#optional-modules) enabled, `getSitebuilderBlocksArray()` returns the blocks assigned to a record and `renderBuilder()` renders them.

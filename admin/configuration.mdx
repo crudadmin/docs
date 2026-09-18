@@ -375,19 +375,6 @@ Lets administrators edit static texts, images and links directly on the website.
 'uploadable_allowed_extensions' => 'pdf,doc,docx,xls,xlsx,zip',
 ```
 
-### Site builder
-{/* feature: config.sitebuilder, config.sitebuilder_types */}
-
-<Warning>
-  The site builder is suggested for deprecation. Avoid it in new projects.
-</Warning>
-
-Enables `Group::sitebuilder()` blocks in admin forms. `sitebuilder_types` lists the available block classes, by default editor, text, image and iframe. New blocks are generated with `php artisan admin:sitebuilder:block`.
-
-```php config/admin.php
-'sitebuilder' => true,
-```
-
 ### Site tree
 {/* feature: config.sitetree */}
 

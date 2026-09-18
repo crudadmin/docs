@@ -84,3 +84,9 @@ icon: "arrow-right-left"
 
 - Removed `isActiveController()` from resources helpers. Existing calls will fail with an undefined-function error.
 - Replace calls with `\Admin\Helpers\Helper::isActive($controller, $text)` to preserve the existing controller matching and optional text output.
+
+## Removed Site builder
+
+- Removed the entire Site builder module: `SiteBuilder`, block types, `Group::builder()`, `getSitebuilderBlocksArray()`, `renderBuilder()`, the block selector and its styles. Replace block editing and rendering with your own implementation.
+- Remove `sitebuilder` / `sitebuilder_types` config, `Admin::isEnabledSitebuilder()` calls and the `admin:sitebuilder:block` command from your project. Custom blocks extending `SBType` and published Site builder views need replacing too.
+- Existing block data is not deleted automatically, but CrudAdmin no longer edits or renders it. Migrate any content you still need before upgrading.
