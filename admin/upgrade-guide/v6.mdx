@@ -32,3 +32,14 @@ icon: "arrow-right-left"
 - Replace `'ckfinder' => true` with `'filemanager' => ['type' => 'ckfinder']`; keep `license_name` and `license_key` inside that array.
 - Replace `'filemanager' => true` with `'filemanager' => ['type' => 'lfm']`; use `['type' => 'none']` to disable the browser.
 - Old boolean settings no longer enable a file browser. Update project configuration before upgrading.
+
+### Legacy file configuration
+
+- Removed the unused `file` config section (`exists_cache`, `exists_cache_days`, `redirect_after_resize`). Remove it from project configuration if present.
+- These keys already had no effect in v5; file uploads and image resizing are unchanged.
+- Use `resizer.storage_cache`, `resizer.storage_cache_days` and `resizer.redirect_after_resize` to configure the corresponding behavior.
+
+### Localized routes
+
+- Removed the unused `routes` config key; remove it from project configuration if present. Existing routing behavior is unchanged.
+- Register language-prefixed routes with [`localizedRoutes()`](/admin/model/localization#localized-routes-and-urls).

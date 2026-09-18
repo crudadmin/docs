@@ -312,10 +312,10 @@ Every resized image also gets a `.webp` copy stored next to it.
 ```
 
 ### Deprecated image keys
-{/* feature: config.rewrite_missing_upload_images, config.file */}
+{/* feature: config.rewrite_missing_upload_images */}
 
 <Warning>
-  `rewrite_missing_upload_images` and `file` (`file.exists_cache`, `file.exists_cache_days`, `file.redirect_after_resize`) are suggested for deprecation. Use `image_rewrite_missing_uploads` and the `resizer` keys.
+  `rewrite_missing_upload_images` is suggested for deprecation. Use `image_rewrite_missing_uploads`.
 </Warning>
 
 ## Change history
@@ -412,9 +412,6 @@ Requests to the [REST API](/admin/model/api) are logged by default.
 ],
 ```
 
-### Legacy localized routes
-{/* feature: config.routes */}
+### Localized routes
 
-<Warning>
-  The `routes` key is suggested for deprecation and has no effect. Register localized routes with [`localizedRoutes()`](/admin/model/localization#localized-routes-and-urls).
-</Warning>
+Register localized routes with [`localizedRoutes()`](/admin/model/localization#localized-routes-and-urls). The unused `routes` config key was removed in v6.
