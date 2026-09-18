@@ -107,3 +107,13 @@ icon: "arrow-right-left"
 
 - Removed translation support for `columns.*.title`; replace it with `columns.*.name` in model settings (for example, `columns.price.name`).
 - `title` did not change table headers. `name` sets the column header and remains translatable; a field's `column_name` takes precedence.
+
+## Removed grid.header
+
+- Removed `grid.header` from the feature reference; remove it from model settings if present.
+- The administration never read this key, so removing it does not change the layout or headers.
+
+## Removed title.edit
+
+- Removed the unused `title.edit` setting from the feature reference; replace it with `title.update` to customize the edit form heading.
+- `title.edit` never changed the heading. Using `title.update` makes your configured text take effect.
