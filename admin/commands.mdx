@@ -69,8 +69,8 @@ Subdirectories in the name become namespaces, e.g. `admin:button Orders/SendInvo
 | `admin:dev on\|off` | Turns the development mode of the administration on or off, without an argument it toggles it. |
 
 ## Deprecated commands
-{/* feature: command.admin:preresize, command.admin:queue */}
+{/* feature: command.admin:preresize */}
 
 <Warning>
-  `admin:preresize` (resizes all images of a model field into the cache) and `admin:queue` (starts `queue:work` from cron when it is not running) are suggested for deprecation. Resize images on demand with `resize()`, and run queue workers with Supervisor.
+  `admin:preresize` (resizes all images of a model field into the cache) is suggested for deprecation. Resize images on demand with `resize()`.
 </Warning>

@@ -15,3 +15,11 @@ icon: "arrow-right-left"
 - Invalid JSON strings in admin requests are decoded to `null`; review validation if malformed input must be rejected.
 - The database column remains JSON; existing data does not need conversion solely for this replacement.
 - The `array` validation rule and `multiple` parameter remain supported.
+
+## Removed commands
+
+### admin:queue
+
+- Removed `admin:queue`; remove its calls from cron and the Laravel scheduler.
+- Run Laravel's `php artisan queue:work` with a process manager such as Supervisor instead. Otherwise jobs may remain unprocessed after the upgrade.
+- Move any custom `queue.admin.cli`, `queue.admin.log_path`, `queue.admin.timeout`, `queue.admin.sleep` and `queue.admin.tries` settings to the worker command and process manager configuration; CrudAdmin no longer reads them.
