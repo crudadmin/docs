@@ -51,3 +51,12 @@ icon: "arrow-right-left"
 
 - Removed the unused `routes` config key; remove it from project configuration if present. Existing routing behavior is unchanged.
 - Register language-prefixed routes with [`localizedRoutes()`](/admin/model/localization#localized-routes-and-urls).
+
+## Removed field parameters
+
+### component_data
+
+- Removed the unused `component_data` field parameter; remove it from field definitions.
+- It never populated component props automatically. Read values from the `field` or `row` props instead, and review custom code that accessed `field.component_data`.
+- Leaving it in field definitions may cause validation errors because it is no longer a registered field attribute.
+- Button `component()` data arguments remain supported.
