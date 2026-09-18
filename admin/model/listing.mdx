@@ -454,13 +454,17 @@ class InvoiceExport extends AdminButtonExport
 ```
 
 ## Table download
-{/* feature: model.sheetDownload */}
+{/* feature: model.TableExportXls */}
 
-The [`xls` setting](/admin/model/settings#table-and-grid) adds **Download excel** to the export menu. It downloads all records of the table, with the current search, in the visible columns. Select values are exported as option names, booleans as Yes/No, column headers match the table.
+Register `TableExportXls` in `$exports` to add **Download excel** to the standard export menu. Install `phpoffice/phpspreadsheet` in your application.
+
+The export creates an `.xlsx` workbook from all rows matching the current search, scopes, language and parent context, without pagination. It uses the table row serialization and includes requested additional columns. Select and relation values become option names, booleans become Yes/No, HTML is removed and column headings use the table labels. Empty results produce an empty workbook.
+
+The file uses the standard export private storage and download endpoint. Existing `setSheet{Column}Attribute()` and `setExcelSheet()` hooks still apply.
 
 ```php
-protected $settings = [
-    'xls' => true,
+protected $exports = [
+    \Admin\Contracts\Exports\TableExportXls::class,
 ];
 
 // Change the exported value of a column

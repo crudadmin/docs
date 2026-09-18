@@ -147,7 +147,7 @@ protected $settings = [
 - `'hidden' => true` or `'invisible' => true` adds the column turned off, `'column_visible' => true` forces it on.
 
 ## Table and grid
-{/* feature: settings.table, settings.table.small, settings.table.clickable, settings.table.switchcolumns, settings.checking, settings.increments, settings.dates, settings.xls, settings.sortable, settings.orderBy, settings.default, settings.actions, settings.editable, settings.recursivity.name, settings.recursivity.max_depth */}
+{/* feature: settings.table, settings.table.small, settings.table.clickable, settings.table.switchcolumns, settings.checking, settings.increments, settings.dates, settings.sortable, settings.orderBy, settings.default, settings.actions, settings.editable, settings.recursivity.name, settings.recursivity.max_depth */}
 
 ```php app/Models/StockMovement.php
 protected $settings = [
@@ -156,7 +156,6 @@ protected $settings = [
     'table.small' => true,
     'table.switchcolumns' => false,
     'orderBy' => ['created_at' => 'desc'],
-    'xls' => true,
 ];
 ```
 
@@ -169,7 +168,6 @@ protected $settings = [
 | `checking` | `false` hides the checkboxes for bulk actions |
 | `increments` | `false` hides the id column and the id search option |
 | `dates` | `true` shows created and updated dates in the row actions |
-| `xls` | `true` adds the [table download](/admin/model/listing#table-download) |
 | `sortable` | `false` disables sorting by clicking column headers, drag and drop is controlled by [`$sortable`](/admin/model/tree#reordering-records) |
 | `orderBy` | initial sort of the table, `['column' => 'asc']` |
 | `actions` | `false` hides the row action buttons |

@@ -144,3 +144,9 @@ icon: "arrow-right-left"
 
 - Removed the global `$bus` and `useEventHub()` APIs. Replace custom listeners with `window.addEventListener()` and emit `CustomEvent` events; payloads are available as `event.detail`. Remove listeners when components unmount.
 - Sidebar and Gutenberg editor switching now use native browser events. Update resources together with the Gutenberg integration; custom code using the old `closeMenu` or `disableGutenbergEditors` events must be updated.
+
+## Replaced settings.xls with TableExportXls
+
+- Remove `xls` from model settings and add `\Admin\Contracts\Exports\TableExportXls::class` to `$exports`. Install `phpoffice/phpspreadsheet` if needed.
+- The rows endpoint no longer accepts `download` to create files. Use the standard export endpoint and its `download_url` response; replace custom uses of the removed `SheetDownloader` helper.
+- Table formatting, filters and the `setSheet{Column}Attribute()` / `setExcelSheet()` hooks are preserved. Files now use the normal private export storage; empty results produce a valid workbook.
