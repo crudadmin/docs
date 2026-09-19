@@ -154,5 +154,7 @@ icon: "arrow-right-left"
 ## Gettext-only administration translations
 
 - Removed the resources `trans()` mixin method, `window.trans`, `useTrans()` and `layout.localization` dictionary. Use literal `__('Source message')` calls in JavaScript/Vue and `_('Source message')` in PHP/Blade.
+- Custom admin components and extension packages (including eshop and invoices integrations) must not call `trans()`, `this.trans()`, `window.trans()` or `useTrans()` in JavaScript/Vue; these APIs no longer exist. Replace keys with literal gettext source messages.
+- Laravel's PHP `trans()` helper still exists: calls such as `trans('validation.required')` use Laravel validation translations and are unaffected by removal of the admin frontend helpers. Use gettext for your own administration UI messages.
 - Removed resources `admin::admin.*` PHP catalogs. Administration and guest authentication screens use the shared gettext catalogs from CrudAdmin. Move custom translations into the admin gettext catalog.
 - Field `name`, `title`, `placeholder` and model labels already use gettext. Replace legacy keys such as `name:admin::admin.key` with literal source text, for example `name:Názov`. Without migration the old key is displayed as text.
