@@ -154,7 +154,7 @@ Options of a relation can also be replaced by an array or a collection returned 
 {/* feature: field.async */}
 
 By default all related records are sent to the form. For large tables add `async`, the select then searches records
-through `/admin/api/options/{table}/{field}` while the user types.
+through `/admin/api/models/{table}/fields/{field}/options` while the user types.
 
 ```php
 'product' => 'name:Product|belongsTo:products,:name - :ean|async',

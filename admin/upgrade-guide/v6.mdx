@@ -205,3 +205,20 @@ public function getFilterStates()
     ])->all();
 }
 ```
+
+## Admin routes
+
+- All admin endpoints moved to one url scheme and got route names (`admin.*`). There are no redirects from the old urls; update custom code which calls them directly.
+- Internal endpoints of the administration live under `/admin/api/models/{table}/…`: `rows`, `rows/{id}`, `order`, `fields/{field}/options`, `buttons/{button}`, `exports/{export}`, `settings` and history. Creating a row is `POST /admin/api/models/{table}`, updating `PUT /admin/api/models/{table}/rows/{id}`. The model and row are taken from the url, `_model` and `_id` in the request body are ignored.
+- Authentication endpoints called by the login form moved to `/admin/api/auth/…` (`login`, `password/email`, `password/reset`, `verification`). Browser pages such as `/admin/login` and `/admin/logout` are unchanged.
+- Downloads moved to `/admin/files/…`: `/admin/download/file` is now `/admin/files/{table}/{field}/{file}`, `/admin/user/download/{hash}` is `/admin/files/secured/{hash}` and `/admin/download/signed/{hash}` is `/admin/files/signed/{hash}/{table}/{field}/{file}`. Signed links already sent by e-mail stop working; generate them again with `$file->download()`.
+- The gettext editor moved to `/admin/api/translations/{language}/{table?}`, the stateless editor link to `/admin/translations/editor` and admin translations to `/admin/translations/admin.js`. Switching the admin language is `PUT /admin/api/user/language/{id}`. `/vendor/js/ca-translates.js` is unchanged.
+- Frontend editor endpoints moved from `/frontend-editor/*` and `/translates/*` to `/admin/api/frontend-editor/*`. `FrontendEditor::routes()` was removed; the routes are registered automatically.
+- Statistics are `POST /admin/api/statistics/{key}`, the site tree is saved by `PUT /admin/api/sitetree`, the development benchmark is `/admin/api/dev/benchmark`.
+- The REST API moved to `/admin/api/v1/…`: `/admin/api/model/{table}` is now `/admin/api/v1/models/{table}`, rows are updated by `PUT` or `PATCH` instead of `POST`, `/admin/api/models_scheme/{table?}` is `/admin/api/v1/models/{table}/scheme` or `/admin/api/v1/scheme`, and the helpers auth routes (`auth/login`, `user`) moved under the same prefix. Swagger moved from `/admin/swagger` to `/admin/api/v1/docs`. Update external API clients.
+- The `hasAdminRole` middleware reads the model from the `{model}` route parameter, then from the `model` input. The `_model` input is no longer read.
+
+## Removed window.crudadmin.layout.requests
+
+- Removed the `requests` url map from `window.crudadmin.layout` and the `useRequest()` helper. Custom Vue components calling `useRequest()` fail with an undefined function error.
+- Use the api composables instead: `useModelApi(table)` (`rows()`, `show()`, `options()`, `button()`, `export()`, `formUrl()`, `downloadUrl()`, …), `useAuthApi()`, `useTranslationsApi(languageId)` and `usePanelApi()`. Requests made with `useAxios()` are relative to `/admin`, so `useAxios().$get('/api/…')` keeps working for custom endpoints.

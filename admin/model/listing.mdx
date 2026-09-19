@@ -217,7 +217,7 @@ public function adminModelRender(array $data)
 ### Table requests
 {/* feature: model.rowsEndpoint */}
 
-The table loads records with `POST /admin/api/rows/{table}`. Parameters:
+The table loads records with `POST /admin/api/models/{table}/rows`. Parameters:
 
 | Parameter | Description |
 | --- | --- |
@@ -431,7 +431,7 @@ protected $exports = [
 ];
 ```
 
-Exports are listed in the export menu of the table, and the generated file respects the current search. Add `?debug=1` to the export URL (`/admin/api/export/{table}/{ExportClass}`) to see the HTML output.
+Exports are listed in the export menu of the table, and the generated file respects the current search. Add `?debug=1` to the export URL (`/admin/api/models/{table}/exports/{ExportClass}`) to see the HTML output.
 
 A `question()` method asks for confirmation or custom inputs before the export is generated, the same way as [actions with a confirmation](/admin/model/actions#actions-with-a-confirmation).
 

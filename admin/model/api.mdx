@@ -11,12 +11,17 @@ The API is available when the `crudadmin/helpers` authentication package is inst
 
 | Method | URL | Action |
 | --- | --- | --- |
-| GET | `/admin/api/model/{table}` | paginated rows |
-| POST | `/admin/api/model/{table}` | create a row |
-| GET | `/admin/api/model/{table}/{id}` | one row |
-| POST | `/admin/api/model/{table}/{id}` | update the sent columns |
-| DELETE | `/admin/api/model/{table}/{id}` | delete a row |
-| GET | `/admin/api/models` | accessible models with relations |
+| GET | `/admin/api/v1/models/{table}` | paginated rows |
+| POST | `/admin/api/v1/models/{table}` | create a row |
+| GET | `/admin/api/v1/models/{table}/{id}` | one row |
+| PUT, PATCH | `/admin/api/v1/models/{table}/{id}` | update the sent columns |
+| DELETE | `/admin/api/v1/models/{table}/{id}` | delete a row |
+| GET | `/admin/api/v1/models` | accessible models with relations |
+| GET | `/admin/api/v1/models/{table}/scheme`, `/admin/api/v1/scheme` | OpenAPI scheme of one or all models |
+| POST | `/admin/api/v1/auth/login` | sign in and receive a token |
+| GET | `/admin/api/v1/user` | signed in administrator |
+
+The Swagger UI is available to signed in administrators at `/admin/api/v1/docs`, the scheme itself at `/admin/api/v1/openapi.json` and `/admin/api/v1/openapi.yaml`.
 
 File fields are returned as URLs, `multiple` file fields as a list of URLs.
 
@@ -29,7 +34,7 @@ File fields are returned as URLs, `multiple` file fields as a list of URLs.
 | `_with` | `_with[]=author:name&_with[]=items.product`, `_with=author;comments` | relations with optional columns, a dot for nested relations |
 | `_where` | `_where[price,>=]=10`, `_where[status,in,\|]=new\|paid`, `_where[author_id,notnull]=1` | filters |
 | `_scope` | `_scope[]=active`, `_scope[popular]=100` | model scopes with an optional parameter |
-| `_selector` | `/model/orders/A-2026?_selector=number` | find a row by another column |
+| `_selector` | `/models/orders/A-2026?_selector=number` | find a row by another column |
 
 ## Customizing the response
 
