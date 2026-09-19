@@ -5,6 +5,15 @@ description: "Changes to check when upgrading older projects to CrudAdmin 6."
 icon: "arrow-right-left"
 ---
 
+## Model settings editor
+
+- UI settings can now be stored in `app/Admin/model-settings.php`; commit and deploy this file. Existing `$settings`, `settings()` and mutators remain supported, with map overrides applied last.
+- Title aliases are normalized in the settings payload: `title.insert` becomes `title.create` and takes precedence over an old `title.create`; `title.edit` becomes `title.update` when no update title is set. Update custom frontend consumers that read the old keys.
+- Use column snapshots instead of new `columns.*.before` / `columns.*.after` declarations. Run `admin:settings-migrate --dry-run`, then `admin:settings-migrate` to move supported literals and convert legacy ordering. Resolve reported dynamic expressions manually.
+- Explicit column visibility overrides can reveal `hidden` fields; snapshots retain shared visibility and order, while personal preferences remain above them. Password and inaccessible columns remain excluded.
+- `columns.*.name` now takes precedence over a field's `column_name`, so editor changes also apply to fields with a custom column label.
+- Editing requires full superadmin access, `APP_DEBUG=true` and a non-production environment. Production uses the deployed map without exposing the editor.
+
 ## Removed field types
 
 ### type:array

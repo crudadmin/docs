@@ -4,6 +4,44 @@ description: "Reference of the $settings parameter: form texts, table columns, t
 icon: "settings-2"
 ---
 
+## Edit settings in the administration
+{/* feature: model.settings-editor */}
+
+Enable **Editor mode** in its own dropdown beside the administration language switch. The dropdown also opens every setting of the model you are looking at. The switch is available only to a signed-in administrator with full access (`hasAdminAccess()`) with `APP_DEBUG=true` outside the `production` environment. The server applies the same restrictions to reads and writes. With roles enabled, full access requires `permissions = true`; with roles disabled, CrudAdmin administrators already have full access.
+
+Pencils beside form headings, table headers, buttons, filters and the column picker open a shared settings modal. Their tooltips show the setting keys. A button pencil opens all three button texts: opening a new form, submitting a new record and saving an existing record. The pencil beside the table heading opens all editable settings for that model. Every modal edits only the settings its pencil covers. Edits render in the administration immediately; closing the modal without saving restores the stored settings.
+
+The initial editable set is `increments`, `filter.single`, `filter.max_buttons`, `title.create`, `title.update`, `buttons.create`, `buttons.insert`, `buttons.update`, `columns.*.name`, `columns.*.hidden`, and the default column snapshot. Other settings remain in PHP. The editor uses a shared registry for field types, group titles and server validation; fields are grouped by their prefix into the same cards the administration uses for field groups, and an empty field shows the value the administration renders in its place as the placeholder.
+
+Changes are written to `app/Admin/model-settings.php`, keyed by the full model class. Commit and deploy this file with your application. It contains the current configuration only, not a change history. Existing model settings and mutators remain supported; the map overrides their values. **Restore original setting** removes an override.
+
+```php app/Admin/model-settings.php
+<?php
+
+return [
+    'App\\Models\\Product' => [
+        'buttons.create' => _('Add product'),
+        'columns.price.name' => _('Price'),
+        'filter.max_buttons' => 4,
+        'title.create' => _('New product'),
+        'title.update' => _('Editing :name'),
+    ],
+];
+```
+
+Enter text in the source language. The editor reads source strings even when your current administration language is different. Translatable values are written using `_('text')`, and `app/Admin` is included in administration gettext extraction. Placeholders such as `:name` and `:id` remain supported.
+
+The map is independent of `bootstrap/cache/crudadmin.php`: `admin:cache` never overwrites it, and settings are translated at runtime. Conflicting concurrent edits are rejected; reopen the editor to load the current file before saving again.
+
+### Default columns
+{/* feature: settings.table.columns */}
+
+In editor mode, arrange and toggle columns in the column dropdown, then choose **Use as default**. This saves both their order and visibility for the model, including nested tables. A snapshot can override `hidden`; it cannot expose password or inaccessible columns. **Clear default** removes the snapshot and restores the model defaults.
+
+Existing personal column preferences remain above the shared defaults. When the developer changes table settings, the open model previews the new defaults. Newly introduced columns are inserted after their nearest predecessor from the current model definition and use that definition's visibility. Removed fields are ignored; migrated virtual columns are retained explicitly.
+
+Use snapshots for new ordering configuration. Legacy `columns.*.before` and `columns.*.after` declarations remain readable for compatibility and can be converted by [`admin:settings-migrate`](/admin/commands#model-settings-migration).
+
 ## Defining settings
 {/* feature: model.settings */}
 
@@ -77,7 +115,8 @@ protected $settings = [
 | --- | --- | --- |
 | `title.rows` | heading above the table | model name |
 | `title.create` | heading of the new record form | "Add new" |
-| `title.insert` | same as `title.create`, wins when both are set | — |
+| `title.insert` | legacy alias, normalized to `title.create`; wins over a legacy `title.create` when both are set | — |
+| `title.edit` | legacy alias, normalized to `title.update` when an explicit update title is absent | — |
 | `title.update` | heading of an opened record | `name`, `title`, `username` or `number` of the record |
 | `title.tab` | name of the first tab holding fields outside of tabs | "General" |
 | `buttons.create` | add new record button above the table | "Add new" |
@@ -111,7 +150,7 @@ protected $settings = [
 | `name` | column header, also used in the [table download](/admin/model/listing#table-download) |
 | `hidden` | the column is turned off by default, the administrator can turn it on in the columns list |
 | `limit` | maximum length of the text in the cell, `0` shows the whole text |
-| `before` / `after` | moves the column before or after another column (`client` matches `client_id` too) |
+| `before` / `after` | legacy ordering; use a default column snapshot for new configuration |
 | `add_before` / `add_after` | text added before or after a non-empty value, for example a unit |
 | `clickable` | `false` does not open the record when the cell is clicked |
 | `format` | date format of the value, also for columns added by `setAdminAttributes` |

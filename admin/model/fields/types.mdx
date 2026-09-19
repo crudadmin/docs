@@ -129,7 +129,7 @@ The value is cast to `bool`. A checkbox missing in the submitted admin form is s
 ```
 
 - The value is never sent to the administration, it is hidden in the table and in form responses.
-- Leaving the input empty when editing keeps the current password.
+- Leaving the input empty when editing keeps the current password. A `required` password is required only while the record has no password, so it does not have to be typed again on every edit.
 - Only the `password` attribute of an authenticatable model (extending `Admin\Eloquent\BaseAuthenticatable`) is hashed automatically.
   On other models, and for other password fields, hash the value yourself, for example in a `set{Key}Attribute` mutator.
 

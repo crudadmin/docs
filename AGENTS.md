@@ -1,5 +1,15 @@
 # Documentation project instructions
 
+## Shared CrudAdmin instructions
+
+Read and follow `../../dependencies/crudadmin/AGENTS.md`, especially the rule that
+every compatibility-breaking change must be documented in the target major
+version's migration guide. The current target is v6: `admin/upgrade-guide/v6.mdx`.
+For v7 development, use `admin/upgrade-guide/v7.mdx` and preserve the v6 guide.
+Keep new migration pages in `docs.json` navigation.
+
+`AGENTS.md` is canonical; `CLAUDE.md` imports it.
+
 ## About this project
 
 - This is the CrudAdmin documentation site, built on [Mintlify](https://mintlify.com)
@@ -22,6 +32,7 @@ The site has three tabs, each backed by its own directory.
 | Group | Pages |
 | --- | --- |
 | Getting started | `index`, `admin/how-it-works`, `admin/installation`, `admin/configuration` (config reference), `admin/commands`, `admin/helpers` (helpers, Admin facade, events), `admin/license`, `admin/migration-from-v5`, `admin/contact` |
+| Upgrade guide | `admin/upgrade-guide/v6` (one page per target major version; add v7 when development targets v7) |
 | Admin interface | `admin/model/index`, `admin/model/parameters` (overview + basic parameters), Fields subgroup (`admin/model/fields` overview + `admin/model/fields/*`), `admin/model/permissions`, `admin/model/listing`, `admin/model/settings`, `admin/model/tree`, `admin/model/actions`, `admin/model/layouts`, `admin/model/history`, `admin/model/rules-events`, `admin/model/uploads`, `admin/model/migrations`, `admin/model/relations`, `admin/model/localization`, `admin/model/api` |
 | Validation | `admin/validation/index`, `admin/validation/request` |
 | Frontend | `admin/frontend/sluggable` (slugs + SEO), `admin/frontend/files`, `admin/frontend/vue` |

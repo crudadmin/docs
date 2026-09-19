@@ -24,6 +24,21 @@ icon: "terminal"
 | `admin:migrate` | Creates and updates the tables of all admin models, see [Migrations](/admin/model/migrations). |
 | `admin:encrypt-existing` | Encrypts existing plain values of [`encrypted`](/admin/model/fields/database#encrypted-values) fields in all admin models. |
 
+## Model settings migration
+{/* feature: command.admin:settings-migrate */}
+
+Move supported literal UI settings from application models into the editor map:
+
+```bash
+php artisan admin:settings-migrate --dry-run
+php artisan admin:settings-migrate
+php artisan admin:settings-migrate --model='App\Models\Product' --dry-run
+```
+
+The command handles `$settings`, straight-line `settings()` methods and `setSettingsProperty()` mutators. It normalizes title aliases, converts legacy `before`/`after` ordering to a visibility and order snapshot, and removes only successfully migrated entries. Existing map overrides take precedence. Run it in a development working tree, review the diff and commit both the model edits and `app/Admin/model-settings.php`.
+
+Dynamic expressions and conditional methods are reported and left unchanged for manual migration. The command rewrites only registered models whose source files are inside the application's `app/` directory; it does not rewrite installed or linked package sources. `--model` accepts a full class name or an admin table and can be repeated. `--dry-run` reports prospective changes without writing files. Production execution is refused.
+
 ## Performance cache
 {/* feature: command.admin:cache, command.admin:clear */}
 
