@@ -158,3 +158,11 @@ icon: "arrow-right-left"
 - Laravel's PHP `trans()` helper still exists: calls such as `trans('validation.required')` use Laravel validation translations and are unaffected by removal of the admin frontend helpers. Use gettext for your own administration UI messages.
 - Removed resources `admin::admin.*` PHP catalogs. Administration and guest authentication screens use the shared gettext catalogs from CrudAdmin. Move custom translations into the admin gettext catalog.
 - Field `name`, `title`, `placeholder` and model labels already use gettext. Replace legacy keys such as `name:admin::admin.key` with literal source text, for example `name:Názov`. Without migration the old key is displayed as text.
+
+## Built-in admin components use script setup
+
+- All built-in administration Vue components now use `<script setup>` and are closed by default. Custom components can no longer read their state or call their methods through `$parent`, `$refs` or `$root` (for example `$parent.isField()`, `$parent.getGroupModel()`, `$root.flattenModelsWithChilds()`, `opened` on sidebar rows or `runModalCloser` on modals). Pass the data through props or read it from the model and the Pinia stores instead.
+- Components rendered through model `components` still receive `model`, `row` and `rows` as props, and `$parent.model`, `$parent.row` and `$parent.rows` keep working there.
+- The form group component is registered as `FormGroup` instead of `form-group`; update custom code that resolved it by that name.
+- License server callbacks no longer run with the component instance as `this`. They get an object with the same state and methods, but without `$`-prefixed instance properties.
+- Custom components loaded from `resources/views/admin/components` keep using the Options API (`export default { ... }`); `<script setup>` is not supported there.
