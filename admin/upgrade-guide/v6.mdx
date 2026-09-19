@@ -222,3 +222,8 @@ public function getFilterStates()
 
 - Removed the `requests` url map from `window.crudadmin.layout` and the `useRequest()` helper. Custom Vue components calling `useRequest()` fail with an undefined function error.
 - Use the api composables instead: `useModelApi(table)` (`rows()`, `show()`, `options()`, `button()`, `export()`, `formUrl()`, `downloadUrl()`, …), `useAuthApi()`, `useTranslationsApi(languageId)` and `usePanelApi()`. Requests made with `useAxios()` are relative to `/admin`, so `useAxios().$get('/api/…')` keeps working for custom endpoints.
+
+## Removed model slug alias
+
+- Removed the `slug` key from the model tree; it was an alias of `table` with the same value. Replace `model.slug`, `row.slug` and `models[key].slug` with `.table` in custom Vue components and JavaScript. `getModelBuilder()` compares with `model.table`.
+- Sidebar items now use the `data-model` attribute instead of `data-slug`, with the same value (table name, or the group key for menu groups). Update custom CSS, scripts and browser tests that select `li[data-slug="…"]`. The `data-slug` attribute of the form language switch is unchanged.
