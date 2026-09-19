@@ -247,101 +247,6 @@ The collected texts opened in PoEdit:
 
 Once language versions and static text translations are set up, the interface for translating the dynamic content stored in the database can be generated too.
 
-### Unique records per language
-{/* feature: model.localization */}
-
-- A relation between the model and the `languages` table is created automatically.
-- Each language version holds its own records.
-- The language is switched under the administrator profile photo, or in the form of the module. Switching it lists the records of the selected language.
-
-<Frame>
-  <img src="/images/languages-select.png" alt="Language switch under the administrator profile photo" />
-</Frame>
-
-<Frame>
-  <img src="/images/languages-select-two.png" alt="Language switch inside a module form" />
-</Frame>
-
-<Note>
-  The language can only be switched in a module that supports language versions.
-</Note>
-
-Enable unique content with the `$localization` property.
-
-```php app/Models/Article.php
-<?php
-
-namespace App\Models;
-
-use Admin\Eloquent\AdminModel;
-
-class Article extends AdminModel
-{
-    protected $localization = true;
-
-    public function fields()
-    {
-        return [
-            'name' => 'name:Name|placeholder:Enter the article name|required|max:90',
-            'content' => 'name:Content|type:editor',
-        ];
-    }
-}
-```
-
-To select the records of the language version the client is currently on, the model provides the `localization()` local scope.
-
-```php app/Http/Controllers/ArticleController.php
-<?php
-
-namespace App\Http\Controllers;
-
-use App\Models\Article;
-
-class ArticleController extends Controller
-{
-    public function index()
-    {
-        $articles = Article::localization()->get();
-
-        return view('articles', compact('articles'));
-    }
-}
-```
-
-`Article::localization($languageId)` filters by a given language. The administration lists only the records of the selected language and stores new records into it. `$localization` has an effect only with `localization` enabled in `config/admin.php`.
-
-<Warning>
-  After enabling language versions on a model, run `php artisan admin:migrate` to add the relation to the `languages` table.
-</Warning>
-
-### Records owning a language
-{/* feature: model.HasEntryLocales */}
-
-Models like clients or notifications can remember the language of a record, e.g. to send e-mails in the language of the client. Enable `$localization` and use the `HasEntryLocales` trait.
-
-```php app/Models/Client.php
-use Admin\Eloquent\Concerns\HasEntryLocales;
-
-class Client extends AdminModel
-{
-    use HasEntryLocales;
-
-    protected $localization = true;
-}
-```
-
-```php
-$client->addLocale();   // fills an empty language_id with the current language
-$client->saveLocale();  // updates language_id to the current language
-
-$client->getLocale();   // language of the record, or the first language
-
-$client->withLocale(function () use ($client) {
-    $client->notify(new OrderShipped);
-});
-```
-
 ### Mirrored content
 {/* feature: field.locale */}
 
@@ -372,3 +277,36 @@ public function getDefaultLanguage()
 ```
 
 Fallbacks, validation, API responses and converting existing columns are described in [Translatable fields](/admin/model/fields/localization).
+
+### Records owning a language
+{/* feature: model.HasEntryLocales */}
+
+Models like clients or notifications can remember the language of a record, e.g. to send e-mails in the language of the client. Declare a `language_id` field bound to `languages` and use the `HasEntryLocales` trait.
+
+```php app/Models/Client.php
+use Admin\Eloquent\Concerns\HasEntryLocales;
+
+class Client extends AdminModel
+{
+    use HasEntryLocales;
+
+    public function fields()
+    {
+        return [
+            'name' => 'name:Name|required',
+            'language_id' => 'name:Language|belongsTo:languages,name',
+        ];
+    }
+}
+```
+
+```php
+$client->addLocale();   // fills an empty language_id with the current language
+$client->saveLocale();  // updates language_id to the current language
+
+$client->getLocale();   // language of the record, or the first language
+
+$client->withLocale(function () use ($client) {
+    $client->notify(new OrderShipped);
+});
+```

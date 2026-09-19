@@ -16,7 +16,7 @@ The command compares every admin model with the last migrated state. Unchanged m
 | Option | Description |
 | --- | --- |
 | `--force`, `-f` | Migrate all models, even unchanged ones. |
-| `--auto-drop` | Drop unknown columns without asking. |
+| `--auto-drop` | Drop unknown columns without asking. A leftover `language_id` column is never dropped this way, it is only reported and asked about without the option. |
 | `--unknown`, `-u` | With `--force`, list tables that do not belong to any admin model and ask to drop each of them. |
 
 When a column exists in the table but not in the fields, the command prints `+ Unknown column: name` and asks whether to drop it. Use [`$skipDropping`](#skipping-column-removal) for columns managed elsewhere.
@@ -45,7 +45,6 @@ Columns are added after the field columns in this order:
 
 | Column | Added when |
 | --- | --- |
-| `language_id` | [`$localization = true`](/admin/model/localization#unique-records-per-language), foreign key to `languages` |
 | `_order` | the model is [sortable](/admin/model/tree#reordering-records) (default), indexed |
 | `slug` | [`$sluggable`](/admin/frontend/sluggable) is set |
 | `published_at` | the model is [publishable](/admin/model/tree#publishing-records) (default), indexed |

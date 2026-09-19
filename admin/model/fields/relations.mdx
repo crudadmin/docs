@@ -53,7 +53,7 @@ What CrudAdmin does with the field:
 
 - A key without the `_id` suffix is renamed, `category` is stored in the `category_id` column and read as `$product->category_id`. The relation method keeps the short name, `$product->category`.
 - The migration creates an `unsigned integer` column with a foreign key to the related table. The column is nullable unless the field is `required`.
-- The field is rendered as a select. Options are loaded from the related admin model with the permissions of the logged administrator. Options of a model with `$localization` carry `language_id`, so only records of the edited language are offered.
+- The field is rendered as a select. Options are loaded from the related admin model with the permissions of the logged administrator.
 - Fields pointing to the same table load the options only once, with the columns of all their labels.
 - An empty value of an optional relation is stored as `NULL`.
 - Rows are searchable by the label columns of the related record. Searching in the relation column itself compares the id.

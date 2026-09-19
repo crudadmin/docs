@@ -175,3 +175,33 @@ icon: "arrow-right-left"
 - The form group component is registered as `FormGroup` instead of `form-group`; update custom code that resolved it by that name.
 - License server callbacks no longer run with the component instance as `this`. They get an object with the same state and methods, but without `$`-prefixed instance properties.
 - Custom components loaded from `resources/views/admin/components` keep using the Options API (`export default { ... }`); `<script setup>` is not supported there.
+
+## Removed $localization
+
+- Removed the `$localization` model property (rows stored per language in `language_id`), the `localization()` query scope, `isEnabledLanguageForeign()`, the `--localization` option of `admin:model` and the `localization` key of the model tree. Remove the property from your models. For translated content of one record use [`locale` fields](/admin/model/fields/localization).
+- The administration no longer has the language switch above the table, does not send `language_id` with row, export or save requests and does not filter relation select options by language. Rows of all languages are listed together, and new rows are stored without `language_id`.
+- `language_id` is no longer created by migrations nor fillable. Existing columns and data are kept: `admin:migrate` reports the column as unknown and asks before dropping it, `--auto-drop` does not drop it. While it exists, its foreign key still blocks deleting a language used by those rows. Keep it through the replacement below, or merge or delete the per-language rows and drop the column yourself.
+- Replacement: declare `language_id` as a regular field bound to the languages model and add one [filter button](/admin/model/listing#filter-buttons) per language. Existing `language_id` columns and data keep working, the column type and foreign key match. Replace `Model::localization()` calls with `where('language_id', ...)`. Models using `HasEntryLocales` need the field too.
+
+```php
+use Localization;
+
+public function fields()
+{
+    return [
+        'name' => 'name:Name|required',
+        'language_id' => 'name:Language|belongsTo:languages,name',
+    ];
+}
+
+public function getFilterStates()
+{
+    return Localization::getLanguages()->mapWithKeys(fn ($language) => [
+        'language_'.$language->slug => [
+            'name' => $language->name,
+            'query' => fn ($query) => $query->where('language_id', $language->getKey()),
+            'active' => fn () => $this->language_id == $language->getKey(),
+        ],
+    ])->all();
+}
+```

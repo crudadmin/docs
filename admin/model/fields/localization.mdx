@@ -33,10 +33,6 @@ A translated field gets a `json` column. `type:text` and `encrypted` fields keep
   Do not combine `locale` with `belongsTo` or `belongsToMany`. Relation values are not translatable.
 </Warning>
 
-<Tip>
-  To keep separate records for every language instead, use the `$localization` model property, see [unique records per language](/admin/model/localization#unique-records-per-language).
-</Tip>
-
 ### Reading translated values
 
 Reading the attribute returns the value of the current language. When the translation is empty, the value of the default
