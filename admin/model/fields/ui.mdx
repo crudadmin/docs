@@ -41,7 +41,7 @@ public function fields()
   `tooltip:Visible on the public product page`
 </ResponseField>
 
-`name`, `title` and `placeholder` accept a Laravel translation key, which is translated into the current locale, e.g. `name:catalog.fields.price`.
+`name`, `title` and `placeholder` use literal gettext source messages, for example `name:Cena`. Laravel translation keys such as `catalog.fields.price` or `admin::admin.key` are no longer resolved.
 All labels, including `tooltip` and `column_name`, are also collected for [Gettext translations](/admin/model/localization).
 
 ## Form helpers

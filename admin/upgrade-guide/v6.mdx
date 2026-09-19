@@ -150,3 +150,9 @@ icon: "arrow-right-left"
 - Remove `xls` from model settings and add `\Admin\Contracts\Exports\TableExportXls::class` to `$exports`. Install `phpoffice/phpspreadsheet` if needed.
 - The rows endpoint no longer accepts `download` to create files. Use the standard export endpoint and its `download_url` response; replace custom uses of the removed `SheetDownloader` helper.
 - Table formatting, filters and the `setSheet{Column}Attribute()` / `setExcelSheet()` hooks are preserved. Files now use the normal private export storage; empty results produce a valid workbook.
+
+## Gettext-only administration translations
+
+- Removed the resources `trans()` mixin method, `window.trans`, `useTrans()` and `layout.localization` dictionary. Use literal `__('Source message')` calls in JavaScript/Vue and `_('Source message')` in PHP/Blade.
+- Removed resources `admin::admin.*` PHP catalogs. Administration and guest authentication screens use the shared gettext catalogs from CrudAdmin. Move custom translations into the admin gettext catalog.
+- Field `name`, `title`, `placeholder` and model labels already use gettext. Replace legacy keys such as `name:admin::admin.key` with literal source text, for example `name:Názov`. Without migration the old key is displayed as text.

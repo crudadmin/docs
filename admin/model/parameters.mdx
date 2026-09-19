@@ -60,7 +60,7 @@ The name of the module in the sidebar, in the module header and in the change hi
 protected $name = 'Articles';
 ```
 
-The value can also be a translation key, it is translated with `trans()`.
+Use a literal gettext source message; Laravel translation keys are no longer resolved.
 
 ```php
 protected $name = 'admin.models.articles';
@@ -86,7 +86,7 @@ public function name()
 ### Module description
 {/* feature: model.title */}
 
-Optional description shown under the module name. Translation keys are translated with `trans()`.
+Optional description shown under the module name. Literal messages are translated through gettext.
 
 ```php
 protected $title = 'Edit the list of articles in the blog section.';
