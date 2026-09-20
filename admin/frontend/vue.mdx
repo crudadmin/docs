@@ -84,6 +84,22 @@ Toast.error({ title: 'Error', message: 'Try again later.' });
 
 Returning `false` from `success`, `cancel` or an action callback keeps the modal opened. A component opened in a modal receives it in the `modal` prop and closes it with `modal.close()`.
 
+## Forms in a modal
+
+The form of a model can be drawn in a modal instead of the page.
+
+```js
+model.modals.add(); // a new row
+model.modals.edit(row.id); // an existing row
+model.modals.view(row.id); // read only
+model.modals.list(); // the whole table of the model
+model.modals.form(); // the row the model has opened
+model.modals.close();
+```
+
+A model which should open its own form in a modal announces it once with
+`model.modals.enable()`. Models with the `form.modal` setting do it themselves.
+
 ## Stores
 {/* feature: frontend.stores */}
 
