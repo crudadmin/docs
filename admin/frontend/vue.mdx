@@ -63,6 +63,27 @@ model.fields.date_from.on('change', (value) => {
 | `destroy` | model removed from the page |
 | field `change` / `change.row` | new value / value loaded from the row |
 
+## Modals and toasts
+
+`Modal` and `Toast` come from `@crudadmin/helpers/modal` and are available as `window.Modal` and `window.Toast`.
+
+```js
+Modal.success('Saved.');
+Modal.danger({ title: 'Error', message: 'Something went wrong.' });
+
+if (await Modal.confirm({ title: 'Delete row?', message: 'This cannot be undone.' })) {
+    // confirmed
+}
+
+const modal = Modal.open(MyComponent, { row }, { title: 'Detail', class: '--wide' });
+const { action, value } = await modal.result; // 'success', 'cancel', 'close' or a custom action
+
+Toast.success('Saved.');
+Toast.error({ title: 'Error', message: 'Try again later.' });
+```
+
+Returning `false` from `success`, `cancel` or an action callback keeps the modal opened. A component opened in a modal receives it in the `modal` prop and closes it with `modal.close()`.
+
 ## Stores
 {/* feature: frontend.stores */}
 

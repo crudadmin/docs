@@ -5,6 +5,31 @@ description: "Changes to check when upgrading older projects to CrudAdmin 6."
 icon: "arrow-right-left"
 ---
 
+## Modals and toasts moved to @crudadmin/helpers
+
+<Warning>
+Breaking change for every custom admin component that opens a modal or a toast. Calls to the removed APIs throw at runtime.
+</Warning>
+
+- Removed `useModalStore` (also from `window`) and the component methods `this.openModal()`, `this.successModal()`, `this.errorModal()`, `this.warningModal()` and `closeModal()`. Use `Modal` and `Toast` from `@crudadmin/helpers/modal`, available as `window.Modal` and `window.Toast` in custom components.
+- `openModal({ toast: true })` no longer exists. Modals do not open toasts; use `Toast.success()`, `Toast.error()`, `Toast.warning()` or `Toast.open()`.
+
+| Removed | Replacement |
+| --- | --- |
+| `openModal({ title, message, type })` | `Modal.info()`, `Modal.success()`, `Modal.warning()`, `Modal.danger()` or `Modal.message(type, options)` |
+| `openModal({ ..., success, close: true })` | `Modal.confirm({ title, message, success })`, resolves `true` or `false` |
+| `errorModal()` / `warningModal()` / `successModal()` | `Modal.danger()` / `Modal.warning()` / `Modal.success()` |
+| `openModal({ component: { component, props } })` | `Modal.open(Component, props, { title, class, key })` |
+| `openModal({ toast: true, ... })` | `Toast.success()` / `Toast.error()` / `Toast.open({ type, message })` |
+| `closeModal({ modal, callback })` | `Modal.close(modal)` or `modal.close()`, `Modal.runAction(modal, action)` |
+
+- The `close` callback of a modal is now `cancel`. It runs from the close button, the X button and Escape. Returning `false` from `success`, `cancel` or an action still keeps the modal opened.
+- Modal objects changed shape: `modal.title`, `modal.message` and `modal.type` are in `modal.message.title`, `modal.message.text` and `modal.message.type`; `modal.visible` and `modal.openedAt` are in `modal.state`; `modal.class` and `modal.key` are in `modal.options`; component props are in `modal.props`. `modal.id` stays.
+- Components opened in a modal receive the modal in the `modal` prop, the separate `actions` prop is no longer passed; read `modal.actions`.
+- Modal options are read from one place: the options of the opening are merged with the options of the wrapper component, whose values win. Only the `class` of both is kept together.
+- Renamed modal options: `escClose` became `dismissible` (Escape closes a modal with no closing action) and hiding the footer is `footer: false` instead of `actions: false`. The old names keep working.
+- The page behind an opened modal no longer scrolls. The administration sets the `--modal-open` class on `<html>`; custom styles that scrolled the page while a modal was open have to account for it.
+
 ## Model settings editor
 
 - UI settings can now be stored in `app/Admin/model-settings.php`; commit and deploy this file. Existing `$settings`, `settings()` and mutators remain supported, with map overrides applied last.
