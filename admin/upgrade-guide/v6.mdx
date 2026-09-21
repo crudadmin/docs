@@ -89,7 +89,7 @@ Breaking change for every custom admin component that opens a modal or a toast. 
 ### Localized routes
 
 - Removed the unused `routes` config key; remove it from project configuration if present. Existing routing behavior is unchanged.
-- Register language-prefixed routes with [`localizedRoutes()`](/admin/model/localization#localized-routes-and-urls).
+- Register language-prefixed routes with [`localizedRoutes()`](/admin/model/localization#localized-routes-and-urls) of the `crudadmin/frontend-editor` package.
 
 ## Removed field parameters
 
@@ -129,6 +129,21 @@ Breaking change for every custom admin component that opens a modal or a toast. 
 - Removed the entire Site builder module: `SiteBuilder`, block types, `Group::builder()`, `getSitebuilderBlocksArray()`, `renderBuilder()`, the block selector and its styles. Replace block editing and rendering with your own implementation.
 - Remove `sitebuilder` / `sitebuilder_types` config, `Admin::isEnabledSitebuilder()` calls and the `admin:sitebuilder:block` command from your project. Custom blocks extending `SBType` and published Site builder views need replacing too.
 - Existing block data is not deleted automatically, but CrudAdmin no longer edits or renders it. Migrate any content you still need before upgrading.
+
+## Frontend editor, Blade translations, localized urls, SEO and site tree moved to crudadmin/frontend-editor
+
+- These features moved from `crudadmin/crudadmin` to the new `crudadmin/frontend-editor` package. Projects using any of them run `composer require crudadmin/frontend-editor`. Config keys (`frontend_editor`, `seo`, `sitetree`, `localization_remove_default`, `uploadable_allowed_extensions`, `gettext_json`), route names and urls stay the same; their defaults are provided by the package.
+- The `$seo` model property is part of the package too. Without it, models with `$seo` (and eshop products and categories) have no meta fields tab and the slug of sluggable models is not editable in the form. `admin:migrate` then reports the `meta_*` and `slug_dynamic` columns as unknown; keep them when you are going to install the package.
+- Moved classes: `Admin\Models\RoutesSeo`, `SiteTree` and `StaticContent` are `AdminFrontendEditor\Models\…`; `Admin\Eloquent\Modules\SeoModule` is `AdminFrontendEditor\Eloquent\Modules\SeoModule`; `Admin\Helpers\SEO`, `SEOService`, `FrontendEditor`, `Admin\Helpers\SiteTree\SiteTree`, `Admin\Helpers\Localization\EditorMode` and `LocalizationRedirecter` are `AdminFrontendEditor\Helpers\…`; `Admin\Core\Casts\EditorCast` is `AdminFrontendEditor\Casts\EditorCast`; `Admin\Middleware\LocalizationMiddleware` is `AdminFrontendEditor\Middleware\LocalizationMiddleware`. The `EditorMode`, `FrontendEditor`, `SEO` and `SiteTree` facade aliases are unchanged. Update project classes extending them, e.g. an own `RoutesSeo` model.
+- Moved helpers `uploadable()`, `linkable()`, `localeUrl()`, `localizedRoutes()`, `switchLocale()` and `encryptText()`; Blade directives `@translates`, `@gettext`, `@editor`, `@uploadable`, `@seo`, `@metatags`, `@title`, `@description`, `@keywords`, `@image`, `@author` and `@seogroup`; route macros `->seo()` and `->visible()`, the router macro `addLocalizationAttributes()` and the `localized` middleware. Without the package, calls fail and directives are printed as text.
+- Removed `Admin::isEnabledFrontendEditor()`, `Admin::isSeoEnabled()` and `Admin::isEnabledSitetree()`; use `AdminFrontendEditor\Features::frontendEditor()`, `seo()` and `sitetree()`.
+- Without the package, website localization no longer reads the language from the first url segment or the session: `Localization::get()` returns the default language until the application calls `Localization::setLocale()`. `isValidSegment()`, `segment()`, `prefix()`, `saveIntoSession()`, `getFromSession()`, `refreshOnSession()` and `crossDomainSupport()` exist only in the package localization. `getLocaleSegmentIdentifier()` and `gettextJsResourcesMethod()` were removed from `LocalizationInterface`; custom localization classes may drop them.
+- Without the package, `editor` and `longeditor` values are returned without the `<div data-crudadmin-editor>` wrapper on non-admin requests, also in API responses. With the package, the wrapper stays.
+- Slugs in the language the visitor switched from (`_previous_locale`) are found only with the package. Packages set the resolver with `AdminModel::resolvePreviousLocaleUsing()`; editor field casts are added with `AdminModel::addFieldTypeCast()`.
+- Frontend scripts are built in the package and published to `public/vendor/crudadmin-frontend-editor` (`FrontendEditor.js`, `Gettextable.js`, `frontend.css`) by `php artisan admin:update` or the `admin_frontend_editor.assets` tag. `/vendor/crudadmin/build/assets/FrontendEditor.js`, `Gettextable.js` and `frontend.css` no longer exist; update custom script tags. The administration no longer installs `window.action()` and `window.decryptText()`.
+- `JSTranslations::getJavascript()` moved to the package, `Gettext::getJSPlugin()` became `JSTranslations::getScriptUrl()` of the package. `GET /admin/api/bootstrap` no longer accepts `context=editor`; the editor uses `GET /admin/api/frontend-editor/bootstrap`.
+- Models no longer receive `siteTreeColumns()`, `scopeOnSiteTreeLoad()` and `getTreeAction()`. Models with `$sitetree` load their key, the `$sitetree` column and the slug; declare these methods on the model or use the `AdminFrontendEditor\Eloquent\Concerns\HasSiteTree` trait. `parent::siteTreeColumns()` calls fail without the trait.
+- Removed `AdminHelperServiceProvider::turnOfCacheForAdmin()`. It only set `admin.cache_time`, which nothing read; remove its calls from packages.
 
 ## Removed admin preview state
 

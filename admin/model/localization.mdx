@@ -26,10 +26,14 @@ If the application needs multiple language versions, switch the parameter to `tr
 
 ### Forced redirect to the default language
 
+<Note>
+  Language prefixes in urls, the redirects and the helpers below: available with the `crudadmin/frontend-editor` package (`composer require crudadmin/frontend-editor`).
+</Note>
+
 To redirect to the default language version automatically, add the middleware in `bootstrap/app.php`.
 
 ```php bootstrap/app.php
-use Admin\Middleware\LocalizationMiddleware;
+use AdminFrontendEditor\Middleware\LocalizationMiddleware;
 use Illuminate\Foundation\Configuration\Middleware;
 
 ->withMiddleware(function (Middleware $middleware) {
@@ -97,6 +101,10 @@ Enable the extension in `config/admin.php`.
 ```php config/admin.php
 'gettext' => true,
 ```
+
+<Note>
+  The `@gettext` directive: available with the `crudadmin/frontend-editor` package (`composer require crudadmin/frontend-editor`).
+</Note>
 
 To translate in JavaScript and Vue components on the frontend, add the library that initialises the translation functions. The `@gettext` blade directive handles it — place it in the main layout as the first script in the order. The system injects the translation libraries and caches them.
 
