@@ -23,6 +23,19 @@ for (const path in components) {
 
 A global component named `AppLogo` replaces the sidebar logo, `RightNavbarSlot` is rendered in the top navbar with the `user` prop.
 
+## Initial data
+{/* feature: frontend.window.crudadmin, frontend.model-tree */}
+
+The admin calls `GET /admin/api/bootstrap` before its first route renders. The JSON `store` object binds to Pinia by store id through `Response` from `@crudadmin/helpers`. The `app` section contains configuration and the model tree; `auth` contains the current session and login configuration; `locale` binds language data to `useLocaleStore()` from `@crudadmin/helpers/store`.
+
+Use `useAppStore()` and `useAuthStore()` inside your components. To refresh both sections, call `await useAppStore().refreshApp()`. Pass `['app']`, `['auth']` or `['locale']` to request a subset. Every response includes locale data and the current identity so expired or changed sessions clear previous privileged data. Unknown section names are rejected.
+
+Startup state lives in `appStore.boot`: `ready === true` means bootstrap data is available, `loading` and `error` describe the latest request, and `componentsLoaded` tracks project component registration. The shared `useLocaleStore()` from `@crudadmin/helpers/store` contains `locale`, content `languages` and `translations`. Its dictionary remains null because the admin loads gettext separately. Available interface languages come from `useAuthStore().config.languages`; the local `useLocaleStore().current` getter selects the interface language by its slug. This getter is added in `src/stores/locale.js` to the existing helpers store instance. The gettext editor flag is `appStore.editor.gettext`. Locale persistence is disabled in the admin so bootstrap always supplies the current session data; model editor availability is `appStore.editor.modelSettings`. Session resets restore a cloned default state while preserving the startup lifecycle.
+
+Guests and admins awaiting verification receive public configuration only. Model data is not persisted in the browser or shared through a bootstrap response cache. Login and verification still reload the page to load the authenticated scripts and translations.
+
+`window.crudadmin.components` remains the registration API. Configuration and session getters on `window.crudadmin` have been removed; use the Pinia stores after bootstrap. The editor on public pages loads a restricted configuration from `/admin/api/frontend-editor/bootstrap`, using the same session or Sanctum authentication as its editing endpoints.
+
 ## Models
 {/* feature: frontend.getFreshModel, frontend.getActiveModel, frontend.model-tree */}
 

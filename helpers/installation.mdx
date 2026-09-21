@@ -4,16 +4,18 @@ description: 'This documentation describes how to install the crudadmin helpers 
 icon: 'download'
 ---
 
+PHP helpers 2.0 requires PHP 8.3 and CrudAdmin 6 with framework 6.0.1 or the matching `6.0-dev` branch. Use the 1.3 series for older CrudAdmin projects.
+
 ## Package installation
 
 1. install composer package
 
-```
-composer require crudadmin/helpers
+```bash
+composer require crudadmin/helpers:^2.0
 ```
 
 2. publish helpers configuration file
 
-```
+```bash
 php artisan vendor:publish --tag admin_helpers.config
 ```

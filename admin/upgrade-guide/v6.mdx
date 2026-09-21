@@ -257,3 +257,17 @@ public function getFilterStates()
 
 - Removed the `slug` key from the model tree; it was an alias of `table` with the same value. Replace `model.slug`, `row.slug` and `models[key].slug` with `.table` in custom Vue components and JavaScript. `getModelBuilder()` compares with `model.table`.
 - Sidebar items now use the `data-model` attribute instead of `data-slug`, with the same value (table name, or the group key for menu groups). Update custom CSS, scripts and browser tests that select `li[data-slug="…"]`. The `data-slug` attribute of the form language switch is unchanged.
+
+## JSON bootstrap and PHP helpers 2.0
+
+- The admin now loads initial data from `GET /admin/api/bootstrap`. Remove overrides of `admin::partials.crudadmin-props`; that view no longer exists. Custom admin shells must include an `admin-bootstrap` meta tag containing `route('admin.bootstrap')` and initialize `window.crudadmin.components`.
+- Removed `window.crudadmin.layout`, `window.crudadmin.filemanager`, `window.crudadmin.logged` and `window.crudadmin.verified`; there are no compatibility getters. Read configuration through `useAppStore()` and session state through `useAuthStore()` after bootstrap (`boot.ready === true`). Replace `layout.models` with `useAppStore().tree` (or `.models` for the flattened map), `layout.user` with `useAuthStore().user`, and `layout.auth` with `useAuthStore().config`. Component registration through `window.crudadmin.components` remains supported.
+- The public-page editor fetches its own restricted bootstrap configuration. Publish matching resources assets together with the PHP changes. Login and verification still reload the page.
+- PHP `crudadmin/helpers` 2.0 requires CrudAdmin 6 and framework 6.0.1 or the matching `6.0-dev` branch. Its `BootstrapRequest` inherits section composition and cache from the framework; existing project subclasses retain their namespace, client and token handling. Replace pinned `1.4.0` constraints with `^2.0` when upgrading.
+
+- App store startup flags now live in `boot` (`ready`, `loading`, `error`, `componentsLoaded`); replace `booted` checks with `boot.ready === true` and `isLoaded` with `boot.componentsLoaded`. Read `locale` and content `languages` from `useLocaleStore()` (`@crudadmin/helpers/store`). Replace `admin_languages` with `useAuthStore().config.languages`, read the selected interface language from the locally extended `useLocaleStore().current` getter, and read `gettext` from `appStore.editor.gettext`. The temporary `appStore.localization` group is removed, and `model_settings` is now `editor.modelSettings`. Update custom components reading the old top-level fields.
+- The admin-specific bootstrap request and controller live in `crudadmin/crudadmin` (`Admin\Bootstrap\AdminBootstrapRequest`, `Admin\Controllers\BootstrapController`). The reusable `Admin\Core\Utilities\BootstrapRequest` remains in `crudadmin/framework`.
+
+- CKEditor receives filebrowser URLs directly in its instance configuration. Custom editor initializers must supply those options from `useAppStore().filemanager` inside the admin or `CAEditor.config.filemanager` after public-page editor bootstrap. Republish the matching CKEditor `config.js`; the `window.crudadmin.ckeditorConfig(config)` customization hook remains supported.
+
+- Authentication form configuration is grouped under `useAuthStore().config.form`: `column`, `input_type`, `title`, `placeholder`, `password_reset` and flashed `errors`. Update custom login/reset views; provider selection remains under `config`.

@@ -7,6 +7,16 @@ description: "Every **vue, nuxt, ionic** app we are building contains of bootstr
 
 This GET request is used to obtain all backend data, metadata, and all shared informations from backend.
 
+## Shared PHP implementation
+
+In PHP helpers 2.0, `AdminHelpers\Utilities\BootstrapRequest` extends `Admin\Core\Utilities\BootstrapRequest` from `crudadmin/framework` 6. The framework owns section composition (`get`, `guest`, `authenticated`, `all`, `only`) and caching. Helpers adds the project client, token, `auth()` response and `onClient()` hook. Existing `AppRequest` subclasses keep their imports.
+
+The administration uses its own `Admin\Bootstrap\AdminBootstrapRequest`, built on the same framework base with admin session and verification rules. Its endpoint is `/admin/api/bootstrap`; it does not reuse your application's `/api/bootstrap`.
+
+Override `canLoadSection($method)` to restrict selectable methods when exposing `only` to HTTP input. Authentication checks must cover explicitly selected sections as well as the default response.
+
+Configure section caches with `['minutage' => 5]` or a number of minutes. Array entries default to 60 minutes when `minutage` is omitted; `duration` is not supported. Cache keys contain the bootstrap class basename, locale and section name, plus an optional `key` callback result. User-dependent sections need an appropriate key or must remain uncached.
+
 ## Configuration
 
 ```php routes/api.php
