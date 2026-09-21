@@ -258,6 +258,10 @@ public function getFilterStates()
 - Removed the `slug` key from the model tree; it was an alias of `table` with the same value. Replace `model.slug`, `row.slug` and `models[key].slug` with `.table` in custom Vue components and JavaScript. `getModelBuilder()` compares with `model.table`.
 - Sidebar items now use the `data-model` attribute instead of `data-slug`, with the same value (table name, or the group key for menu groups). Update custom CSS, scripts and browser tests that select `li[data-slug="…"]`. The `data-slug` attribute of the form language switch is unchanged.
 
+## Model loading states
+
+- Model loading flags are grouped under one `loading` data key: `loading.row` (row opening in the form), `loading.button` (running button action) and `loading.gettext` (translations loading before the gettext editor opens). Replace `model.getData('loadingRow')` with `model.getData('loading').row` and `model.getData('button_loading')` with `model.getData('loading').button` in custom Vue components. The old keys are removed without aliases.
+
 ## JSON bootstrap and PHP helpers 2.0
 
 - The admin now loads initial data from `GET /admin/api/bootstrap`. Remove overrides of `admin::partials.crudadmin-props`; that view no longer exists. Custom admin shells must include an `admin-bootstrap` meta tag containing `route('admin.bootstrap')` and initialize `window.crudadmin.components`.
