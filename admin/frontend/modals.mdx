@@ -1,0 +1,166 @@
+---
+title: "Modals and toasts"
+description: "Messages, confirmations, your own components and admin model forms opened in a modal."
+icon: "app-window"
+---
+
+`Modal` and `Toast` come from `@crudadmin/helpers/modal`. The administration configures them with its own modal window and toast, and exposes them as `window.Modal` and `window.Toast`. Use them without an import in every custom component.
+
+## Messages
+
+```js
+Modal.success('Saved.');
+Modal.info({ title: 'Info', message: 'The export is ready.' });
+Modal.warning({ message: 'The row is locked.', success: () => unlock() });
+Modal.danger(); // default title and text
+Modal.message(type, { message }); // type from a server response, error means danger
+```
+
+A message takes `title`, `message`, `success` and `cancel` callbacks, and `confirmText` and `cancelText` for the button labels. The `cancel` callback also runs when the modal is closed with the close button.
+
+```js
+Modal.success({
+    title: 'Thank you for your order',
+    message: 'Your subscription has been activated.',
+    cancel: () => getActiveModel('schools')?.setActiveTab('schools_subscriptions'),
+});
+```
+
+## Confirmations
+
+`Modal.confirm()` resolves `true` when the user confirms and `false` otherwise.
+
+```js
+if (await Modal.confirm({ title: 'Delete row?', message: 'This cannot be undone.' })) {
+    // confirmed
+}
+```
+
+Instead of awaiting the result, pass `success` and `cancel` callbacks. `success` runs on the confirm button or Enter. `cancel` runs on the cancel button, the close button and Esc. Callbacks may be async: the modal waits for them, blocks a second click on the same button, and shows a loader on the button when the callback runs longer than 750 ms. Change the button labels with `confirmText` and `cancelText`.
+
+```js
+Modal.confirm({
+    title: 'Delete row?',
+    message: 'This cannot be undone.',
+    confirmText: 'Delete',
+    success: async () => {
+        // the modal stays open with a loader until the request finishes
+        await removeStudent(row);
+    },
+    cancel: () => Toast.info('Nothing was deleted.'),
+});
+```
+
+Returning `false` from `success`, `cancel` or an action callback keeps the modal opened.
+
+## Your own component in a modal
+
+`Modal.open()` mounts a component in a modal and returns its entry. The second argument are the props of the component, the third one the options of the modal.
+
+```js
+const modal = Modal.open(AssignStudent, { row }, { title: 'Assign student', class: '--wide' });
+
+const { action, value } = await modal.result; // 'success', 'cancel', 'close' or a custom action
+```
+
+### With or without the `<Modal>` wrapper
+
+`<Modal>` is the standard admin modal window: header with the title and the close button, body, footer with the actions, Enter and Esc handling, focus kept inside the modal and the open animation. It is a global component, so it needs no import. Whether your component uses it is decided by the `modal` prop.
+
+**The component has no `modal` prop.** The admin wraps it in `<Modal>` for you and places it in the body. The title and the actions come from the options of `Modal.open()`. Use this for plain content which does not need to close the modal itself.
+
+```js
+Modal.open(StudentDetail, { student }, { title: 'Student', class: '--wide' });
+```
+
+**The component declares the `modal` prop and wraps itself in `<Modal>`.** Nothing is wrapped automatically, the component places `<Modal :modal="modal">` in its template. Use this when the component closes the modal, fills the `header` or `footer` slot, or keeps its own options, such as the width or the actions.
+
+```vue AssignStudent.vue
+<template>
+    <Modal :modal="modal" :options="{ class: '--wide', actions: [] }">
+        <StudentPicker v-model="studentId" />
+
+        <template #footer>
+            <button type="button" class="btn btn-primary" @click="assign">Assign</button>
+        </template>
+    </Modal>
+</template>
+
+<script setup>
+const props = defineProps(['modal', 'row']);
+
+const studentId = ref(null);
+
+const assign = async () => {
+    await save(props.row, studentId.value);
+
+    props.modal.close(studentId.value);
+};
+</script>
+```
+
+The `options` prop of `<Modal>` wins over the options of `Modal.open()`, except for `class`, which is added to them. It takes `class`, `key` (the `data-modal` attribute), `actions`, `footer: false` to hide the footer, and `dismissible: true` to close the modal with Esc without any closing action. The slots are `default`, `header` and `footer`.
+
+**The component declares the `modal` prop and does not use `<Modal>`.** The component draws the whole markup of the modal. Keyboard handling, the focus trap and the animation are then yours to write. Use it only for a modal which does not look like the admin one.
+
+Keep the returned entry to read or close the modal later:
+
+```js
+const leaderboard = Modal.open(KahootLeaderboard, { termine });
+
+Modal.isOpen(leaderboard);
+Modal.close(leaderboard);
+```
+
+| Method | |
+| --- | --- |
+| `isOpen(target)`, `isActive(target)` | opened / on top of the other modals |
+| `close(target?, value, action)` | without a target, closes the modal on top |
+| `closeAll()` | closes every opened modal |
+| `onOpen`, `onClose`, `onChange(target, callback)` | listens for the modal |
+
+Every method accepts an entry or its `id`.
+
+## Toasts
+
+```js
+Toast.success('Saved.');
+Toast.error({ title: 'Error', message: 'Try again later.' });
+Toast.open({ type: 'warning', message: 'The session will expire soon.', duration: 10000 });
+```
+
+## Forms in a modal
+
+The form of an admin model can be drawn in a modal instead of the page. Call the methods on the model instance.
+
+```js
+model.modals.add(); // form of a new row
+model.modals.edit(row.id); // loads the row and opens its form
+model.modals.view(row.id); // read only
+model.modals.list(); // the whole table of the model
+model.modals.form(); // the row the model has opened
+model.modals.close();
+```
+
+`edit()` and `view()` load the row before the form is drawn, so the modal opens filled. Saving, creating or deleting the row closes the modal. In the `list()` modal, rows are edited in the modal and the modal stays open.
+
+### Following the opened row
+
+A model drawn by your own component has no form on the page. Call `model.modals.enable()` once, and every row the model opens, for example through `model.selectRow(row)`, is shown in the modal.
+
+```js
+const model = props.model;
+
+// Opened event is edited in a modal
+model.modals.enable();
+
+const onEventClick = async (row) => {
+    await model.selectRow(row);
+};
+```
+
+The listeners are removed with `model.modals.disable()` and when the model is destroyed. Models with the `form.modal` setting enable it themselves. A complete example with a calendar is in [Models in custom components](/admin/frontend/models#editing-rows-in-a-modal).
+
+<Note>
+  `RowActionModal` is not a global component any more and is not placed in a template. See the [v6 upgrade guide](/admin/upgrade-guide/v6).
+</Note>

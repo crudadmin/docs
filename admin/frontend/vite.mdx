@@ -1,0 +1,161 @@
+---
+title: "Custom Vite build"
+description: "Build your own admin Vue components, stores and libraries with Vite in your project."
+icon: "package"
+---
+
+<Warning>
+  This page is a work in progress. The build setup is still being changed for v6, and the steps and the published files below may change.
+</Warning>
+
+Components in the [component directory](/admin/configuration#vue-component-directory) are compiled at runtime and lose their `<style>` block. When your components need npm packages, imports between files, styles or Pinia stores, build them with Vite in your project and load the result into the administration.
+
+## How it works
+
+- Your build is a separate bundle, loaded after the administration with the private admin assets.
+- It does not bundle its own Vue, Pinia, lodash or moment. The imports are mapped to the copies the administration exposes on `window`, so your components run in the same Vue app.
+- Every `.vue` file in `resources/js/components` is registered in `window.crudadmin.components` under its file name, and becomes a [global component](/admin/frontend/vue#registering-components).
+- PHP references the component by that name, for example `Group::component('SubscriptionBanner')` or `->component('EventsBuilder', 'lesson')`.
+
+## Publishing the scaffold
+
+```bash
+php artisan vendor:publish --tag=admin.vite
+```
+
+The command writes these files into your project:
+
+| File | Purpose |
+| --- | --- |
+| `package.json` | Vite, the Vue plugin, `laravel-vite-plugin`, `unplugin-auto-import` and `vite-plugin-externals` |
+| `vite.config.js` | the build, see [configuration](#vite-configuration) |
+| `resources/js/app.js` | entry point of the admin bundle |
+| `resources/js/vue.autoload.js` | registers every component from `resources/js/components` |
+| `resources/js/components/TestComponent.vue` | sample component |
+| `resources/js/store/admin.js` | sample Pinia store |
+| `resources/css/app.css` | stylesheet entry |
+| `resources/views/vendor/admin/slots/scripts.blade.php` | loads the bundle into the administration |
+| `.prettierrc.json` | formatting of the scaffold |
+
+<Warning>
+  `package.json` and `vite.config.js` are overwritten when they already exist. If your project has its own Vite build, merge the admin entry into it by hand.
+</Warning>
+
+Install the packages and start the dev server:
+
+```bash
+npm install
+npm run dev
+```
+
+`npm run build` writes the production bundle into `public/build`.
+
+## Loading the bundle
+
+The scripts slot is rendered with the private admin assets, after the administration has loaded and the user is signed in. It uses the Laravel `Vite` facade, so the dev server with hot reload is used while `public/hot` exists, and the built manifest otherwise.
+
+```blade resources/views/vendor/admin/slots/scripts.blade.php
+{{
+    Vite::useHotFile(public_path('hot'))
+        ->useBuildDirectory('build')
+        ->useManifestFilename('manifest.json')
+        ->withEntryPoints(['resources/js/app.js'])
+}}
+```
+
+Keep the entry points in the slot in sync with `input` in `vite.config.js`.
+
+## Vite configuration
+
+```js vite.config.js
+import { defineConfig } from 'vite';
+import vue from '@vitejs/plugin-vue';
+import laravel from 'laravel-vite-plugin';
+import { viteExternalsPlugin } from 'vite-plugin-externals';
+import AutoImport from 'unplugin-auto-import/vite';
+
+export default defineConfig({
+    plugins: [
+        laravel({
+            input: ['resources/js/app.js', 'resources/css/app.css'],
+            refresh: true,
+        }),
+        vue({
+            template: {
+                transformAssetUrls: {
+                    base: '',
+                    includeAbsolute: true,
+                },
+            },
+        }),
+        AutoImport({
+            imports: ['vue', 'vue-router', 'pinia'],
+            dirs: ['./resources/js/**'],
+            vueTemplate: true,
+            cache: true,
+            injectAtEnd: false,
+        }),
+        // Shared libraries come from the administration, after auto imports
+        viteExternalsPlugin({ vue: 'Vue', lodash: '_', moment: 'moment', pinia: 'pinia' }, { enforce: 'post' }),
+    ],
+    build: {
+        rollupOptions: {
+            external: ['vue', 'pinia', 'lodash', 'moment'],
+        },
+    },
+});
+```
+
+- **Externals.** Do not remove `vue` and `pinia` from the externals. A second copy of Vue breaks reactivity between your components and the admin models, and a second Pinia does not see the admin stores.
+- **Auto imports.** Vue, Vue Router and Pinia functions, and everything exported from `resources/js`, are available without an import. Your own composables and stores work the same way.
+- **Dev server port.** When another Vite dev server of the project already uses port 5173, give the admin build its own port with `server.port`, so both can run side by side.
+
+## Writing components
+
+A built component uses the globals of the administration directly: `getFreshModel()`, `getActiveModel()`, `Modal`, `Toast`, `useAxios()`, the admin stores and the global components such as `ModelRowsBuilder`. See [Vue app](/admin/frontend/vue) and [Models in custom components](/admin/frontend/models).
+
+```vue resources/js/components/SubscriptionBanner.vue
+<template>
+    <div class="subscription-banner" v-if="store.expiresSoon">
+        {{ __('Your subscription expires soon.') }}
+    </div>
+</template>
+
+<script setup>
+const props = defineProps({
+    model: {},
+});
+
+const store = useSubscriptionStore();
+</script>
+
+<style lang="scss" scoped>
+.subscription-banner {
+    padding: 1rem;
+}
+</style>
+```
+
+Stores use the global `pinia`, so they are shared with the administration:
+
+```js resources/js/store/subscription.js
+export const useSubscriptionStore = pinia.defineStore('subscription', {
+    state: () => ({
+        expiresSoon: false,
+    }),
+});
+```
+
+`resources/js/app.js` is also the place for code that runs once the administration has loaded, for example loading your own data or opening a modal after a redirect.
+
+```js resources/js/app.js
+import './vue.autoload.js';
+
+const params = new URLSearchParams(document.location.search);
+
+if (params.get('paymentSuccess') == 1) {
+    Modal.success({ title: 'Thank you for your order' });
+}
+```
+
+The bundle runs once per document. Signing out and in again without a reload does not run it again, so read session data from the admin stores instead of copying it on load. See [Initial data](/admin/frontend/vue#initial-data).

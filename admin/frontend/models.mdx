@@ -1,0 +1,149 @@
+---
+title: "Models in custom components"
+description: "Draw the rows of an admin model in your own Vue component, and open its form in a modal."
+icon: "calendar-days"
+---
+
+Your components can use the same building blocks as the administration: the model instance, the rows loader and the form. This page shows how to draw rows of a model in your own UI, for example a calendar, and still edit them in the standard admin form.
+
+The examples use global components and helpers, so they work both in components loaded from the [component directory](/admin/configuration#vue-component-directory) and in components from your own [Vite build](/admin/frontend/vite).
+
+## Building blocks
+
+| Component | Renders |
+| --- | --- |
+| `<ModelBuilder :model="model" />` | the whole module: table, form, tabs and actions |
+| `<ModelRowsBuilder :model="model" />` | the rows of the model, by default in the table |
+| `<FormBuilder :model="model" />` | the form of the row opened on the model |
+
+All three are registered globally, so you use them without an import.
+
+## Getting a model
+{/* feature: frontend.getFreshModel, frontend.getActiveModel */}
+
+`getFreshModel()` creates a new instance from the model tree. Pass a parent model as the second argument, and the instance loads only the rows belonging to the parent row.
+
+```js
+// all rows of the model
+const events = reactive(getFreshModel('termines_events').initialize());
+
+// rows of the row opened in the parent model
+const events = reactive(getFreshModel('termines_events', props.model).initialize());
+```
+
+A model you create yourself is not removed with the component. Destroy it when the component unmounts.
+
+```js
+onBeforeUnmount(() => events.destroy());
+```
+
+Scopes narrow the loaded rows. `setScope()` replaces a scope with the same key, and a scope change reloads the rows from the first page.
+
+```js
+events.setScope('filterByType', 'drive');
+```
+
+## Drawing rows your own way
+
+`ModelRowsBuilder` loads the rows, keeps pagination, order, scopes and auto refresh working, and reloads when the parent row changes. Its default slot replaces the table. Put your own markup into the slot and read the loaded rows from the model.
+
+```vue resources/js/components/EventsBuilder.vue
+<template>
+    <ModelRowsBuilder :model="events">
+        <EventsCalendar :model="events" />
+    </ModelRowsBuilder>
+</template>
+
+<script setup>
+const props = defineProps({
+    model: {},
+    data: {},
+});
+
+// props.model is the model of the tab, events are loaded for its opened row
+const events = reactive(getFreshModel('termines_events', props.model).initialize());
+
+events.setScope('filterByType', props.data);
+
+onBeforeUnmount(() => events.destroy());
+</script>
+```
+
+The component above is attached to a tab of a parent admin model with a [group component](/admin/model/fields/groups#group-component):
+
+```php app/Models/Termine.php
+Group::tab([])->name('Lessons')->icon('fa-calendar')->component('EventsBuilder', 'lesson'),
+```
+
+## Editing rows in a modal
+
+The component draws rows, but there is no form on the page. Call `model.modals.enable()` once, and the form of every row the model opens is shown in a modal. Saving or deleting the row closes the modal.
+
+```vue resources/js/components/EventsCalendar.vue
+<template>
+    <FullCalendar :options="options" />
+</template>
+
+<script setup>
+import FullCalendar from '@fullcalendar/vue3';
+import timeGridPlugin from '@fullcalendar/timegrid';
+
+const props = defineProps({
+    model: {},
+});
+
+const model = props.model;
+
+// Opened event is edited in a modal
+model.modals.enable();
+
+const options = computed(() => ({
+    plugins: [timeGridPlugin],
+    events: model.getRows().map((row) => ({ id: row.id, title: row.name, start: row.from, end: row.to })),
+    eventClick: async ({ event }) => {
+        // Loads the row and opens it, the modal follows the opened form
+        await model.selectRow({ id: event.id });
+    },
+}));
+</script>
+```
+
+You can also open the modal directly, without `enable()`:
+
+```js
+model.modals.add(); // form of a new row
+model.modals.edit(row.id); // loads the row and opens its form
+model.modals.view(row.id); // read only
+```
+
+The full API is described in [Modals and toasts](/admin/frontend/modals#forms-in-a-modal).
+
+## Saving from your own UI
+
+A change made outside the form, for example dragging an event in the calendar, can be saved without opening the form. Set the row data and save it partially.
+
+```js
+const moveEvent = async (event) => {
+    // setData('row') changes only the opened row, setRow() would change the table rows too
+    model.setData('row', {
+        id: event.id,
+        from: event.startStr,
+        to: event.endStr,
+    });
+
+    await model.savePartially();
+
+    model.closeForm();
+};
+```
+
+## Reacting to changes
+{/* feature: frontend.model-events */}
+
+Listen to [model events](/admin/frontend/vue#model-events) when something outside the model has to follow its rows.
+
+```js
+const off = model.on(['create', 'update', 'delete'], () => refreshSidebar());
+
+onUnmounted(off);
+```

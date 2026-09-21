@@ -85,11 +85,20 @@
           },
           {
             "group": "Frontend",
+            "icon": "component",
+            "pages": [
+              "admin/frontend/vue",
+              "admin/frontend/models",
+              "admin/frontend/modals",
+              "admin/frontend/vite"
+            ]
+          },
+          {
+            "group": "Website",
             "icon": "globe",
             "pages": [
               "admin/frontend/sluggable",
-              "admin/frontend/files",
-              "admin/frontend/vue"
+              "admin/frontend/files"
             ]
           }
         ]

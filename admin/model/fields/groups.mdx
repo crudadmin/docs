@@ -249,7 +249,7 @@ Group::tab(VehiclesEvent::class)->name('Drives')->icon('fa-calendar')
 ```
 
 <Warning>
-  Unlike field components, the file is not loaded from the components directory. Register `EventsCalendar` as a global Vue component in your admin JavaScript.
+  Unlike field components, the file is not loaded from the components directory. Register `EventsCalendar` as a global Vue component in your admin JavaScript, for example with a [custom Vite build](/admin/frontend/vite). Drawing model rows in such a component is described in [Models in custom components](/admin/frontend/models).
 </Warning>
 
 ## Tabs

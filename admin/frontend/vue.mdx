@@ -9,7 +9,7 @@ The administration is a Vue 3 application. Components referenced from fields, bu
 ## Registering components
 {/* feature: frontend.window.crudadmin, frontend.global-component-slots */}
 
-Components added to `window.crudadmin.components` before the page loads become global components. Load the script with the [`scripts`](/admin/configuration#branding) configuration.
+Components added to `window.crudadmin.components` become global components. Load the script with the [`scripts`](/admin/configuration#branding) configuration, or build it with [Vite](/admin/frontend/vite) in your project.
 
 ```js resources/js/admin.js
 const components = import.meta.glob('./components/**/*.vue', { eager: true });
@@ -46,6 +46,41 @@ Login and successful verification return bootstrap data in the authentication re
 The admin installs `CrudadminVue` from `@crudadmin/helpers` after Pinia. This shared plugin follows `locale.translations` and replaces the catalog, so logout removes private messages. There is no inline catalog or `window.CATranslates` in the admin shell. Before bootstrap completes, the loader uses its source text.
 
 The editor on public pages loads its restricted configuration from `/admin/api/frontend-editor/bootstrap`, using its session or Sanctum authentication. Publish matching resources assets with the PHP changes.
+
+## Session events
+
+A project script runs once per document, but admins log in and out without a reload. Listen to two window events to keep your own state in step with the session:
+
+- `crudadmin:session-start` fires once a verified session is ready, including the first document load. `event.detail.user` is the logged admin.
+- `crudadmin:session-end` fires when that session is gone: logout, a different admin logging in, or a lost session.
+
+Clear your own stores and stop your timers on `crudadmin:session-end`, otherwise the next admin sees the previous admin's data. Persisted Pinia stores keep it in local storage too.
+
+```js resources/js/app.js
+let refreshInterval = null;
+
+const startSession = () => {
+    if (refreshInterval) {
+        return;
+    }
+
+    loadProjectData();
+    refreshInterval = setInterval(loadProjectData, 1000 * 60 * 5);
+};
+
+const endSession = () => {
+    clearInterval(refreshInterval);
+    refreshInterval = null;
+
+    useProjectStore().$reset();
+};
+
+window.addEventListener('crudadmin:session-start', startSession);
+window.addEventListener('crudadmin:session-end', endSession);
+
+// The first session may have started before this script ran
+startSession();
+```
 
 ## Models
 {/* feature: frontend.getFreshModel, frontend.getActiveModel, frontend.model-tree */}
@@ -89,40 +124,7 @@ model.fields.date_from.on('change', (value) => {
 
 ## Modals and toasts
 
-`Modal` and `Toast` come from `@crudadmin/helpers/modal` and are available as `window.Modal` and `window.Toast`.
-
-```js
-Modal.success('Saved.');
-Modal.danger({ title: 'Error', message: 'Something went wrong.' });
-
-if (await Modal.confirm({ title: 'Delete row?', message: 'This cannot be undone.' })) {
-    // confirmed
-}
-
-const modal = Modal.open(MyComponent, { row }, { title: 'Detail', class: '--wide' });
-const { action, value } = await modal.result; // 'success', 'cancel', 'close' or a custom action
-
-Toast.success('Saved.');
-Toast.error({ title: 'Error', message: 'Try again later.' });
-```
-
-Returning `false` from `success`, `cancel` or an action callback keeps the modal opened. A component opened in a modal receives it in the `modal` prop and closes it with `modal.close()`.
-
-## Forms in a modal
-
-The form of a model can be drawn in a modal instead of the page.
-
-```js
-model.modals.add(); // a new row
-model.modals.edit(row.id); // an existing row
-model.modals.view(row.id); // read only
-model.modals.list(); // the whole table of the model
-model.modals.form(); // the row the model has opened
-model.modals.close();
-```
-
-A model which should open its own form in a modal announces it once with
-`model.modals.enable()`. Models with the `form.modal` setting do it themselves.
+`Modal` and `Toast` are available as `window.Modal` and `window.Toast`, and every admin model can open its own form in a modal through `model.modals`. See [Modals and toasts](/admin/frontend/modals).
 
 ## Stores
 {/* feature: frontend.stores */}
