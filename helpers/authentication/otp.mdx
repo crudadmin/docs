@@ -14,6 +14,35 @@ First enable OTP in admin_helpers config.
         ...
 ```
 
+## SMS codes
+
+Codes for phone numbers are sent through [SmartSMS](https://smartsms.sk) by `AdminHelpers\Sms\SmartSms`. Set the credentials in `.env`:
+
+```bash .env
+SMARTSMS_USERNAME=my-account
+SMARTSMS_PASSWORD=secret
+SMARTSMS_FROM=MyApp
+SMARTSMS_TEST=false
+```
+
+- `SMARTSMS_PASSWORD_MD5` can hold the MD5 hash of the password instead of `SMARTSMS_PASSWORD`.
+- With `SMARTSMS_TEST=true`, the default, messages are only written to the log: the `sms` log channel when it exists, otherwise `single`.
+- A `config/smartsms.php` file with the keys `username`, `password`, `from`, `test` and `log_channel` replaces the values from `.env`.
+
+The package also registers the `sms` notification channel. It sends the `toSms($notifiable)` text of a notification to `routeNotificationForSms()` of the notifiable, or to its `phone` attribute. The SMS login verification of the administration uses this channel.
+
+```php app/Notifications/OrderShipped.php
+public function via($notifiable)
+{
+    return ['sms'];
+}
+
+public function toSms($notifiable)
+{
+    return 'Your order has been shipped.';
+}
+```
+
 ## Testing
 
 If you enable token debug, emails or sms codes won't be sent. But your defined tokens will be used instead from `whitelisted_tokens` config.

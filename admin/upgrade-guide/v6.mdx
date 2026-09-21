@@ -284,3 +284,9 @@ public function getFilterStates()
 - Admin translations now arrive as `store.locale.translations` with bootstrap/login/logout responses. Read `useLocaleStore().translations` instead of `window.CATranslates`; remove custom loading of the admin translation script. Guest and pending-2FA catalogs contain only bundled authentication messages. The public-page editor keeps its separate translation script.
 
 - The admin installs the shared `CrudadminVue` translation plugin from `@crudadmin/helpers`; use matching helpers with reactive catalog replacement. `window.CATranslator` and `window.GettextTranslates` are no longer installed inside the admin. Import `Translator` from `@crudadmin/helpers` for a separate catalog; use its `getTranslator()` for gettext methods. Vue translation methods and the global `__`/`n__` helpers remain available.
+
+## SmartSMS moved to crudadmin/helpers
+
+- `Admin\Helpers\SmartSms` moved to `AdminHelpers\Sms\SmartSms` in the `crudadmin/helpers` package. Update imports in your code. The `smartsms` config and the `SMARTSMS_*` environment variables are unchanged.
+- `Admin\Notifications\SmartSMSChannel` is removed. `crudadmin/helpers` registers the notification channel `sms` (`AdminHelpers\Sms\SmartSmsChannel`), which sends `toSms()` of a notification to the `phone` of the notifiable, or to `routeNotificationForSms()`.
+- The SMS login verification sends its code through the `sms` channel. Without `crudadmin/helpers`, register your own `sms` channel with `Notification::extend('sms', ...)`, otherwise the code is not sent.
