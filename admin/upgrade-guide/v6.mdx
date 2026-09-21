@@ -306,3 +306,8 @@ public function getFilterStates()
 - `Admin\Helpers\SmartSms` moved to `AdminHelpers\Sms\SmartSms` in the `crudadmin/helpers` package. Update imports in your code. The `smartsms` config and the `SMARTSMS_*` environment variables are unchanged.
 - `Admin\Notifications\SmartSMSChannel` is removed. `crudadmin/helpers` registers the notification channel `sms` (`AdminHelpers\Sms\SmartSmsChannel`), which sends `toSms()` of a notification to the `phone` of the notifiable, or to `routeNotificationForSms()`.
 - The SMS login verification sends its code through the `sms` channel. Without `crudadmin/helpers`, register your own `sms` channel with `Notification::extend('sms', ...)`, otherwise the code is not sent.
+
+## Removed MAIL_DEV_WHITELIST
+
+- Removed the `CheckDevEmailWhitelist` mail listener and the `MAIL_DEV_WHITELIST` environment variable. Since Laravel 9 it stopped every e-mail once the variable was set. Use `Mail::alwaysTo()` in a service provider of your development environment, or a local mail catcher.
+- `admin:encrypt-existing` writes encrypted values straight into the table and no longer saves the rows through the model, so model events, rules and history are not triggered and `updated_at` is kept. New `--dry-run`, `--model` and `--chunk` options.

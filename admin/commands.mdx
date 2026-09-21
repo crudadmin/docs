@@ -24,6 +24,22 @@ icon: "terminal"
 | `admin:migrate` | Creates and updates the tables of all admin models, see [Migrations](/admin/model/migrations). |
 | `admin:encrypt-existing` | Encrypts existing plain values of [`encrypted`](/admin/model/fields/database#encrypted-values) fields in all admin models. |
 
+### Encrypting existing values
+
+Adding `encrypted` to a field with stored data leaves the existing rows as plain text. Run the command after `admin:migrate` to encrypt them:
+
+```bash
+php artisan admin:encrypt-existing --dry-run
+php artisan admin:encrypt-existing
+php artisan admin:encrypt-existing --model=clients --model='App\Models\Company'
+```
+
+- `--dry-run` counts the rows with plain values per table, nothing is written.
+- `--model` accepts a table, a full class name or a class name without namespace, and can be repeated. Without it, every admin model with an encrypted field is processed.
+- `--chunk` sets how many rows are loaded at once, `500` by default.
+
+Values that are already encrypted are skipped, so the command can be run again. Search hashes of the encrypted fields are filled in `_encrypted_hashes` too. The values are written straight into the table: model events, rules, history and `updated_at` are not touched. Back up the database first, a value encrypted with a wrong `APP_KEY` can not be read back.
+
 ## Model settings migration
 {/* feature: command.admin:settings-migrate */}
 

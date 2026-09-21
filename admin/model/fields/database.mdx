@@ -81,6 +81,7 @@ public function fields()
 
 - A cast type can be given as `encrypted:array`, `encrypted:collection` or `encrypted:object`. `type:json|encrypted` uses `encrypted:array`.
 - String, decimal and date fields stay searchable in the administration by the whole value (case insensitive), a part of the value is not found. The hashes for searching are stored in the `_encrypted_hashes` column.
+- Adding `encrypted` to a field does not encrypt the stored rows. Encrypt them with [`admin:encrypt-existing`](/admin/commands#encrypting-existing-values).
 
 ## Changing fields
 {/* feature: field.column-changes */}
