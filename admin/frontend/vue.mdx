@@ -26,15 +26,24 @@ A global component named `AppLogo` replaces the sidebar logo, `RightNavbarSlot` 
 ## Initial data
 {/* feature: frontend.window.crudadmin, frontend.model-tree */}
 
-The admin calls `GET /admin/api/bootstrap` before its first route renders. The JSON `store` object binds to Pinia by store id through `Response` from `@crudadmin/helpers`. The `app` section contains configuration and the model tree; `auth` contains the current session and login configuration; `locale` binds language data to `useLocaleStore()` from `@crudadmin/helpers/store`.
+The admin calls `GET /admin/api/bootstrap` before its first route renders. The JSON `store` object binds to Pinia by store id through `Response` from `@crudadmin/helpers`.
 
-Use `useAppStore()` and `useAuthStore()` inside your components. To refresh both sections, call `await useAppStore().refreshApp()`. Pass `['app']`, `['auth']` or `['locale']` to request a subset. Every response includes locale data and the current identity so expired or changed sessions clear previous privileged data. Unknown section names are rejected.
+- `app` contains the CSRF token and public logo used on the login screen and sidebar. The local `appStore.boot` tracks readiness, loading, errors and project component registration.
+- `auth` contains session status and the configuration needed for login. The user is returned only after verification. Provider choices are exposed to guests only when manual selection is required.
+- `locale` binds to the existing `useLocaleStore()` from `@crudadmin/helpers/store`. Its `translations` contains the gettext catalog: guests and pending-2FA sessions receive only bundled authentication messages and no content languages; verified admins receive the full admin catalog, including project translations.
+- `setting` exists only for a fully verified admin. `useSettingStore()` holds model trees/maps, versions, environment, author/copyright, paths, filemanager, statistics, dashboard, editor configuration and private assets. It is not persisted.
 
-Startup state lives in `appStore.boot`: `ready === true` means bootstrap data is available, `loading` and `error` describe the latest request, and `componentsLoaded` tracks project component registration. The shared `useLocaleStore()` from `@crudadmin/helpers/store` contains `locale`, content `languages` and `translations`. Its dictionary remains null because the admin loads gettext separately. Available interface languages come from `useAuthStore().config.languages`; the local `useLocaleStore().current` getter selects the interface language by its slug. This getter is added in `src/stores/locale.js` to the existing helpers store instance. The gettext editor flag is `appStore.editor.gettext`. Locale persistence is disabled in the admin so bootstrap always supplies the current session data; model editor availability is `appStore.editor.modelSettings`. Session resets restore a cloned default state while preserving the startup lifecycle.
+Call `await useAppStore().refreshApp()` to refresh all sections. Pass `['setting']`, `['auth']` or `['locale']` for a subset; every response also contains the minimal app, identity and locale data. Requesting `setting` as a guest or before 2FA completes is forbidden. Session changes reset private stores and close their UI; an identity change during a partial refresh requires a full bootstrap.
 
-Guests and admins awaiting verification receive public configuration only. Model data is not persisted in the browser or shared through a bootstrap response cache. Login and verification still reload the page to load the authenticated scripts and translations.
+Login and successful verification return bootstrap data in the authentication response. The client binds it, loads private assets, registers project components and navigates through Vue Router without reloading the admin document. JSON logout also clears private state without a reload. An explicit login redirect outside the admin still navigates away.
 
-`window.crudadmin.components` remains the registration API. Configuration and session getters on `window.crudadmin` have been removed; use the Pinia stores after bootstrap. The editor on public pages loads a restricted configuration from `/admin/api/frontend-editor/bootstrap`, using the same session or Sanctum authentication as its editing endpoints.
+`boot.ready === true` means bootstrap and required assets are ready; `boot.componentsLoaded` means project components are registered. The local `useLocaleStore().current` getter selects the interface language from `useSettingStore().languages`. Editor flags are `settingStore.editor.gettext` and `settingStore.editor.modelSettings`. Locale persistence is disabled in the admin.
+
+`window.crudadmin.components` remains the registration API; configuration/session getters have been removed. Configured scripts/styles and the meta/scripts slots are loaded from private bootstrap assets, including after SPA login. Register project components when your script executes: a script loaded after login must not rely solely on the document's already completed `load` event. Scripts should initialize idempotently across sessions. External scripts are loaded once per document; slot initialization runs for each session/locale.
+
+The admin installs `CrudadminVue` from `@crudadmin/helpers` after Pinia. This shared plugin follows `locale.translations` and replaces the catalog, so logout removes private messages. There is no inline catalog or `window.CATranslates` in the admin shell. Before bootstrap completes, the loader uses its source text.
+
+The editor on public pages loads its restricted configuration from `/admin/api/frontend-editor/bootstrap`, using its session or Sanctum authentication. Publish matching resources assets with the PHP changes.
 
 ## Models
 {/* feature: frontend.getFreshModel, frontend.getActiveModel, frontend.model-tree */}
@@ -117,5 +126,5 @@ A model which should open its own form in a modal announces it once with
 {/* feature: frontend.stores */}
 
 ```js
-useAppStore().models; // all models
+useSettingStore().models; // all models
 ```
