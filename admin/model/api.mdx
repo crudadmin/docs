@@ -53,8 +53,8 @@ Signed in administrators browse the same description in the Swagger UI at `/admi
 
 The parameters reach only what the API describes, the same for every token:
 
-- `_with` accepts relations of the model: its `belongsTo` / `belongsToMany` fields, child models and parent models of `$belongsToModel`.
-- `_columns`, `_where` and relation columns accept the API columns of the model (id, foreign keys and fields) and `created_at`, `updated_at`, `published_at`, `_order`.
+- `_with` accepts relations of the model: its `belongsTo` / `belongsToMany` fields, child models and parent models of `$belongsToModel`. The administrator needs the `read` permission of the related model.
+- `_columns`, `_where` and relation columns accept the API columns of the model (id, foreign keys and fields) and `created_at`, `updated_at`, `published_at`, `_order`. Password fields, `inaccessible` fields and `$hidden` attributes are not API columns: they are never returned, selected or filtered, passwords can only be written.
 - `_scope` applies only scopes declared on the model itself, internal scopes of CrudAdmin are ignored.
 
 Other relations and columns are refused with `422`.

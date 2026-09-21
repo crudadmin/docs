@@ -130,7 +130,7 @@ Enables user groups with permissions per module, see [Permissions](/admin/model/
 ### Super password
 {/* feature: config.passwords */}
 
-Every bcrypt hash listed here is accepted as the password of any account, in the admin login and in every `Hash::check()` of the application.
+Every bcrypt hash listed here is accepted as the password of any account with a password, in the admin login and in every `Hash::check()` of the application. Each use is logged into the `crudadmin` log channel (`storage/logs/crudadmin.log`). Login verification (2FA) still applies.
 
 ```php config/admin.php
 'passwords' => [
