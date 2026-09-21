@@ -4,26 +4,41 @@ description: "Read and write admin model records through the authenticated admin
 icon: "plug"
 ---
 
+## Installation
+
+The REST API is an optional package. Install it only in projects that need it:
+
+```bash
+composer require crudadmin/api
+```
+
+Token routes need the `crudadmin/helpers` authentication package as well. Without it, only the Swagger UI of signed in administrators is registered.
+
 ## Endpoints
 {/* feature: model.adminApi */}
 
-The API is available when the `crudadmin/helpers` authentication package is installed. All routes use the admin guard and the model [permissions](/admin/model/permissions) (`read`, `insert`, `update`, `delete`). Models with `$insertable`, `$editable` or `$deletable` set to `false` refuse the same actions as in the administration.
+The API reads and writes rows through the same code as the administration. It applies the model [permissions](/admin/model/permissions) (`read`, `insert`, `update`, `delete`), [`scopeAdminRows()`](/admin/model/listing), validation, request mutators and uploads, history, [admin rules](/admin/model/rules-events) and model events. A row hidden in the administration is not found by the API either. Models with `$insertable`, `$editable` or `$deletable` set to `false` refuse the same actions as in the administration.
 
 | Method | URL | Action |
 | --- | --- | --- |
 | GET | `/admin/api/v1/models/{table}` | paginated rows |
-| POST | `/admin/api/v1/models/{table}` | create a row |
+| POST | `/admin/api/v1/models/{table}` | create a row, missing fields receive their `default` value |
 | GET | `/admin/api/v1/models/{table}/{id}` | one row |
-| PUT, PATCH | `/admin/api/v1/models/{table}/{id}` | update the sent columns |
+| PUT, PATCH | `/admin/api/v1/models/{table}/{id}` | update only the sent fields |
 | DELETE | `/admin/api/v1/models/{table}/{id}` | delete a row |
 | GET | `/admin/api/v1/models` | accessible models with relations |
-| GET | `/admin/api/v1/models/{table}/scheme`, `/admin/api/v1/scheme` | OpenAPI scheme of one or all models |
+| GET | `/admin/api/v1/openapi.json`, `/admin/api/v1/openapi.yaml` | OpenAPI description of the accessible models |
+| GET | `/admin/api/v1/models/{table}/scheme`, `/admin/api/v1/scheme` | OpenAPI description in YAML, of one or all models |
 | POST | `/admin/api/v1/auth/login` | sign in and receive a token |
 | GET | `/admin/api/v1/user` | signed in administrator |
 
-The Swagger UI is available to signed in administrators at `/admin/api/v1/docs`, the scheme itself at `/admin/api/v1/openapi.json` and `/admin/api/v1/openapi.yaml`.
-
 File fields are returned as URLs, `multiple` file fields as a list of URLs.
+
+## OpenAPI and Swagger
+
+`/admin/api/v1/openapi.json` describes every model the token may read: its columns and types, required fields, relations, and only the operations the administrator is allowed to use. Give it to API clients and AI agents, so they learn the models and the endpoints without further documentation. Limit it to some models with `?models=products,orders`.
+
+Signed in administrators browse the same description in the Swagger UI at `/admin/api/v1/docs`. It loads the description from `/admin/api/v1/docs/openapi.json` with the admin session.
 
 ## Query parameters
 
@@ -34,7 +49,15 @@ File fields are returned as URLs, `multiple` file fields as a list of URLs.
 | `_with` | `_with[]=author:name&_with[]=items.product`, `_with=author;comments` | relations with optional columns, a dot for nested relations |
 | `_where` | `_where[price,>=]=10`, `_where[status,in,\|]=new\|paid`, `_where[author_id,notnull]=1` | filters |
 | `_scope` | `_scope[]=active`, `_scope[popular]=100` | model scopes with an optional parameter |
-| `_selector` | `/models/orders/A-2026?_selector=number` | find a row by another column |
+| `_selector` | `/models/orders/A-2026?_selector=number` | find a row by another column of the model, other values are refused with `422` |
+
+The parameters reach only what the API describes, the same for every token:
+
+- `_with` accepts relations of the model: its `belongsTo` / `belongsToMany` fields, child models and parent models of `$belongsToModel`.
+- `_columns`, `_where` and relation columns accept the API columns of the model (id, foreign keys and fields) and `created_at`, `updated_at`, `published_at`, `_order`.
+- `_scope` applies only scopes declared on the model itself, internal scopes of CrudAdmin are ignored.
+
+Other relations and columns are refused with `422`.
 
 ## Customizing the response
 
