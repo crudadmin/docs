@@ -7,7 +7,7 @@ icon: "component"
 The administration is a Vue 3 application. Components referenced from fields, buttons and layouts are loaded from the [component directories](/admin/configuration#vue-component-directory). This page covers the API available to them.
 
 ## Registering components
-{/* feature: frontend.window.crudadmin, frontend.global-component-slots */}
+{/* feature: frontend.window.crudadmin */}
 
 Components added to `window.crudadmin.components` become global components. Load the script with the [`scripts`](/admin/configuration#branding) configuration, or build it with [Vite](/admin/frontend/vite) in your project.
 
@@ -21,7 +21,7 @@ for (const path in components) {
 }
 ```
 
-A global component named `AppLogo` replaces the sidebar logo, `RightNavbarSlot` is rendered in the top navbar with the `user` prop.
+Global components named `AppLogo` and `RightNavbarSlot` fill the logo and the top navbar. All places for your own components are listed in [Slots](/admin/frontend/slots).
 
 ## Initial data
 {/* feature: frontend.window.crudadmin, frontend.model-tree */}

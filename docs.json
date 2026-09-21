@@ -90,6 +90,7 @@
               "admin/frontend/vue",
               "admin/frontend/models",
               "admin/frontend/modals",
+              "admin/frontend/slots",
               "admin/frontend/vite"
             ]
           },

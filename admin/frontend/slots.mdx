@@ -1,0 +1,161 @@
+---
+title: "Slots"
+description: "Every place of the administration where your own component or markup can be placed."
+icon: "panels-top-left"
+---
+
+The administration has fixed places for your own content. Some are filled by a global Vue component with a reserved name, some by a Blade view, and the rest by [layouts](/admin/model/layouts) of an admin model.
+
+| Slot | Filled by | Placed |
+| --- | --- | --- |
+| [`AppLogo`](#applogo) | global Vue component | top of the sidebar |
+| [`RightNavbarSlot`](#rightnavbarslot) | global Vue component | right part of the top navbar |
+| [`dashboard`](#dashboard) | config, Vue component or Blade | content of the dashboard page |
+| [`slots/meta`](#blade-slots) | Blade view | `<head>`, after the project styles |
+| [`slots/scripts`](#blade-slots) | Blade view | after all admin and project scripts |
+| [Layout positions](#model-layout-positions) | `$layouts` of a model | around the table and the form of the model |
+
+## Global component slots
+{/* feature: frontend.global-component-slots */}
+
+A global component with a reserved name is rendered in its place automatically. Register it in `window.crudadmin.components`, see [Registering components](/admin/frontend/vue#registering-components). Without the component, the default content stays.
+
+### AppLogo
+
+Replaces the logo at the top of the sidebar. The logo keeps its link to the dashboard.
+
+The default logo is passed in the default slot, so the component can wrap it instead of replacing it. The slot holds two elements: `.logo__wrapper.--default` with the full logo and `.logo__wrapper.--small` with the logo of the collapsed sidebar.
+
+```vue resources/js/components/AppLogo.vue
+<template>
+    <div class="project-logo">
+        <slot />
+
+        <span class="project-logo__env">staging</span>
+    </div>
+</template>
+```
+
+The login screen keeps the configured [`logo`](/admin/configuration#branding).
+
+### RightNavbarSlot
+
+Rendered in the right part of the top navbar, before the admin links, the language switcher and the user menu. It receives the signed-in administrator in the `user` prop and is rendered only for a signed-in administrator.
+
+```vue resources/js/components/RightNavbarSlot.vue
+<template>
+    <a href="/" target="_blank" class="d-block me-2">
+        <i class="--icon-left fa fa-external-link-alt"></i>
+        Website
+    </a>
+</template>
+
+<script setup>
+defineProps(['user']);
+</script>
+```
+
+## Dashboard
+
+The dashboard page shows the [`dashboard`](/admin/configuration#branding) configuration: the name of a global Vue component or a Blade file. Without it, `resources/views/admin/dashboard.blade.php` is rendered when it exists, otherwise the welcome message with the [statistics](/admin/commands).
+
+## Blade slots
+
+Two empty Blade views of the admin are included in every page of a signed-in administrator. Override them in `resources/views/vendor/admin/slots`.
+
+| View | Placed |
+| --- | --- |
+| `slots/meta.blade.php` | After the project [`styles`](/admin/configuration#branding), before CKEditor and the project scripts |
+| `slots/scripts.blade.php` | After all admin and project [`scripts`](/admin/configuration#branding) |
+
+```blade resources/views/vendor/admin/slots/meta.blade.php
+<meta name="theme-color" content="#4a54e2">
+<link rel="stylesheet" href="{{ asset('css/admin-print.css') }}" media="print">
+```
+
+The slots are loaded with the private bootstrap assets, only after the administrator is verified, and again after every login without a page reload. Loading your own Vite bundle this way is shown in [Vite](/admin/frontend/vite).
+
+## Model layout positions
+
+A model places its own components with the [`$layouts`](/admin/model/layouts#registering-the-layout) property, keyed by the position. Each component receives the `model`, the opened `row` and the loaded `rows` props.
+
+```php app/Models/Order.php
+protected $layouts = [
+    'table-before' => 'OrdersCalendar',
+    'form-header-right' => 'orders.DeleteInHeader',
+];
+```
+
+The page of a model, from the top:
+
+```text
+top
+mutators
+┌ module header ────────────────────────────────────────────────────────┐
+│ search, filter        actions-grid-before  [grid switcher]            │
+│                       actions-grid  [+ New record]  actions-grid-after│
+├ table column ─────────────────────┬ form column ──────────────────────┤
+│ table-before                      │ form-before                       │
+│ ┌ table header ─────────────────┐ │ ┌ form header ──────────────────┐ │
+│ │ title   table-header-actions  │ │ │ title  form-header-left       │ │
+│ │ table-header                  │ │ │        form-header-right  ... │ │
+│ ├───────────────────────────────┤ │ │ form-header                   │ │
+│ │ rows                          │ │ ├───────────────────────────────┤ │
+│ ├───────────────────────────────┤ │ │ form-top                      │ │
+│ │ table-footer                  │ │ │ fields                        │ │
+│ │ pagination                    │ │ │ form-bottom                   │ │
+│ └───────────────────────────────┘ │ ├───────────────────────────────┤ │
+│ table-after                       │ │ form-footer          [Save]   │ │
+│                                   │ └───────────────────────────────┘ │
+│                                   │ form-after                        │
+└───────────────────────────────────┴───────────────────────────────────┘
+bottom
+```
+
+### Page
+
+| Position | Placed |
+| --- | --- |
+| `top` | Above the whole model, before its header |
+| `mutators` | Right after `top`. Meant for components without markup, which watch the form and change field values |
+| `bottom` | Under the whole model, after its child models |
+| `model-builder` | Replaces the whole model: header, table and form. Used for dashboards, calendars or other own pages of a model |
+
+### Module header
+
+The bar above the table with the search, the filter and the buttons on the right. It is not shown for a [single](/admin/model/parameters) model.
+
+| Position | Placed |
+| --- | --- |
+| `actions-grid-before` | First item on the right, before the grid size switcher |
+| `actions-grid` | After the grid size switcher, before the **New record** button |
+| `actions-grid-after` | Last item on the right, after the **New record** button |
+
+### Table
+
+The column with the records. It is hidden while only the form is shown.
+
+| Position | Placed |
+| --- | --- |
+| `table-before` | Above the table. Shown also when the table is turned off with the `table.enabled` [setting](/admin/model/settings) |
+| `table-header-actions` | Right part of the table header, before the export, action and column menus |
+| `table-header` | Under the title bar of the table, above the rows |
+| `table-footer` | Footer of the table, above the pagination |
+| `table-after` | Under the table |
+
+### Form
+
+The column with the form. It is shown while a row is opened or created.
+
+| Position | Placed |
+| --- | --- |
+| `form-before` | Above the form |
+| `form-header-left` | Left part of the form header, after the form title |
+| `form-header-right` | Right part of the form header, before the actions, history, language switcher and close buttons |
+| `form-header` | Under the action bar of the form header |
+| `form-top` | Top of the form body, above the fields |
+| `form-bottom` | Bottom of the form body, under the fields |
+| `form-footer` | Footer of the form, before the **Save** button |
+| `form-after` | Under the form |
+
+A form opened in a [modal](/admin/frontend/modals#forms-in-a-modal) keeps the positions inside the form, from `form-header-left` to `form-footer`. `form-before` and `form-after` belong to the form column of the page and are not shown in the modal.
