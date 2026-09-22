@@ -24,8 +24,9 @@
               "admin/commands",
               "admin/helpers",
               "admin/license",
-              "admin/migration-from-v5",
-              "admin/contact"
+              "admin/legacy-versions",
+              "admin/contact",
+              "not-found"
             ]
           },
           {

@@ -1,10 +1,12 @@
 ---
-title: "Migration from v5"
-description: "How to keep installing CrudAdmin 5 in existing projects from the new packages.crudadmin.com repository."
+title: "Legacy versions"
+description: "How to keep installing CrudAdmin 5 and older versions in existing projects from the packages.crudadmin.com repository."
 icon: "arrow-right-left"
 ---
 
-CrudAdmin packages are no longer downloaded from Packagist and GitHub. Both CrudAdmin 6 and CrudAdmin 5 are distributed from the private composer repository `packages.crudadmin.com`.
+CrudAdmin packages are no longer downloaded from Packagist and GitHub. Both CrudAdmin 6 and the legacy CrudAdmin 5 are distributed from the private composer repository `packages.crudadmin.com`.
+
+Is composer failing to install `crudadmin/crudadmin`, `crudadmin/framework` or `crudadmin/resources` in an existing project? This page explains how to fix it.
 
 Existing CrudAdmin 5 projects keep working until composer has to download the packages again, for example on a new server, in CI, or after the composer cache is cleared. Then the installation fails, because the old download links point to GitHub. Follow the steps below once in every CrudAdmin 5 project.
 
