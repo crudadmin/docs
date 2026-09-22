@@ -197,7 +197,14 @@ Do not read the logged administrator in `fields()`, use the permission parameter
 'app' => 'name:Application|type:select|options:web,app|hasNotFullAccess:hideFromForm',
 ```
 
-A model whose `fields()` call `admin()` still works: CrudAdmin detects it and builds its fields again for the authenticated administrator in every administration request, which is slower. The compiled cache holds its fields as without the administrator. `admin()` returns `null` while fields are cached (relations tree, `admin:cache`, model boot). The administrator read in another way (`auth()->user()`, `request()->user()`) is not detected.
+The rules work also in attributes of groups and tabs:
+
+```php
+Group::tab(Invoice::class)->attributes('hasNotFullAccess:removeField'),
+Group::inline([...])->add('hasNotFullAccess:hideFromForm'),
+```
+
+Avoid `admin()` and `admin()->hasAdminAccess()` in model definitions. A model whose `fields()` call `admin()` still works: CrudAdmin detects it and builds its fields again for the authenticated administrator in every administration request, which is slower. The compiled cache holds its fields as without the administrator. `admin()` returns `null` while fields are cached (relations tree, `admin:cache`, model boot). The administrator read in another way (`auth()->user()`, `request()->user()`) is not detected.
 
 ## Administration scoped parameters
 {/* feature: field.inAdmin */}
