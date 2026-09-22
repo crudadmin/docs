@@ -358,6 +358,16 @@ public function getFilterStates()
 
 - The condition keeps the config working on PHP 8.3 and 8.4, where `Pdo\Mysql` does not exist. Replace other `PDO::MYSQL_ATTR_*` constants the same way.
 
+### Model configuration properties
+
+PHP 8.5 lets a class read a protected property redeclared in a sibling class. Every admin model redeclares `$name`, `$title`, `$icon`, `$active` and more, so in a model method, model trait or closure inside a model, `$city->name` of another model returned the module name (`Cities`) instead of the column. PHP 8.3 and 8.4 returned the column.
+
+CrudAdmin 6 moves configuration properties that share a name with a value of the row (a field, an accessor or a relation, and always `$name` and `$title`) out of the model once it is constructed. `$row->name` returns the column on every PHP version, also inside the model itself.
+
+- Read the model configuration only with `$this->getProperty('name')` and change it with `$this->setProperty('name', $value)`. `$this->name` in a model now returns the column, before it returned the property.
+- An assignment `$this->name = ...` after the model is constructed sets the attribute and is saved into the database. Assignments in the constructor before `parent::__construct()` still set the configuration.
+- Eloquent properties (`$table`, `$hidden`, `$visible`, `$fillable`, `$casts`, `$with`, `$connection`…) stay regular properties. A column with such name is read as the property inside models. Rename the column, or read it with `getAttribute()`.
+
 ## Fields and the logged administrator
 
 - Fields are cached the same for everybody, in the process and in `php artisan admin:cache`. Permission parameters (`hasAccess`, `hasNotAccess`) and `inAdmin` are applied on top of them only in the administration and the REST API, once per request after the administrator is authenticated. Previously they were applied everywhere and the compiled cache stored them resolved as for a guest.
