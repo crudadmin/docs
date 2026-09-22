@@ -344,10 +344,32 @@ public function getFilterStates()
 
 ## Minimum requirements
 
-- CrudAdmin 6 requires Laravel 12 or 13 and MySQL 8.0 or newer. Laravel 11 and older are no longer supported; the Doctrine DBAL fallback and the MySQL 5.7 check of the migrations are removed.
+- CrudAdmin 6 requires PHP 8.3 or newer, Laravel 12 or 13 and MySQL 8.0 or newer. It is tested on PHP 8.5. Laravel 11 and older are no longer supported; the Doctrine DBAL fallback and the MySQL 5.7 check of the migrations are removed.
 - `crudadmin/crudadmin` requires `laravel/sanctum` 4.
 - `published_at` is always cast to `datetime`, also on models that still declare the `$dates` property, which Laravel ignores since version 10.
-- `crudadmin/crudadmin` no longer requires `laravel/ui`; require it in the project if you use its auth scaffolding.
+- `laravel/ui` is required by `crudadmin/resources` for the administration login and password reset. Its auth scaffolding (`php artisan ui`) is not used by CrudAdmin.
+## PHP 8.5
+
+- PHP 8.5 deprecates the driver-specific `PDO::MYSQL_ATTR_*` constants. Every project with the default Laravel `config/database.php` reports `Constant PDO::MYSQL_ATTR_SSL_CA is deprecated` on each request. Replace the key in the `options` of the `mysql` and `mariadb` connections:
+
+```php config/database.php
+(PHP_VERSION_ID >= 80500 ? \Pdo\Mysql::ATTR_SSL_CA : \PDO::MYSQL_ATTR_SSL_CA) => env('MYSQL_ATTR_SSL_CA'),
+```
+
+- The condition keeps the config working on PHP 8.3 and 8.4, where `Pdo\Mysql` does not exist. Replace other `PDO::MYSQL_ATTR_*` constants the same way.
+
+## Fields and the logged administrator
+
+- Fields are cached the same for everybody, in the process and in `php artisan admin:cache`. Permission parameters (`hasAccess`, `hasNotAccess`) and `inAdmin` are applied on top of them only in the administration and the REST API, once per request after the administrator is authenticated. Previously they were applied everywhere and the compiled cache stored them resolved as for a guest.
+- Outside the administration (frontend, console, migrations) permission parameters and `inAdmin` are ignored. `hasNotAccess` no longer applies its parameters on the frontend, e.g. `hasNotAccess:update,invisible` does not remove the field from `Model::validator()` anymore.
+- Administration requests no longer rebuild fields of all models. Rebuild them with `$model->getFields(null, true)` only if they depend on something else than the administrator, e.g. the session.
+- Removed field parameters `inFrontend` and `inConsole`. Add frontend rules directly into the validation of your frontend request, and console only parameters into the field definition. `inAdmin` stays.
+- Replace reads of the administrator in `fields()` by permission parameters, e.g. `(admin()?->hasAdminAccess() ? '' : '|hideFromForm')` by `|hasNotFullAccess:hideFromForm`. New parameters `hasFullAccess` and `hasNotFullAccess` apply parameters for super administrators or for everybody else.
+- Models whose `fields()` still call `admin()` are detected and built again for the authenticated administrator in every administration request; the compiled cache holds them as without the administrator. The administrator read by `auth()->user()`, `request()->user()` or own helpers is not detected, use `admin()` or permission parameters.
+- `admin()` returns `null` while fields are cached: when the relations tree and the compiled cache are built and while a model boots.
+- Permission parameters must not add relations (`belongsTo`, `belongsToMany`). Relations are built from fields without the administrator.
+- The compiled cache format changed, run `php artisan admin:cache` after the upgrade. Caches of the previous format are ignored.
+- Custom field mutations depending on the administrator implement `Admin\Core\Fields\Mutations\RuntimeMutation` (`runtime($field, $key, $model)`). They are skipped when fields are built and applied in the administration to fields with one of their `$attributes`.
 
 ## Removed legacy classes and methods
 

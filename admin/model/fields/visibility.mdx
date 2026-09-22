@@ -1,9 +1,9 @@
 ---
 title: "Visibility and access"
-description: "Hide fields in the listing or the form, make them readonly, and change parameters by a condition, a permission or the interface."
+description: "Hide fields in the listing or the form, make them readonly, and change parameters by a condition, a permission or in the administration only."
 ---
 
-Fields can be hidden from the listing table, hidden or removed from the form, made readonly, or changed per permission and per interface.
+Fields can be hidden from the listing table, hidden or removed from the form, made readonly, or changed per permission and in the administration only.
 
 | Parameter | Listing column | Form | Posted value saved |
 | --- | --- | --- | --- |
@@ -170,11 +170,37 @@ The first argument is the permission, the rest are parameters applied when the a
 ```
 
 - Super administrators have every permission, and every administrator has access when administrator groups are disabled.
-- Without a logged administrator (console, migrations, frontend) there is no access, so `hasNotAccess` parameters are applied. Do not change the database schema this way (`locale`, `multiple`, `belongsTo`).
+- Permission parameters are applied only in the administration and the REST API, for the authenticated administrator. Outside of it (frontend, console, migrations) they are ignored, the field keeps only its own parameters. `Model::validator()` on the frontend is not affected by them.
+- Do not change the database schema or relations this way (`locale`, `multiple`, `belongsTo`, `belongsToMany`).
 - Parameters written directly on the field win over the permission parameters.
 
-## Interface scoped parameters
-{/* feature: field.inAdmin, field.inFrontend, field.inConsole */}
+### Full access
+{/* feature: field.hasFullAccess, field.hasNotFullAccess */}
+
+`hasFullAccess` and `hasNotFullAccess` apply parameters by whether the logged administrator is a super administrator. Every parameter is listed after the colon.
+
+```php
+'app' => 'name:Application|type:select|options:web,app|hasNotFullAccess:hideFromForm',
+'note' => 'name:Internal note|type:text|hasFullAccess:required,title:Filled by super administrators',
+```
+
+### When permissions are applied
+Fields are built once and cached, in the process and by `php artisan admin:cache`, the same for everybody. After the administrator is authenticated in the administration, permission parameters and `inAdmin` are applied on top of the cached fields for him, once per request.
+
+Do not read the logged administrator in `fields()`, use the permission parameters instead:
+
+```php
+// Avoid
+'app' => 'name:Application|type:select|options:web,app'.(admin()?->hasAdminAccess() ? '' : '|hideFromForm'),
+
+// Use
+'app' => 'name:Application|type:select|options:web,app|hasNotFullAccess:hideFromForm',
+```
+
+A model whose `fields()` call `admin()` still works: CrudAdmin detects it and builds its fields again for the authenticated administrator in every administration request, which is slower. The compiled cache holds its fields as without the administrator. `admin()` returns `null` while fields are cached (relations tree, `admin:cache`, model boot). The administrator read in another way (`auth()->user()`, `request()->user()`) is not detected.
+
+## Administration scoped parameters
+{/* feature: field.inAdmin */}
 
 <ResponseField name="inAdmin">
   Applies the parameter only in the administration, e.g. a field required in the admin form but optional in your frontend form validated by `Model::validator()`.
@@ -184,17 +210,7 @@ The first argument is the permission, the rest are parameters applied when the a
   ```
 </ResponseField>
 
-<ResponseField name="inFrontend">
-  Applies the parameter only outside the administration and console.
-
-  `inFrontend:required`
-</ResponseField>
-
-<ResponseField name="inConsole">
-  Applies the parameter only in console commands, including `admin:migrate`. For example `required|inConsole:null` keeps the column nullable while the admin form requires the value.
-</ResponseField>
-
-String notation accepts one parameter per scope, use the array notation for more:
+String notation accepts one parameter, use the array notation for more:
 
 ```php
 'employee_id' => [
@@ -204,4 +220,4 @@ String notation accepts one parameter per scope, use the array notation for more
 ],
 ```
 
-Parameters written directly on the field, and the default rules of the type like `max:255` for strings, win over scoped parameters.
+Parameters written directly on the field, and the default rules of the type like `max:255` for strings, win over `inAdmin` parameters. Like permissions, `inAdmin` is applied only for the authenticated administrator, it does not change the database schema.
