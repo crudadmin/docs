@@ -70,24 +70,64 @@ $token = $admin->createToken('erp-sync', \AdminApi\Auth\TokenAccess::abilities('
 
 Signed in administrators browse the same description in the Swagger UI at `/admin/api/v1/docs`. It loads the description from `/admin/api/v1/docs/openapi.json` with the admin session.
 
+## Responses
+
+Responses follow [Laravel API Resources](https://laravel.com/docs/eloquent-resources). The list is paginated:
+
+```json GET /admin/api/v1/models/orders?per_page=2
+{
+  "data": [
+    { "id": 12, "number": "A-2026", "price": 120, "created_at": "2026-09-01T08:00:00.000000Z" },
+    { "id": 13, "number": "A-2027", "price": 80, "created_at": "2026-09-02T09:30:00.000000Z" }
+  ],
+  "links": { "first": "…?page=1", "last": "…?page=5", "prev": null, "next": "…?page=2" },
+  "meta": { "current_page": 1, "last_page": 5, "per_page": 2, "from": 1, "to": 2, "total": 10 }
+}
+```
+
+| Action | Status | Body |
+| --- | --- | --- |
+| list | 200 | `{ data: [...], links, meta }` |
+| one row, update | 200 | `{ data: {...} }` |
+| create | 201 | `{ data: {...} }` |
+| delete | 204 | empty |
+| models | 200 | `{ data: [{ table, name, relations, operations }] }` |
+| invalid parameter | 400 | `{ message }` |
+| missing or invalid token | 401 | `{ message }` |
+| missing permission or token ability | 403 | `{ message }` |
+| unknown model or row | 404 | `{ message }` |
+| validation | 422 | `{ message, errors: { field: [...] } }` |
+
+Rows contain the API columns of the model (id, foreign keys and fields) and the existing `created_at`, `updated_at`, `published_at` and `_order`. Password fields, `inaccessible` fields, `$hidden` attributes and table columns which are not fields (e.g. `remember_token`, `logout_date`, `deleted_at`) are never returned, selected, sorted or filtered. Passwords can only be written.
+
 ## Query parameters
+
+The parameters follow the conventions of [spatie/laravel-query-builder](https://spatie.be/docs/laravel-query-builder) (the JSON:API style).
 
 | Parameter | Example | Description |
 | --- | --- | --- |
-| `limit` | `limit=50`, `limit=-1` | page size, `0` or `-1` returns all rows |
-| `_columns` | `_columns=name,price` | selected columns |
-| `_with` | `_with[]=author:name&_with[]=items.product`, `_with=author;comments` | relations with optional columns, a dot for nested relations |
-| `_where` | `_where[price,>=]=10`, `_where[status,in,\|]=new\|paid`, `_where[author_id,notnull]=1` | filters |
-| `_scope` | `_scope[]=active`, `_scope[popular]=100` | model scopes with an optional parameter |
-| `_selector` | `/models/orders/A-2026?_selector=number` | find a row by another column of the model, other values are refused with `422` |
+| `filter` | `filter[status]=paid` | rows with the value |
+| | `filter[status]=new,paid` | one of the values |
+| | `filter[price]=>=10,<100` | operators `>`, `>=`, `<`, `<=`, `<>`, all conditions apply |
+| | `filter[number]=~A-20` | contains |
+| | `filter[paid_at]=null`, `filter[paid_at]=!null` | empty, not empty |
+| | `filter[popular]=100` | scope of the model (`scopePopular($query, $minimum)`) with its parameter |
+| `sort` | `sort=-created_at,number` | columns, a minus for descending order; by the primary key by default |
+| `include` | `include=customer,items.product` | relations, a dot for nested relations (up to 3 levels) |
+| | `include=itemsCount` | number of rows of a relation, as `items_count` |
+| `fields` | `fields[orders]=number,price&fields[customers]=name` | returned columns by table, of the model and of included relations; keys matching the relations are added |
+| `page`, `per_page` | `page=2&per_page=50` | page and its size, up to `admin.api.max_per_page` (100) |
+| `selector` | `/models/orders/A-2026?selector=number` | find a row by another API column instead of the id |
+
+`include` and `fields` also apply to one row, and to the row returned after create and update.
 
 The parameters reach only what the API describes, the same for every token:
 
-- `_with` accepts relations of the model: its `belongsTo` / `belongsToMany` fields, child models and parent models of `$belongsToModel`. The administrator needs the `read` permission of the related model.
-- `_columns`, `_where` and relation columns accept the API columns of the model (id, foreign keys and fields) and `created_at`, `updated_at`, `published_at`, `_order`. Password fields, `inaccessible` fields and `$hidden` attributes are not API columns: they are never returned, selected or filtered, passwords can only be written.
-- `_scope` applies only scopes declared on the model itself, internal scopes of CrudAdmin are ignored.
+- `include` accepts relations of the model: its `belongsTo` / `belongsToMany` fields, child models and parent models of `$belongsToModel`, by their camelCase names listed in `/admin/api/v1/models`. The administrator needs the `read` permission of the related model, and [`scopeAdminRows()`](/admin/model/listing) of the related model limits the included rows as in the administration.
+- `filter`, `sort` and `fields` accept only the API columns and the timestamps above.
+- Scope filters apply only scopes declared on the model itself, internal scopes of CrudAdmin are not available.
 
-Other relations and columns are refused with `422`.
+Other values are refused with `400`.
 
 ## Customizing the response
 
@@ -103,4 +143,4 @@ public function setAdminApiResponse()
 }
 ```
 
-Requests are logged by default, see the [`api` configuration](/admin/configuration#rest-api-logging).
+Requests are logged by default, see the [`api` configuration](/admin/configuration#rest-api).

@@ -396,14 +396,15 @@ Enables the site tree module, where administrators build the website navigation 
 
 Slug history (`sluggable_history`) and SEO of routes (`seo`, `seo_separator`, available with `crudadmin/website`) are described in [Pretty URLs and SEO](/admin/frontend/sluggable#slug-history).
 
-### REST API logging
+### REST API
 {/* feature: config.api */}
 
-Requests to the [REST API](/admin/model/api) of the `crudadmin/api` package are logged by default.
+Requests to the [REST API](/admin/model/api) of the `crudadmin/api` package are logged by default. `max_per_page` limits the `per_page` parameter of the rows list.
 
 ```php config/admin.php
 'api' => [
     'logging' => false,
+    'max_per_page' => 100,
 ],
 ```
 
