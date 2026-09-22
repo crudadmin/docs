@@ -26,13 +26,43 @@ The API reads and writes rows through the same code as the administration. It ap
 | GET | `/admin/api/v1/models/{table}/{id}` | one row |
 | PUT, PATCH | `/admin/api/v1/models/{table}/{id}` | update only the sent fields |
 | DELETE | `/admin/api/v1/models/{table}/{id}` | delete a row |
-| GET | `/admin/api/v1/models` | accessible models with relations |
+| GET | `/admin/api/v1/models` | readable models with relations and allowed `operations` |
 | GET | `/admin/api/v1/openapi.json`, `/admin/api/v1/openapi.yaml` | OpenAPI description of the accessible models |
 | GET | `/admin/api/v1/models/{table}/scheme`, `/admin/api/v1/scheme` | OpenAPI description in YAML, of one or all models |
 | POST | `/admin/api/v1/auth/login` | sign in and receive a token |
 | GET | `/admin/api/v1/user` | signed in administrator |
 
 File fields are returned as URLs, `multiple` file fields as a list of URLs.
+
+## Tokens
+
+`POST /admin/api/v1/auth/login` issues a Sanctum token. Send it as `Authorization: Bearer {token}`.
+
+```json
+{ "email": "admin@example.com", "password": "…", "access": "write" }
+```
+
+| `access` | Token |
+| --- | --- |
+| `read` (default) | only reads rows, the models list and the OpenAPI description; writes answer `403` |
+| `write` | reads, creates, updates and deletes rows |
+
+Any other value answers `422` before the credentials are checked. The response lists the token abilities in `data.token.abilities`, e.g. `["api", "api:read"]`. Clients which create, update or delete rows have to ask for `"access": "write"`. The permissions of the administrator apply on top of the token: a `write` token of an administrator without the `update` permission of a model can not update it. `/admin/api/v1/models` and the OpenAPI description show only the operations the token and the permissions allow.
+
+Tokens of the REST API are valid only for `/admin/api/v1/*`. The administration refuses them with `403`, so a leaked API token does not open the admin interface.
+
+| Ability | Allows |
+| --- | --- |
+| `api` | the REST API |
+| `api:read` | GET endpoints of the REST API |
+| `api:write` | POST, PUT, PATCH and DELETE of the REST API |
+| `admin` | the administration (routes of the admin session reached with a bearer token) |
+
+Tokens with the `*` ability, created before v6 or by `createToken()` without abilities, keep access to both the REST API and the administration. Issue a token for your own integration with explicit abilities:
+
+```php
+$token = $admin->createToken('erp-sync', \AdminApi\Auth\TokenAccess::abilities('read'))->plainTextToken;
+```
 
 ## OpenAPI and Swagger
 
