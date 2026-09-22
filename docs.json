@@ -24,7 +24,6 @@
               "admin/commands",
               "admin/helpers",
               "admin/license",
-              "admin/legacy-versions",
               "admin/contact",
               "not-found"
             ]
@@ -33,7 +32,8 @@
             "group": "Upgrade guide",
             "icon": "arrow-right-left",
             "pages": [
-              "admin/upgrade-guide/v6"
+              "admin/upgrade-guide/v6",
+              "admin/legacy-versions"
             ]
           },
           {

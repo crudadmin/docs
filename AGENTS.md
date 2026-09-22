@@ -31,8 +31,8 @@ The site has three tabs, each backed by its own directory.
 
 | Group | Pages |
 | --- | --- |
-| Getting started | `index`, `admin/how-it-works`, `admin/installation`, `admin/configuration` (config reference), `admin/commands`, `admin/helpers` (helpers, Admin facade, events), `admin/license`, `admin/legacy-versions`, `admin/contact` |
-| Upgrade guide | `admin/upgrade-guide/v6` (one page per target major version; add v7 when development targets v7) |
+| Getting started | `index`, `admin/how-it-works`, `admin/installation`, `admin/configuration` (config reference), `admin/commands`, `admin/helpers` (helpers, Admin facade, events), `admin/license`, `admin/contact` |
+| Upgrade guide | `admin/upgrade-guide/v6` (one page per target major version; add v7 when development targets v7), `admin/legacy-versions` (installing CrudAdmin 5 and older from packages.crudadmin.com) |
 | Admin interface | `admin/model/index`, `admin/model/parameters` (overview + basic parameters), Fields subgroup (`admin/model/fields` overview + `admin/model/fields/*`), `admin/model/permissions`, `admin/model/listing`, `admin/model/settings`, `admin/model/tree`, `admin/model/actions`, `admin/model/layouts`, `admin/model/history`, `admin/model/rules-events`, `admin/model/uploads`, `admin/model/migrations`, `admin/model/relations`, `admin/model/localization`, `admin/model/api` |
 | Validation | `admin/validation/index`, `admin/validation/request` |
 | Frontend | Admin Vue API for custom components: `admin/frontend/vue` (globals, bootstrap, models, events, stores), `admin/frontend/models` (ModelRowsBuilder in own components, editing rows in a modal), `admin/frontend/modals` (Modal, Toast, `model.modals`), `admin/frontend/vite` (custom Vite build, work in progress) |
