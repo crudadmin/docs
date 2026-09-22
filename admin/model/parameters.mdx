@@ -1,7 +1,7 @@
 ---
 title: "Model parameters"
 description: "Overview of admin model parameters and the basic properties every model shares: name, icon, dynamic values, cached queries and replication."
-icon: "sliders"
+icon: "sliders-horizontal"
 ---
 
 Every admin model is built from parameters that define how the administration, the database and the forms are generated. A freshly created model already contains the most common ones, which you can edit, remove or extend.
@@ -213,7 +213,7 @@ Single files are copied with the `cloned_xxxx_` prefix, multiple file fields kee
   Available with the `crudadmin/website` package (`composer require crudadmin/website`).
 </Note>
 
-With the [site tree module](/admin/configuration#optional-modules) enabled, records of a model can be linked in the site tree editor. The value is the label column.
+With the [site tree module](/admin/configuration#optional-modules) enabled, records of a model can be linked in the site tree editor. The value is the label column. Rendering the tree on the website is described in [Site tree](/packages/website/site-tree).
 
 ```php app/Models/Branch.php
 protected $sitetree = 'name';

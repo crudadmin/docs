@@ -1,0 +1,102 @@
+---
+title: "SEO"
+description: "Meta tags of models and routes, and rendering them in Blade layouts."
+icon: "search"
+---
+
+The website package fills the meta tags of every page from three sources:
+
+- the meta tag fields of a model, added with [`$seo`](/admin/frontend/sluggable#seo-meta-tags)
+- the **SEO routes** module of the administration, where administrators set meta tags of any url
+- values set in the Blade views
+
+## Meta tags of models
+
+```php app/Models/Article.php
+protected $seo = true;
+```
+
+`$seo` adds the **Meta tags** tab with the title, keywords, description, canonical url and images. The options are described in [Pretty URLs and SEO](/admin/frontend/sluggable#seo-meta-tags).
+
+Pass the model to the SEO of the page in its view:
+
+```blade resources/views/articles/show.blade.php
+@seo($article)
+```
+
+Without meta tag fields, the model name, description and image are used. The title is read from `meta_title`, `name`, `title` or `username`, the description from `meta_description`, `description` or `content`, and the image from `meta_image`, `image`, `images` or `avatar`.
+
+## SEO of routes
+
+Enable the module and run `php artisan admin:migrate`:
+
+```php config/admin.php
+'seo' => true,
+'seo_separator' => ' | ',
+```
+
+Mark the GET routes which administrators may describe with `seo()`:
+
+```php routes/web.php
+Route::get('/', [HomeController::class, 'index'])->seo();
+Route::get('contact', [ContactController::class, 'index'])->seo();
+Route::get('blog/{article}', [BlogController::class, 'show'])->seo(['group' => 'blog']);
+```
+
+The **SEO routes** module in the **Settings** group lists these routes the next time an administrator opens it. The row of the `/` url is the default of the whole website.
+
+Routes of one `group` share one row, e.g. all articles of a blog. Select the group of a page in its view:
+
+```blade
+@seogroup('blog')
+```
+
+## Setting values in views
+
+```blade resources/views/contact.blade.php
+@title(_('Contact'))
+@description(_('Visit our bakery in the city centre.'))
+@image(asset('images/contact.jpg'))
+@keywords('bakery, bread, contact')
+@author('Example Bakery')
+```
+
+## Rendering meta tags
+
+Render the tags in the `<head>` of the layout. The array is the default of pages without their own values:
+
+```blade resources/views/layouts/app.blade.php
+<head>
+    <meta charset="utf-8">
+    @metatags([
+        'title' => _('Example Bakery'),
+        'description' => _('Fresh bread every morning.'),
+        'image' => asset('images/share.jpg'),
+    ])
+</head>
+```
+
+`@metatags` renders `<title>`, the description, keywords and author, the Open Graph and Twitter tags and the canonical url.
+
+- The title is `{page title} {seo_separator} {website title}`. The website title is the default title, or `APP_NAME`.
+- Descriptions and keywords are stripped of HTML and shortened to 300 characters.
+- Uploaded images are resized to 1200 × 630.
+- Values of the **SEO routes** module match urls with and without a language prefix.
+
+The values are looked up in this order: the SEO route of the current url, values set in the view, the fields of the model, the SEO route of the route or group, the row of `/`, and the defaults of `@metatags`.
+
+## SEO facade
+
+Read the values anywhere else, e.g. in a view of an error page:
+
+```blade
+<meta name="apple-mobile-web-app-title" content="{{ SEO::getTitle() }}">
+```
+
+| Method | Description |
+| --- | --- |
+| `SEO::setModel($model)` | Same as `@seo` |
+| `SEO::set($key, $value)` | Same as `@title`, `@description` and the other directives |
+| `SEO::get($key, $default)` | Value of one key |
+| `SEO::getTitle()`, `getDescription()`, `getKeywords()`, `getImages()`, `getAuthor()`, `getCanonicalUrl()` | Resolved values |
+| `SEO::getMetaTags()` | The tags as an array of HTML strings |

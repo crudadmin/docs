@@ -9,7 +9,7 @@ Content lives in MDX files, navigation and site settings in `docs.json`. Project
 | Tab | Directory |
 | --- | --- |
 | CrudAdmin | `admin/` |
-| Helpers package | `helpers/` |
+| Packages | `packages/` |
 | Development structure | `development/` |
 
 ## Branches

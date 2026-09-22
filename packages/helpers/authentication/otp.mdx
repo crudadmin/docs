@@ -1,0 +1,183 @@
+---
+title: "OTP codes"
+description: "One-time codes sent by e-mail or SMS for login, registration and changing the e-mail or phone."
+---
+
+## Configuration
+
+Enable OTP codes and run `php artisan admin:migrate`. It creates the tables of the OTP codes and the whitelisted accounts.
+
+```php config/admin_helpers.php
+'auth' => [
+    'otp' => [
+        'enabled' => true,
+
+        // format of the code: 2 letters and 3 numbers, e.g. KX482
+        'length' => [
+            'chars' => 2,
+            'numbers' => 3,
+        ],
+
+        'debug' => env('AUTH_TOKEN_DEBUG', false),
+        'test_identifiers' => [],
+        'whitelisted_tokens' => [],
+
+        // model validating the e-mail or phone when a registration code is resent to another channel
+        'user' => fn () => client() ?: Admin::getModel('User'),
+    ],
+],
+```
+
+Use `'chars' => 0, 'numbers' => 5` for a numeric code. Codes are not case sensitive.
+
+## Channels
+
+The `verificator` request parameter selects where the code is sent:
+
+| Verificator | Sent by |
+| --- | --- |
+| `email` | e-mail with the code |
+| `phone` | SMS, see [SMS codes](#sms-codes) |
+
+The default is the `AUTH_VERIFICATOR` environment variable, or `email`. When a user without a phone asks for an SMS code, the code is sent by e-mail.
+
+| Code for | Valid |
+| --- | --- |
+| [Login](/packages/helpers/authentication/login#otp-login) | 15 minutes |
+| [Registration](/packages/helpers/authentication/registration) | 60 minutes |
+| [Changing the e-mail or phone](/packages/helpers/authentication/identifier) | 60 minutes |
+
+## OTP response
+
+Routes which send a code return its details in the `otp` store:
+
+```json
+{
+    "type": "success",
+    "message": "We have sent you a verification code.",
+    "store": {
+        "otp": {
+            "id": 12,
+            "verificator": "email",
+            "identifier": "jane@example.com",
+            "row_id": 5,
+            "valid_to": "2026-09-22T10:15:00.000000Z",
+            "format": "xx000",
+            "length": 5,
+            "created_at": "2026-09-22T10:00:00.000000Z",
+            "token": null,
+            "verified": false
+        }
+    }
+}
+```
+
+- `format` describes the code: `x` is a letter, `0` a number. Use it for the input mask of the app.
+- `identifier` is masked, e.g. `j***@e***m`, when the code was resent to another channel of a signed in user.
+- `token` contains the code only for [test identifiers](#testing).
+- `verified: true` means no code was sent, because the e-mail or phone is already verified.
+
+## Routes
+
+`AdminAuth::otp()` registers:
+
+| Route | Parameters | Description |
+| --- | --- | --- |
+| `POST auth/otp/resend` | `id` or `identifier`, optional `verificator` | Sends a new code with the same validity |
+| `POST auth/otp/verify` | `identifier`, `token` | Checks the code without using it up |
+
+Send another `verificator` to `auth/otp/resend` to switch the channel, e.g. from e-mail to SMS. For a registered user, the code goes to the e-mail or phone stored in the database, not to the request value.
+
+## SMS codes
+
+Codes for phone numbers are sent through [SmartSMS](https://smartsms.sk) by `AdminHelpers\Sms\SmartSms`. Set the credentials in `.env`:
+
+```bash .env
+SMARTSMS_USERNAME=my-account
+SMARTSMS_PASSWORD=secret
+SMARTSMS_FROM=MyApp
+SMARTSMS_TEST=false
+```
+
+- `SMARTSMS_PASSWORD_MD5` can hold the MD5 hash of the password instead of `SMARTSMS_PASSWORD`.
+- With `SMARTSMS_TEST=true`, the default, messages are only written to the log: the `sms` log channel when it exists, otherwise `single`.
+- A `config/smartsms.php` file with the keys `username`, `password`, `from`, `test` and `log_channel` replaces the values from `.env`.
+
+The package also registers the `sms` notification channel. It sends the `toSms($notifiable)` text of a notification to `routeNotificationForSms()` of the notifiable, or to its `phone` attribute. The SMS login verification of the administration uses this channel.
+
+```php app/Notifications/OrderShipped.php
+public function via($notifiable)
+{
+    return ['sms'];
+}
+
+public function toSms($notifiable)
+{
+    return 'Your order has been shipped.';
+}
+```
+
+## Testing
+
+Test identifiers receive no e-mail or SMS. The response returns the code in `otp.token` instead.
+
+```php config/admin_helpers.php
+'auth' => [
+    'otp' => [
+        'test_identifiers' => [
+            '+421900000000',
+            'review@example.com',
+        ],
+    ],
+],
+```
+
+Test identifiers also accept every code of `whitelisted_tokens`, so testers can use a fixed code:
+
+```php config/admin_helpers.php
+'whitelisted_tokens' => [
+    12345,
+],
+```
+
+### Debug mode
+
+With `AUTH_TOKEN_DEBUG=true`, every e-mail and phone is a test identifier. Debug mode works only when `APP_DEBUG` is enabled and the environment is `local` or `stagging`.
+
+```bash .env
+AUTH_TOKEN_DEBUG=true
+```
+
+<Warning>
+  The test environment is `stagging`, spelled with two g's. An environment named `staging` is treated as production.
+</Warning>
+
+### Whitelisted accounts
+
+The **Allowed OTP e-mails** module in the **Settings** group of the administration turns real codes off for an e-mail or phone for 15 minutes. Use it for app store reviewers or for support. During that time, the account accepts the codes of `whitelisted_tokens`.
+
+## Custom OTP model
+
+Extend the OTP model to change how codes are generated or sent. Keep its table:
+
+```php app/Models/Auth/OtpToken.php
+<?php
+
+namespace App\Models\Auth;
+
+use AdminHelpers\Auth\Models\Otp\OtpToken as AdminOtpToken;
+
+class OtpToken extends AdminOtpToken
+{
+    public function sendToken()
+    {
+        // send the code through your own channel
+    }
+}
+```
+
+Delete expired codes with `php artisan otp:clean`. The command is not scheduled automatically.
+
+<Frame>
+  <img src="/images/helpers/otp.png" alt="E-mail with an OTP code" />
+</Frame>

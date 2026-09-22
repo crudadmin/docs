@@ -1,0 +1,38 @@
+---
+title: "OAuth"
+description: "Let another application sign in with an administrator account of your CrudAdmin."
+---
+
+`AdminAuth::oauth()` turns the administration into a simple OAuth provider. Another application redirects the administrator to your CrudAdmin, and receives a token of the administrator after the login.
+
+The other application signs in with the `crudadmin` driver of [crudadmin/socialite](/packages/socialite/customization#sign-in-with-another-crudadmin).
+
+## Configuration
+
+Register every application which may sign in. The key is its client id, `name` is shown on the login screen.
+
+```php config/admin_helpers.php
+'auth' => [
+    'oauth' => [
+        'apps' => [
+            'warehouse-app' => [
+                'name' => 'Warehouse',
+            ],
+        ],
+    ],
+],
+```
+
+Register the routes in a routes file with the `web` middleware, because the administrator signs in with the admin session. Exclude `admin/oauth/token` from CSRF verification, the other application calls it from its server.
+
+```php routes/web.php
+AdminAuth::oauth();
+```
+
+## Flow
+
+| Step | Route | Description |
+| --- | --- | --- |
+| 1 | `GET admin/oauth/authorize?client_id=&redirect_uri=&state=` | Unknown clients answer `403`. The administration asks the administrator to grant access to the application and to sign in again. |
+| 2 | `GET admin/oauth/authorize/redirect` | Redirects back to `redirect_uri` with `code` and `state`. The code is valid for 15 minutes. |
+| 3 | `POST admin/oauth/token` with `client_id` and `code` | Returns `access_token` and `provider`, the table of the administrator model |

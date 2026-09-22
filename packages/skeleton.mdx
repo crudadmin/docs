@@ -1,0 +1,69 @@
+---
+title: "Skeleton"
+description: "Start a new CrudAdmin package from crudadmin/skeleton."
+icon: "hammer"
+---
+
+`crudadmin/skeleton` is the starting structure of CrudAdmin packages. It contains a service provider, config, routes, views, admin models, Vue components, translations and a test suite, wired the same way as the other packages.
+
+## Creating a package
+
+Run `create-package` from the skeleton with the name of the new package:
+
+```bash
+dependencies/skeleton/bin/create-package language-export
+```
+
+The name uses lower case letters, numbers and hyphens. The package is created next to the skeleton, in `dependencies/language-export`, and every name is replaced:
+
+| Skeleton | New package |
+| --- | --- |
+| `crudadmin/skeleton` | `crudadmin/language-export` |
+| `AdminSkeleton\` | `AdminLanguageExport\` |
+| `admin_skeleton` (config, publish tag) | `admin_language_export` |
+| `adminskeleton` (views) | `adminlanguageexport` |
+
+The script also writes a `readme.md`, runs `git init -b main` and installs the release hook of [crudadmin-release](/packages/release) when it is available.
+
+## Structure
+
+| Path | Content |
+| --- | --- |
+| `src/Providers/AppServiceProvider.php` | Registers the providers, facades, middleware, admin models and views |
+| `src/Config/config.php` | Config of the package, published as `config/admin_{name}.php` |
+| `src/Config/admin.php` | Merged into `config/admin.php`: Vue component and gettext directories |
+| `src/Models` | Admin models, registered automatically |
+| `src/Admin/Components` | Vue components of the administration |
+| `src/Routes/routes.php` | Routes in the `web` middleware group |
+| `src/Views` | Blade views |
+| `src/Helpers/helpers.php` | Global functions, autoloaded |
+| `tests` | Orchestra Testbench tests on SQLite in memory |
+
+The service provider extends `Admin\Providers\AdminHelperServiceProvider`, so the package registers its admin models the same way as CrudAdmin:
+
+```php src/Providers/AppServiceProvider.php
+public function boot()
+{
+    Admin::registerAdminModels(__DIR__.'/../Models/**', 'AdminLanguageExport\Models');
+}
+```
+
+## Next steps
+
+1. Run `composer install` and `composer test` in the new package.
+2. Create the repository on GitHub, add it as `origin` and make the first commit.
+3. Register the package on `packages.crudadmin.com`, and allow the release token to publish it.
+4. Release the first version, see [Release](/packages/release).
+
+The development branch of a new package is `main`. Link it into a project with a composer path repository and `dev-main`:
+
+```json composer.json
+"repositories": [
+    { "type": "path", "url": "../packages/admin/dependencies/language-export", "options": { "symlink": true } }
+],
+"require": {
+    "crudadmin/language-export": "dev-main"
+}
+```
+
+Code style follows the rules of `crudadmin/crudadmin`. Format the code with `vendor/bin/pint`.

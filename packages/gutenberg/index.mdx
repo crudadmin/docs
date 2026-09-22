@@ -1,0 +1,136 @@
+---
+title: "Gutenberg"
+description: "The crudadmin/gutenberg package: the WordPress block editor as a field type, rendered to HTML on the website."
+icon: "blocks"
+---
+
+`crudadmin/gutenberg` adds the WordPress Gutenberg block editor as the `gutenberg` field type. The field stores the block markup. On the website, reading the field returns rendered HTML.
+
+| Feature | Description |
+| --- | --- |
+| [Field](#adding-the-field) | The block editor in the forms of the administration |
+| [Rendering](#rendering-on-the-website) | Blocks rendered to HTML, with embeds of YouTube, Vimeo, Instagram and Facebook |
+| [Media](#images-and-videos) | Images and videos from the file browser or uploaded in the editor |
+| [Custom blocks](/packages/gutenberg/blocks) | Your own blocks, block styles and editor settings in JavaScript, and render filters in PHP |
+
+The package is a fork of [Laraberg](https://github.com/VanOns/laraberg), licensed under GPL-3.0-or-later.
+
+## Requirements
+
+| Version | CrudAdmin |
+| --- | --- |
+| 3.x | 5, 6 |
+| 2.x | 4, 5 |
+
+## Installation
+
+```bash
+composer require crudadmin/gutenberg
+```
+
+Enable publishing of the editor assets and run the update:
+
+```php config/admin.php
+'gutenberg' => true,
+```
+
+```bash
+php artisan admin:update
+```
+
+`admin:update` publishes the editor into `public/vendor/gutenberg` and adds the directory to `.gitignore`. Publish it manually with:
+
+```bash
+php artisan vendor:publish --provider="Admin\Gutenberg\Providers\GutenbergServiceProvider"
+```
+
+The editor is built into the package, your project needs no npm build. The administration loads its scripts and styles automatically.
+
+## Adding the field
+
+```php app/Models/Page.php
+public function fields()
+{
+    return [
+        'name' => 'name:Title|required',
+        'content' => 'name:Content|type:gutenberg',
+    ];
+}
+```
+
+- The column is a nullable `text`.
+- Gutenberg fields are hidden in the table of rows.
+- Only one editor can be active on a page. Further Gutenberg fields, including other languages of a localized field, show a button which switches the editor to them.
+
+## Rendering on the website
+
+Outside the administration, the field returns HTML. Print it unescaped, and add the styles of the blocks to the `<head>` with `@gutenberg`:
+
+```blade resources/views/layouts/app.blade.php
+<head>
+    @gutenberg
+</head>
+```
+
+```blade resources/views/pages/show.blade.php
+<section class="container">
+    {!! $page->content !!}
+</section>
+```
+
+The content is wrapped in `<div class="crudadmin-gutenberg-wrapper">`, and each top-level block in `<div class="g-block-wrapper" data-block="core/paragraph">`. Empty content returns `null`. Change the classes in the config:
+
+```php config/admin.php
+'gutenberg_wrapper_class' => 'crudadmin-gutenberg-wrapper',
+'gutenberg_box_class' => 'g-block-wrapper',
+```
+
+Style the content under the wrapper class in your own stylesheet.
+
+### Rendering manually
+
+```php
+use Admin\Gutenberg\Contracts\Blocks\BlocksBuilder;
+
+$html = (new BlocksBuilder($page->getRawOriginal('content')))->render();
+
+// one HTML string per top-level block
+$blocks = (new BlocksBuilder($page->getRawOriginal('content')))->renderBlocks();
+
+// names of the blocks, e.g. to style a page starting with a cover
+$names = collect((new \WP_Block_Parser)->parse($page->getRawOriginal('content')))->pluck('blockName');
+```
+
+The [REST API](/packages/api) returns Gutenberg fields as a list of rendered blocks.
+
+### Embeds
+
+Embed blocks are rendered with the HTML of the provider, cached forever. The editor offers YouTube, Vimeo, Instagram, Facebook and the generic embed block.
+
+## Images and videos
+
+The media button of the blocks opens the [file browser](/admin/configuration#file-browser) of the administration.
+
+Files dropped into the editor are uploaded to `uploads/editor/images/shared` and compressed. Limit the accepted types in the config:
+
+```php config/admin.php
+'gutenberg' => [
+    'media_mime_types' => ['image/jpeg', 'image/png', 'image/gif', 'image/svg+xml', 'video/mp4'],
+],
+```
+
+<Warning>
+  `gutenberg` is either `true` or an array. With an array, `admin:update` no longer publishes the assets, so publish them manually after each update of the package.
+</Warning>
+
+## Upgrading from 2.x
+
+- React 18 replaces React 16. Rebuild your own blocks against it.
+- CrudAdmin 5 or newer is required, which renders the field on the website.
+- Custom integrations switch the active editor with a window event instead of the event bus of CrudAdmin 5 resources:
+
+```js
+window.dispatchEvent(new CustomEvent('crudadmin:disable-gutenberg-editors', {
+    detail: { id: fieldId, callback: () => bootMyEditor() },
+}));
+```

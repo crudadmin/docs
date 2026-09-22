@@ -1,0 +1,68 @@
+---
+title: "Packages"
+description: "Optional composer packages built on top of CrudAdmin: what each one does and which CrudAdmin version it supports."
+icon: "package"
+---
+
+The core of CrudAdmin is three packages: `crudadmin/crudadmin`, `crudadmin/framework` and `crudadmin/resources`. Everything else is an optional package. Install it only when your project needs the feature.
+
+Every package is installed with composer from the repository `packages.crudadmin.com`. Set it up once per project as described in [Installing the licensed packages](/admin/license#installing-the-licensed-packages).
+
+## Available packages
+
+<Columns cols={2}>
+  <Card title="Helpers" icon="key-round" href="/packages/helpers">
+    API authentication with passwords, OTP codes, registration and tokens. Also push notifications, XLS imports and SMS.
+  </Card>
+  <Card title="Socialite" icon="users" href="/packages/socialite">
+    Social login with Google, Facebook, Apple and other providers. Users are found or registered in an admin model.
+  </Card>
+  <Card title="REST API" icon="plug" href="/packages/api">
+    REST API and OpenAPI description of all admin models. It uses the same permissions and validation as the administration.
+  </Card>
+  <Card title="Website" icon="globe" href="/packages/website">
+    Features for public websites: the frontend editor, gettext for Blade, language prefixes in urls, SEO and the site tree.
+  </Card>
+  <Card title="Gutenberg" icon="blocks" href="/packages/gutenberg">
+    The WordPress Gutenberg block editor as a field type, with rendering of blocks on the website.
+  </Card>
+  <Card title="Package development" icon="hammer" href="/packages/skeleton">
+    The skeleton for new packages and the release tool that publishes them to `packages.crudadmin.com`.
+  </Card>
+</Columns>
+
+## Supported versions
+
+| Package | Version | CrudAdmin |
+| --- | --- | --- |
+| `crudadmin/helpers` | 2.x | 6 |
+| | 1.3 | 4, 5 |
+| `crudadmin/socialite` | 1.x | 3 to 6 |
+| `crudadmin/api` | 1.x | 6 |
+| `crudadmin/website` | 1.x | 6 (in CrudAdmin 5 and older, these features are part of `crudadmin/crudadmin`) |
+| `crudadmin/gutenberg` | 3.x | 5, 6 |
+| | 2.x | 4, 5 |
+| `crudadmin/skeleton` | 1.x | 6 |
+
+The PHP and Laravel requirements come from the CrudAdmin version. CrudAdmin 6 requires PHP 8.3 and Laravel 12 or 13.
+
+## Which package do I need?
+
+| You are building | Packages |
+| --- | --- |
+| Only an administration | none |
+| A Blade website managed from the administration | `crudadmin/website`, optionally `crudadmin/gutenberg` |
+| A Nuxt or Ionic app with its own API | `crudadmin/helpers`, optionally `crudadmin/socialite` |
+| An integration or AI agent reading and writing admin models | `crudadmin/api` together with `crudadmin/helpers` |
+
+## Other packages
+
+These packages exist as well, but they are not documented here yet:
+
+| Package | Purpose |
+| --- | --- |
+| `crudadmin/autoajax` | JSON responses with messages, validation errors and store data, used by `autoAjax()`. Required by CrudAdmin. |
+| `@crudadmin/helpers` (npm) | Shared frontend layer for Vue, Nuxt and Ionic: API client, gettext translator, Pinia stores, modals and toasts. This is a different package from the PHP `crudadmin/helpers`. |
+| `crudadmin/eshop` | E-shop module with products, orders and a cart |
+| `crudadmin/invoices` | Invoices, PDF export and QR payment codes |
+| `crudadmin/payments` | Payment gateways connected to invoices |

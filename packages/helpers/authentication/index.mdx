@@ -1,0 +1,180 @@
+---
+title: "Setup"
+description: "Prepare the user model, the guard and the routes of the helpers authentication."
+---
+
+The authentication of `crudadmin/helpers` is a set of API routes. Apps sign users in with a password, an OTP code or a social account and receive a [Sanctum](https://laravel.com/docs/sanctum) token.
+
+## Guard
+
+Sanctum is installed with CrudAdmin. Publish its migrations once:
+
+```bash
+php artisan vendor:publish --tag=sanctum-migrations
+php artisan migrate
+```
+
+Add a Sanctum guard for your users:
+
+```php config/auth.php
+'guards' => [
+    'user' => [
+        'driver' => 'sanctum',
+        'provider' => 'users',
+        'hash' => false,
+    ],
+],
+
+'providers' => [
+    'users' => [
+        'driver' => 'eloquent',
+        'model' => env('AUTH_MODEL', App\Models\User::class),
+    ],
+],
+```
+
+The controllers look users up in the model of the default guard. Set `$guard` in your controller to use another guard, see [Login](/packages/helpers/authentication/login#login-controller).
+
+## User model
+
+Extend `BaseAuthenticatable` and use the `HasUserAuth` and `HasApiTokens` traits.
+
+```php app/Models/User.php
+<?php
+
+namespace App\Models;
+
+use Admin\Eloquent\BaseAuthenticatable;
+use AdminHelpers\Auth\Concerns\HasUserAuth;
+use Laravel\Sanctum\HasApiTokens;
+
+class User extends BaseAuthenticatable
+{
+    use HasUserAuth,
+        HasApiTokens;
+
+    protected $guard = 'user';
+
+    public function fields($row = null)
+    {
+        return [
+            'username' => 'name:Name|required|max:90',
+            'email' => 'name:E-mail|required_without:phone|email|max:60|index|unique:users,email,'.(isset($row) ? $row->getKey() : 'NULL').',id,deleted_at,NULL',
+            'phone' => 'name:Phone|phone|index',
+            'verified' => 'name:Verified data|type:select|multiple',
+            'password' => 'name:Password|type:password|min:4|max:40|confirmed',
+        ];
+    }
+
+    public function setAuthResponse()
+    {
+        return $this->setVisible(['id', 'username', 'email', 'phone']);
+    }
+}
+```
+
+- `setAuthResponse()` is required. It selects the attributes of the user returned by the login, registration and `user` routes.
+- `phone` is saved in the E.164 format, e.g. `+421900123456`.
+- `verified` is optional. It stores which e-mail addresses and phone numbers the user confirmed with an OTP code. Check it with `$user->isVerified('email', $user->email)`.
+
+`HasUserAuth` adds these methods:
+
+| Method | Description |
+| --- | --- |
+| `getGuard()` | The guard of `$guard`, or the default guard |
+| `toPhoneFormat($number)` | Formats a phone number to E.164. Returns the number unchanged when it is not valid. |
+| `addVerified($method, $identifier)` | Marks an e-mail or phone as verified. Call `save()` afterwards. |
+| `isVerified($method, $identifier)` | Whether the e-mail or phone is verified |
+
+## Project helpers
+
+The package calls these functions. Define them in an autoloaded file of your project:
+
+```php app/Utilities/helpers.php
+// countries accepted in phone numbers
+function phoneValidatorSupportedCountries()
+{
+    return ['sk', 'cz'];
+}
+
+// optional, extra validation rule of the phone number in login requests
+function phoneValidatorRule()
+{
+    return 'phone:sk,cz';
+}
+
+// optional, the signed in user, used by the bootstrap request
+function client()
+{
+    return auth()->guard('user')->user();
+}
+```
+
+Without `phoneValidatorSupportedCountries()`, phone numbers are not formatted.
+
+## Routes
+
+The `AdminAuth` facade registers the routes. Call it in your API routes file. Pass your own controller, or leave the argument out to use the default one.
+
+```php routes/api.php
+use AdminHelpers\Auth\Middleware\FixPhoneNumber;
+
+Route::middleware([FixPhoneNumber::class])->group(function () {
+    AdminAuth::login(LoginController::class);
+    AdminAuth::otp();
+    AdminAuth::register(RegisterController::class);
+});
+
+Route::middleware('auth:user')->group(function () {
+    AdminAuth::user(LoginController::class);
+    AdminAuth::logout();
+    AdminAuth::changeIdentifier();
+});
+```
+
+`FixPhoneNumber` formats the `phone` parameter of every request to E.164, so users can type the number in any format.
+
+| Method | Routes | Description |
+| --- | --- | --- |
+| `AdminAuth::login($controller)` | `POST auth/login`, `auth/login/otp`, `auth/login/otp-verify`, `auth/login/socialite/{driver}` | [Login](/packages/helpers/authentication/login) |
+| `AdminAuth::user($controller)` | `GET user` | [Signed in user](/packages/helpers/authentication/login#signed-in-user) |
+| `AdminAuth::logout($controller)` | `ANY auth/logout` | [Logout](/packages/helpers/authentication/login#logout) |
+| `AdminAuth::otp($controller)` | `POST auth/otp/verify`, `auth/otp/resend` | [OTP codes](/packages/helpers/authentication/otp) |
+| `AdminAuth::register($controller)` | `POST auth/register/otp`, `auth/register/otp-verify` | [Registration](/packages/helpers/authentication/registration) |
+| `AdminAuth::changeIdentifier($controller)` | `POST auth/identifier/otp`, `auth/identifier/verify` | [Changing the e-mail or phone](/packages/helpers/authentication/identifier) |
+| `AdminAuth::oauth($controller)` | `GET admin/oauth/authorize`, `POST admin/oauth/token` | [OAuth](/packages/helpers/authentication/oauth) |
+
+The routes have no names. Register `user`, `logout` and `changeIdentifier` inside an authenticated group.
+
+### Rate limiting
+
+Routes are limited per user or IP address and URL. Change the limits in the config:
+
+```php config/admin_helpers.php
+'auth' => [
+    'throttle' => [
+        'auth' => 15, // login, registration and verification, requests per minute
+        'otp' => 5,   // routes sending a code, requests per minute
+    ],
+],
+```
+
+Apply the same limits to your own routes:
+
+```php routes/api.php
+AdminAuth::middleware(function () {
+    Route::post('auth/register/photo', [RegisterController::class, 'savePhoto']);
+});
+
+AdminAuth::otpMiddleware(function () {
+    Route::post('orders/{order}/confirm-code', [OrderController::class, 'sendCode']);
+});
+```
+
+## Responses
+
+Every route answers with an [autoAjax](/admin/helpers#autoajax) JSON response. Errors have `error: true`, the message and the HTTP status, e.g. `401` for wrong credentials or `422` for validation errors.
+
+## Events
+
+`AdminHelpers\Auth\Events\UserRegistered` is dispatched when a new user finishes the registration. Its `$user` property holds the user.

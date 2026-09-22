@@ -1,0 +1,77 @@
+---
+title: "Scripts and translations"
+description: "Gettext in JavaScript, urls of Laravel routes in JavaScript and obfuscated e-mails of Blade websites."
+icon: "code"
+---
+
+## Gettext in JavaScript
+
+`@gettext` loads the translations of the current language and the translation functions. Put it into the layout before your own scripts:
+
+```blade resources/views/layouts/app.blade.php
+        @gettext
+        @vite('resources/js/app.js')
+    </body>
+</html>
+```
+
+`@translates` is the same directive. It adds:
+
+- the translations script `/vendor/js/ca-translates.js`, cached by the browser until the translations change
+- the global functions `_()`, `__()`, `ngettext()`, `n__()`, `p__()` and the other gettext functions. A function is skipped when a global with the same name already exists, e.g. `_` of lodash.
+- the [`action()`](#urls-of-routes) function
+- the [frontend editor](/packages/website/frontend-editor) for administrators with access
+
+```js resources/js/app.js
+alert(__('Thank you for your order.'));
+
+// in Vue 3 all functions are available in templates
+app.use(Gettext);
+```
+
+The functions are described in [Localization](/admin/model/localization#javascript-files).
+
+### Separate frontends
+
+With `'gettext_json' => true`, `/vendor/js/ca-translates-json.js` returns the translations as JSON. Frontends with their own build, e.g. Nuxt, load them into the `@crudadmin/helpers` translator.
+
+## Urls of routes
+
+Mark routes which JavaScript calls with `visible()`:
+
+```php routes/web.php
+Route::post('contact', [ContactController::class, 'store'])->visible();
+Route::get('articles/{article}', [ArticleController::class, 'show'])->visible();
+```
+
+`@gettext` prints their urls, and `action()` returns them by the controller action. Route parameters are replaced in their order:
+
+```js
+axios.post(action('ContactController@store'), form);
+
+location.href = action('ArticleController@show', article.slug);
+```
+
+The action is relative to the controller namespace `App\Http\Controllers`, e.g. `Frontend\ContactController@store`. Register it in Vue with `app.use(action)`, then use `this.action()` in components.
+
+Use controller actions for visible routes. Routes with a closure have no controller to look up.
+
+<Note>
+  In CrudAdmin 6, the administration itself no longer installs `window.action()`. It is available only on pages with `@gettext`.
+</Note>
+
+## Obfuscated e-mails
+
+`encryptText()` hides e-mails and phone numbers from spam robots. `@gettext` decodes elements with the `toEncrypt` class after the page loads. `toEncryptHref` decodes only the `href`. Encode the whole `href` value, including `mailto:` or `tel:`.
+
+```blade
+<a href="{{ encryptText('mailto:info@example.com') }}" class="toEncrypt">{{ encryptText('info@example.com') }}</a>
+
+<a href="{{ encryptText('tel:+421900123456') }}" class="toEncryptHref">{{ _('Call us') }}</a>
+```
+
+Decode a value in your own script with `decryptText(value)`.
+
+<Warning>
+  This is obfuscation, not encryption. Anyone can decode the value, so never use it for secrets.
+</Warning>

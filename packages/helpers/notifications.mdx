@@ -1,0 +1,214 @@
+---
+title: "Push notifications"
+description: "Firebase push notifications, device tokens and a notification center for mobile apps."
+icon: "bell"
+---
+
+The notifications module stores notifications in the database and sends them to iOS and Android devices through Firebase Cloud Messaging. The same notifications feed the notification center of the app.
+
+## Installation
+
+```bash
+composer require kreait/firebase-php
+```
+
+1. Save the service account of your Firebase project to `credentials/firebase_credentials.json`.
+2. Enable the module and run `php artisan admin:migrate`.
+3. Schedule the sending command. Run a queue worker as well when you use instant notifications.
+
+```php config/admin_helpers.php
+'notifications' => [
+    'enabled' => true,
+
+    // your own model extending the package model, see below
+    'model' => App\Models\Notification\AppNotification::class,
+
+    // several apps sharing one backend, e.g. a customer and a courier app
+    'apps' => [],
+
+    'platforms' => ['ios', 'android'],
+
+    // columns of the notification: recipient table, or null for a context column
+    'relations' => [
+        'user_id' => 'users',
+        'order_id' => null,
+    ],
+
+    // minutes before a notification is sent
+    'push_notifications_delay' => 0,
+
+    'cleanup' => [
+        'older_than_months' => 3,
+        'schedule_at' => '02:00',
+        'tokens' => [
+            'dead_older_than_months' => 1,
+            'max_per_recipient' => 10,
+            'schedule_offset_minutes' => 15,
+        ],
+    ],
+
+    // device tokens receiving notifications in test environments
+    'whitelisted_tokens' => array_filter(explode(';', env('NOTIFICATIONS_TOKENS') ?: '')),
+],
+```
+
+```php routes/console.php
+Schedule::command('app:notifications')->everyMinute()->withoutOverlapping();
+```
+
+The cleanup of old notifications and dead device tokens is scheduled automatically.
+
+## Notification model
+
+Extend the package model and add the columns of `relations`:
+
+```php app/Models/Notification/AppNotification.php
+<?php
+
+namespace App\Models\Notification;
+
+use AdminHelpers\Notifications\Models\AppNotification as BaseNotification;
+use App\Models\Order;
+use App\Models\User;
+
+class AppNotification extends BaseNotification
+{
+    protected $belongsToModel = [User::class, Order::class];
+}
+```
+
+## Notification types
+
+Define the types in the `notificationsList()` function of your project:
+
+```php app/Utilities/helpers.php
+function notificationsList()
+{
+    return collect([
+        [
+            'code' => 101,
+            'key' => 'order_shipped',
+            'name' => 'Order shipped',
+            'message' => 'Your order {number} is on its way.',
+            'priority' => true,
+            'instant' => true,
+        ],
+        [
+            'code' => 102,
+            'key' => 'new_feature',
+            'name' => 'New in the app',
+            'message' => '{title}',
+            'persistent' => false,
+            'image' => 'new-feature.png',
+        ],
+    ]);
+}
+```
+
+| Key | Description |
+| --- | --- |
+| `code` | Unique number stored in the database |
+| `key` | Name used in `createNotification()` |
+| `name` | Title of the push notification and label in the administration |
+| `title`, `message` | Texts. `{key}` is replaced with the value of the notification data, dot notation is supported. |
+| `priority` | Sent with high priority |
+| `persistent` | `false` for a global notification shown to every user registered before it. No recipient rows are stored. Default `true`. |
+| `instant` | Sent by a queued job right after it is saved, not by the scheduled command |
+| `image` | Image in `public/images/notifications` |
+| `recipients` | `fn ($notification) => [['users', $ids]]` for recipients which are not in the columns |
+
+Also define `getNotificationsTypes()`, the list of types users can turn off in the app, and `getPlatform()`, the platform of the current request:
+
+```php app/Utilities/helpers.php
+function getNotificationsTypes()
+{
+    return [
+        ['key' => 'marketing', 'name' => _('News and offers')],
+    ];
+}
+
+function getPlatform()
+{
+    return request()->header('app-platform');
+}
+```
+
+## User model
+
+```php app/Models/User.php
+use AdminHelpers\Notifications\Utilities\HasUserNotifications;
+
+class User extends BaseAuthenticatable
+{
+    use HasUserNotifications;
+}
+```
+
+Save the device token of the app after login:
+
+```php
+$user->addDeviceToken(request('device_id'));
+```
+
+The token is linked to the current Sanctum token, so [logout](/packages/helpers/authentication/login#logout) removes it. The login response lists the tokens of the user in `device_tokens`.
+
+Add the **Notification tokens** tab to the user form with `notificationsTokensTab()`:
+
+```php app/Models/User.php
+public function fields()
+{
+    return [
+        // ...
+        notificationsTokensTab(),
+    ];
+}
+```
+
+## Creating notifications
+
+```php
+createNotification('order_shipped', ['number' => $order->number], [
+    'columns' => ['user_id' => $order->user_id, 'order_id' => $order->getKey()],
+]);
+
+// from the user model, the user column is filled in
+$user->createNotification('order_shipped', ['number' => $order->number]);
+```
+
+| Option | Description |
+| --- | --- |
+| `columns` | Values of the `relations` columns |
+| `identifier` | String or model. A notification with the same type, identifier and columns is updated and sent again instead of creating a new one. |
+| `notifyAt` | Time of sending |
+| `delay` | Minutes before sending, default `push_notifications_delay` |
+| `app` | App receiving the notification, when `apps` are configured |
+
+Unknown types create nothing.
+
+## Notification center
+
+```php app/Http/Controllers/NotificationController.php
+public function index()
+{
+    $notifications = notificationModel()->onlyMine()->newest()->paginate(request('limit', 24));
+
+    $notifications->getCollection()->each->setResponse();
+
+    return autoAjax()->data($notifications);
+}
+
+public function read()
+{
+    notificationModel()->setRead();
+
+    return autoAjax()->success();
+}
+```
+
+`onlyMine()` returns notifications of the signed in user and the global ones. Each row contains `id`, `type`, `data`, `read_at`, `title`, `message` and `created_at`. Override the `onlyMine` and `isNotPersistent` scopes in your model to limit them further, e.g. by the app.
+
+## Testing
+
+In the `local` and `stagging` environments, notifications are sent only to device tokens marked for debugging. Mark a token with the **Allow notifications in DEV mode** button in the notification tokens tab. New tokens are marked automatically in these environments.
+
+Sending is logged into `storage/logs/notification.log`.

@@ -1,0 +1,94 @@
+---
+title: "Registration"
+description: "Register users in two steps confirmed with an OTP code."
+---
+
+`AdminAuth::register()` registers two routes:
+
+| Route | Description |
+| --- | --- |
+| `POST auth/register/otp` | Validates the first step and sends a code to the e-mail or phone |
+| `POST auth/register/otp-verify` | Validates the final data, checks the code and creates the user |
+
+The code is valid for 60 minutes. `verificator` selects the channel, `email` or `phone`. Enable [OTP codes](/packages/helpers/authentication/otp) first.
+
+## Registration controller
+
+Extend `AdminHelpers\Auth\Controllers\RegisterController` and implement its three methods. Read more about validation in [Admin Validation](/admin/validation).
+
+```php app/Http/Controllers/Auth/RegisterController.php
+<?php
+
+namespace App\Http\Controllers\Auth;
+
+use App\Http\Requests\RegisterForm;
+use AdminHelpers\Auth\Controllers\RegisterController as AdminRegisterController;
+
+class RegisterController extends AdminRegisterController
+{
+    // validates the first step, before the code is sent
+    public function getValidatedOtpData($model)
+    {
+        return $model->validator()->use(RegisterForm::class)->merge([
+            'license_terms' => 'required',
+        ])->validate()->getData();
+    }
+
+    // validates the final step, together with the code
+    public function getValidatedRegisterData($model)
+    {
+        return $model->validator()->use(RegisterForm::class)->merge([
+            'username' => 'required',
+        ])->validate()->getData();
+    }
+
+    // saves the user and returns it
+    public function createUser($model, $data, $isNewEntry)
+    {
+        $user = $isNewEntry ? $model->create($data) : tap($model)->update($data);
+
+        // more logic...
+
+        return $user;
+    }
+}
+```
+
+- `$model` is a new instance of the user model. For a user signed in with a [social account](/packages/helpers/authentication/login#social-login) who finishes the registration, it is the existing user, and `$isNewEntry` is `false`.
+- `getValidatedOtpData()` can return an `autoAjax()` response to stop the registration, e.g. when the account already exists:
+
+```php
+if ( User::where('email', request('email'))->exists() ) {
+    return autoAjax()->error(_('The account already exists.'), 422)->data(['account_exists' => true]);
+}
+```
+
+The model is chosen by the default guard. Set `$guard` in the controller to register into another model.
+
+## Registration flow
+
+1. `POST auth/register/otp` with the first step data and `verificator`. The response contains the [OTP data](/packages/helpers/authentication/otp#otp-response). When the e-mail or phone is already verified, e.g. from a social account, no code is sent and `verified` is `true`.
+2. `POST auth/register/otp-verify` with the final data and `token`. Without `token`, a new code is sent. A wrong code answers `403`.
+
+The success response is the same as the [login response](/packages/helpers/authentication/login#login-response), with a token named `register`. Change the message with `getSuccessMessage()`.
+
+After a new user is created, `AdminHelpers\Auth\Events\UserRegistered` is dispatched.
+
+## Checking the code in your own routes
+
+`verifyRegistrationOtp($model, $data, $destroyToken)` checks the code of the current request. Use it to protect an extra step before the registration is finished, e.g. an upload of a photo:
+
+```php app/Http/Controllers/Auth/RegisterController.php
+public function savePhoto()
+{
+    $model = $this->getAuthModel();
+
+    if ( $response = $this->verifyRegistrationOtp($model, request()->all(), false) ) {
+        return $response;
+    }
+
+    // save the photo...
+}
+```
+
+`false` keeps the code valid for the final registration request.

@@ -1,0 +1,112 @@
+---
+title: "Login flows"
+description: "Session login, stateless tokens, token login from mobile SDKs, Google One Tap and linking accounts."
+---
+
+## Routes
+
+With `routes` enabled, the package registers three routes in the `web` middleware group:
+
+| Route | Description |
+| --- | --- |
+| `GET /socialite/{driver}` | Redirects to the provider |
+| `ANY /socialite/{driver}/callback` | Callback of the provider, signs the user in |
+| `ANY /socialite/{driver}/token` | Signs in with a provider token from a mobile or web SDK |
+
+<Warning>
+  With CrudAdmin 6, these routes need the [`crudadmin/website`](/packages/website) package, which provides the `visible()` route macro they use. Projects which only use the token login of [`crudadmin/helpers`](#token-login-with-crudadminhelpers) set `'routes' => false`.
+</Warning>
+
+Apple and Google One Tap send the callback as a POST request. Exclude `socialite/*` from CSRF verification when you use them.
+
+## Session login
+
+The default for websites, `'stateless' => false`.
+
+```blade
+<a href="{{ url('socialite/google') }}?url_previous={{ urlencode(url()->current()) }}">
+    {{ _('Sign in with Google') }}
+</a>
+```
+
+1. The previous url is taken from `url_previous`, or from the `Referer` header.
+2. After the callback, the user is signed in with the `guard` of the config, with the remember option.
+3. The browser is redirected back to the previous url, or to `app_url`.
+
+Errors redirect back with the `errorMessage` key in the session errors.
+
+## Stateless login
+
+For separate frontends, e.g. Nuxt, set `'stateless' => true`. The flow is the same, but the user is not signed in to a session. The previous url receives the token in the query string:
+
+```text
+https://app.example.com/account?auth_token=12|abc...&expires_in=&previous_path=https://app.example.com/account
+```
+
+Errors redirect with `?errorMessage=...`.
+
+### Passing data through the redirect
+
+List request parameters in `store` to keep them until the callback. Read them with `getStorage()` in the [hooks](/packages/socialite/customization#hooks):
+
+```text
+/socialite/google?store=referral&referral=SUMMER26
+```
+
+## Token login
+
+JSON requests return JSON instead of redirects. Mobile apps sign in with the native SDK of the provider and send its token:
+
+```json POST /socialite/apple/token
+{ "token": "eyJraWQiOiJXNldjT0tC...", "username": "Jane Doe" }
+```
+
+```json
+{ "data": { "auth_token": "12|abc...", "expires_in": null, "previous_path": null } }
+```
+
+- Google and Facebook send an access token, Apple sends the identity token.
+- Apple sends the name of the user only on the first sign in. Pass it as `username`.
+- `expires_in` is stored in `{prefix}_token_expires_at`.
+
+### Token login with crudadmin/helpers
+
+Apps using the [helpers authentication](/packages/helpers/authentication) call its route instead. It returns the same [login response](/packages/helpers/authentication/login#login-response) as the password login:
+
+```json POST /api/auth/login/socialite/google
+{ "token": "ya29.a0AfH6SM..." }
+```
+
+## Google One Tap
+
+The `onetap` driver verifies the `credential` of the Google Identity Services script. Point its `login_uri` to the callback:
+
+```html
+<div id="g_id_onload"
+     data-client_id="{{ config('services.google.client_id') }}"
+     data-login_uri="{{ url('socialite/onetap/callback') }}">
+</div>
+```
+
+The account is stored in the `gp_*` columns, the same as the `google` driver.
+
+## Linking accounts
+
+A signed in user who goes through the login links the provider to his account. The provider id, e-mail and token are saved, the user is not changed otherwise.
+
+- Session login: the user is signed in with the `guard` of the config.
+- Stateless login: pass the API token of the user with `store`:
+
+```text
+/socialite/facebook?store=access_token&access_token=12|abc...
+```
+
+No new token is created in this case.
+
+## Disabling registration
+
+With `'register' => false`, only existing users can sign in. A list of drivers allows registration only through them:
+
+```php config/admin_socialite.php
+'register' => ['google', 'apple'],
+```

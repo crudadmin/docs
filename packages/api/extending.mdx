@@ -1,0 +1,89 @@
+---
+title: "Extending"
+description: "Model hooks, scope filters, localized values and a custom response format of the REST API."
+---
+
+## Limiting rows
+
+`scopeWithAdminApiResponse()` limits every API query of the model, also when the model is included as a relation of another model. `scopeAdminRows()` of the [listing](/admin/model/listing) applies too.
+
+```php app/Models/Order.php
+public function scopeWithAdminApiResponse($query)
+{
+    $query->where('is_internal', false);
+}
+```
+
+## Changing rows
+
+`setAdminApiResponse()` is called for each returned row:
+
+```php app/Models/Order.php
+public function setAdminApiResponse()
+{
+    return $this->makeHidden('secret')->append('price_with_vat');
+}
+```
+
+## Scope filters
+
+Public scopes declared on the model become filters. The value of the filter is passed as the parameter of the scope:
+
+```php app/Models/Product.php
+public function scopePopular($query, $minimum = 10)
+{
+    $query->where('sold', '>=', $minimum);
+}
+```
+
+```text
+GET /admin/api/v1/models/products?filter[popular]=100
+GET /admin/api/v1/models/products?filter[popular]=
+```
+
+An empty value calls the scope with its default parameter. A column with the same name wins over the scope.
+
+## Relations in responses
+
+`include` uses the camelCase names of the relations, listed in `/admin/api/v1/models`. The response keys are snake_case, as Eloquent returns them:
+
+```text
+GET /admin/api/v1/models/posts?include=postComments
+```
+
+```json
+{ "data": [{ "id": 1, "title": "Hello", "post_comments": [{ "id": 3, "text": "Nice" }] }] }
+```
+
+Rows of a child model are not filtered by the parent automatically. Filter them by the foreign column, e.g. `filter[post_id]=5`.
+
+## Localized values
+
+With [localization](/admin/model/localization) enabled, send the `App-Locale` header to receive the values of one language. Without it, localized fields return all languages.
+
+```bash
+curl https://example.com/admin/api/v1/models/articles -H 'App-Locale: en' -H 'Authorization: Bearer …'
+```
+
+## Tokens for integrations
+
+Create a token with explicit abilities for a server integration:
+
+```php
+use AdminApi\Auth\TokenAccess;
+
+$token = $admin->createToken('erp-sync', TokenAccess::abilities('write'))->plainTextToken;
+```
+
+## Custom response format
+
+The request parameters and the response shapes come from a format class. The default `AdminApi\Formats\Laravel\LaravelFormat` follows Laravel API resources and the spatie query builder. Implement `AdminApi\Formats\Format` and bind it to use another convention, e.g. JSON:API:
+
+```php app/Providers/AppServiceProvider.php
+public function register()
+{
+    $this->app->bind(\AdminApi\Formats\Format::class, \App\Api\JsonApiFormat::class);
+}
+```
+
+The format also describes its parameters and schemas in the OpenAPI document. Which columns, relations and scopes are accessible stays the same for every format.

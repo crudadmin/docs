@@ -40,9 +40,25 @@ The site has three tabs, each backed by its own directory.
 
 The legacy model parameters page is split by topic; `admin/model/parameters` links to every topic page. Validation is new — it did not exist in the legacy docs.
 
-### Tab: Helpers package — `helpers/`
+### Tab: Packages — `packages/`
 
-The `crudadmin/helpers` composer package: installation, authentication, OTP, registration, login.
+Optional composer packages built on top of CrudAdmin. `packages/index` lists all of them with the supported CrudAdmin versions. Every package has its own group in the sidebar: an overview page (purpose, requirements, installation, configuration, a table of its features) followed by one page per feature.
+
+| Group | Pages |
+| --- | --- |
+| Getting started | `packages/index` |
+| Helpers | `packages/helpers/index`, Authentication subgroup (`packages/helpers/authentication/{index,login,otp,registration,identifier,oauth}`), `packages/helpers/notifications`, `packages/helpers/importer`, `packages/helpers/utilities` |
+| Socialite | `packages/socialite/index`, `packages/socialite/flows`, `packages/socialite/customization` |
+| REST API | `packages/api/index`, `packages/api/extending` |
+| Website | `packages/website/index`, `packages/website/frontend-editor`, `packages/website/scripts`, `packages/website/seo`, `packages/website/site-tree` |
+| Gutenberg | `packages/gutenberg/index`, `packages/gutenberg/blocks` |
+| Package development | `packages/skeleton`, `packages/release` |
+
+Features which extend admin models stay documented in the CrudAdmin tab, and the package pages link to them instead of repeating them: the REST API reference (`admin/model/api`), `$seo` and slugs (`admin/frontend/sluggable`), language prefixes and gettext (`admin/model/localization`), `$sitetree` (`admin/model/parameters`), `uploadable()`/`linkable()`/`encryptText()` (`admin/helpers`) and the `config/admin.php` switches (`admin/configuration`). The feature map of `crudadmin/features` points to those pages, so do not move them.
+
+The old `helpers/*` urls redirect to `packages/helpers/*` (`redirects` in `docs.json`).
+
+How new packages are added to this tab is described in `../../dependencies/README.md`.
 
 ### Tab: Development structure — `development/`
 
@@ -116,6 +132,7 @@ Every legacy content page has been migrated:
 - Callouts by severity: `<Note>` supplementary, `<Info>` context, `<Tip>` recommendation, `<Warning>` destructive or migration-requiring
 - Legacy Docsify callouts map as follows: `!>` → `<Warning>` or `<Info>`, `?>` → `<Tip>`
 - Use `<Columns cols={n}>` for card grids
+- Icons (frontmatter `icon`, `icon` of groups in `docs.json`, `<Card icon>`) use [Lucide](https://lucide.dev/icons) names, `docs.json` sets `"icons": {"library": "lucide"}`. Mintlify serves Lucide 1.16, check a new name at `https://d3gk2c5xim1je2.cloudfront.net/lucide/v1.16.0/<name>.svg`. Font Awesome names like `arrow-right-to-bracket` render as an empty icon. A running `mint dev` keeps sidebar icons from frontmatter until it is restarted.
 - LaTeX uses `$inline$` and `$$block$$` math syntax — the `<Latex>` component is removed
 
 ## Verify before committing

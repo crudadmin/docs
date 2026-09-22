@@ -134,7 +134,7 @@ With `sluggable_history` enabled, every changed slug is stored in the `sluggable
 'sluggable_history' => true,
 ```
 
-Run `php artisan admin:migrate` after enabling it. A single model can opt out:
+Run `php artisan admin:migrate` after enabling it. Marking routes with `seo()` and rendering the meta tags is described in [SEO](/packages/website/seo). A single model can opt out:
 
 ```php
 protected $sluggable_history = false;

@@ -1,0 +1,120 @@
+---
+title: "Helpers"
+description: "The crudadmin/helpers package: API authentication, push notifications, XLS imports and SMS for apps built on CrudAdmin."
+icon: "key-round"
+---
+
+`crudadmin/helpers` contains the building blocks of an API backend for mobile and single-page apps:
+
+| Feature | Description |
+| --- | --- |
+| [Authentication](/packages/helpers/authentication) | Login with a password or an OTP code, registration, changing the e-mail or phone, social login and Sanctum tokens |
+| [OTP codes](/packages/helpers/authentication/otp) | One-time codes sent by e-mail or SMS, test identifiers and whitelisted accounts |
+| [OAuth](/packages/helpers/authentication/oauth) | Lets another application sign in with an administrator account |
+| [Push notifications](/packages/helpers/notifications) | Firebase notifications, device tokens and a notification center |
+| [Importer](/packages/helpers/importer) | XLS, XLSX and CSV imports managed in the administration |
+| [Utilities](/packages/helpers/utilities) | Optional authentication middleware, phone number formatting, the bootstrap request, SMS and session pruning |
+
+<Note>
+  This is the PHP package. The npm package `@crudadmin/helpers` is a different package for Vue, Nuxt and Ionic frontends.
+</Note>
+
+## Requirements
+
+| Version | CrudAdmin | Framework |
+| --- | --- | --- |
+| 2.x | 6 | `crudadmin/framework` 6.0.1 or newer |
+| 1.3 | 4, 5 | – |
+
+Replace pinned `1.4.0` constraints with `^2.0` when upgrading a project to CrudAdmin 6.
+
+## Installation
+
+```bash
+composer require crudadmin/helpers:^2.0
+php artisan vendor:publish --tag=admin_helpers.config
+```
+
+The service provider is discovered automatically. The config is published to `config/admin_helpers.php`. Enabled modules register their admin models, so run the migrations after you enable OTP, notifications or the importer:
+
+```bash
+php artisan admin:migrate
+```
+
+### Optional dependencies
+
+Each module needs a composer package which is not installed with helpers. Install only those you use:
+
+| Package | Needed for |
+| --- | --- |
+| `propaganistas/laravel-phone` | Phone numbers in login, OTP and the `FixPhoneNumber` middleware |
+| `kreait/firebase-php` | [Push notifications](/packages/helpers/notifications) |
+| `phpoffice/phpspreadsheet` | [Importer](/packages/helpers/importer) |
+| `crudadmin/socialite` | [Social login](/packages/helpers/authentication/login#social-login) |
+| `laravel/helpers` | OTP codes, OAuth, notifications and the importer. They still call the global `str_random()` and `array_wrap()` helpers, which CrudAdmin 6 no longer installs. |
+
+## Configuration
+
+`config/admin_helpers.php` has three sections. Every module is disabled by default.
+
+```php config/admin_helpers.php
+return [
+    'notifications' => [
+        'enabled' => false,
+        // ...
+    ],
+
+    'auth' => [
+        'throttle' => [
+            'auth' => 15, // requests per minute of login, registration and verification routes
+            'otp' => 5,   // requests per minute of routes sending an OTP code
+        ],
+
+        'otp' => [
+            'enabled' => false,
+            // ...
+        ],
+
+        'oauth' => [
+            'apps' => [],
+        ],
+    ],
+
+    // not in the published file, add it when you need it
+    'importer' => [
+        'enabled' => false,
+    ],
+];
+```
+
+The options of each module are described on its page.
+
+## Environment variables
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `AUTH_VERIFICATOR` | `email` | Default channel of OTP codes, `email` or `phone` |
+| `AUTH_TOKEN_DEBUG` | `false` | Returns OTP codes instead of sending them, see [Testing](/packages/helpers/authentication/otp#testing) |
+| `NOTIFICATIONS_TOKENS` | – | Device tokens receiving push notifications in test environments, separated by `;` |
+| `SMARTSMS_*` | – | SMS gateway, see [SMS codes](/packages/helpers/authentication/otp#sms-codes) |
+| `NUXT_PATH`, `IONIC_PATH` | – | Frontend build directory, used for the bundle version of the [bootstrap request](/development/bootstrap) |
+
+## Commands
+
+| Command | Scheduled | Description |
+| --- | --- | --- |
+| `otp:clean` | no | Deletes expired OTP codes |
+| `otp:fix-verified-methods` | no | Converts the `verified` column of users from the 1.x format |
+| `app:notifications` | no | Sends pending push notifications |
+| `app:notifications:cleanup {months?}` | daily | Deletes old notifications |
+| `app:notifications:cleanup-tokens {--dry-run}` | daily | Deletes dead and duplicate device tokens |
+| `session:prune {minutes?}` | daily at 01:00 | Deletes expired sessions |
+
+Schedule the commands which are not scheduled automatically in your project:
+
+```php routes/console.php
+use Illuminate\Support\Facades\Schedule;
+
+Schedule::command('otp:clean')->daily();
+Schedule::command('app:notifications')->everyMinute()->withoutOverlapping();
+```

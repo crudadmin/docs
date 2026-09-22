@@ -1,0 +1,48 @@
+---
+title: "Changing the e-mail or phone"
+description: "Let signed in users change their e-mail or phone number after confirming it with an OTP code."
+---
+
+`AdminAuth::changeIdentifier()` registers two routes. Register them in an authenticated group, and enable [OTP codes](/packages/helpers/authentication/otp).
+
+```php routes/api.php
+Route::middleware('auth:user')->group(function () {
+    AdminAuth::changeIdentifier(IdentifierController::class);
+});
+```
+
+| Route | Parameters | Description |
+| --- | --- | --- |
+| `POST auth/identifier/otp` | `verificator`, `email` or `phone` with the new value | Validates the new value and sends a code to it |
+| `POST auth/identifier/verify` | `verificator`, `identifier`, `token` | Saves the new value and marks it as verified |
+
+1. The app sends the new value, e.g. `{"verificator": "phone", "phone": "+421900123456"}`. It is validated with the rules of the field in the user model, so the uniqueness rule applies. The code is valid for 60 minutes.
+2. The app sends the code. The new value is saved only when no other account took it in the meantime.
+
+## Customizing the controller
+
+```php app/Http/Controllers/Auth/IdentifierController.php
+<?php
+
+namespace App\Http\Controllers\Auth;
+
+use AdminHelpers\Auth\Controllers\IdentifierController as AdminIdentifierController;
+use AppRequest;
+
+class IdentifierController extends AdminIdentifierController
+{
+    // fields which can be changed
+    protected function changeableIdentifiers()
+    {
+        return ['email'];
+    }
+
+    // return the updated user to the app
+    protected function getIdentifierChangedResponse($user, $message)
+    {
+        return autoAjax()->store(AppRequest::only(['auth']))->message($message);
+    }
+}
+```
+
+Change the success message with `getIdentifierChangedMessage($field)`.

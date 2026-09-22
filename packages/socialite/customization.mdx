@@ -1,0 +1,137 @@
+---
+title: "Customization"
+description: "Custom drivers, hooks, events and responses of the social login."
+---
+
+## Custom drivers
+
+Register a SocialiteProviders driver which is not in the [list](/packages/socialite#providers), with the prefix of its columns:
+
+```php app/Providers/AppServiceProvider.php
+use Admin\Socialite\SocialAuth;
+
+public function boot()
+{
+    SocialAuth::addDriver('gitlab', 'gl', \SocialiteProviders\GitLab\Provider::class);
+}
+```
+
+The user model then needs the `gl_id` field.
+
+### Sign in with another CrudAdmin
+
+The `crudadmin` driver signs in with an administrator account of another CrudAdmin, which has [OAuth](/packages/helpers/authentication/oauth) enabled.
+
+```php app/Providers/AppServiceProvider.php
+use Admin\Socialite\Helpers\Admin\CrudadminProvider;
+use Admin\Socialite\SocialAuth;
+
+SocialAuth::addDriver('crudadmin', 'ca', CrudadminProvider::class);
+```
+
+```php config/services.php
+'crudadmin' => [
+    'client_id' => 'warehouse-app',
+    'client_secret' => env('CRUDADMIN_OAUTH_SECRET'),
+    'redirect' => env('APP_URL').'/socialite/crudadmin/callback',
+    'host' => 'https://admin.example.com',
+],
+```
+
+`ca_id` stores the provider table and the id, e.g. `admins_5`. Use a string field.
+
+## Hooks
+
+Hooks are global callbacks. Register them in a service provider.
+
+```php app/Providers/AppServiceProvider.php
+use Admin\Socialite\Exceptions\SocialMessageException;
+use Admin\Socialite\SocialAuth;
+
+public function boot()
+{
+    SocialAuth::setEvent('DRIVER_MIDDLEWARE', function ($user, $socialUser, SocialAuth $auth) {
+        if ( ! $socialUser->email && ! $user ) {
+            throw new SocialMessageException(_('We need your e-mail address to register you.'));
+        }
+    });
+
+    SocialAuth::setEvent('USER_MUTATE', function ($user, $socialUser, SocialAuth $auth) {
+        if ( $referral = $auth->getStorage('referral') ) {
+            $user->referral_code = $referral;
+        }
+
+        return $user;
+    });
+}
+```
+
+| Hook | Arguments | Called |
+| --- | --- | --- |
+| `DRIVER_MUTATE` | `$auth`, `$driver` | Before the account is fetched. Change scopes or parameters of the Socialite driver. |
+| `USER_FETCH` | `$socialUser`, `$driver`, `$auth` | After the account is fetched. Return the account. |
+| `DRIVER_MIDDLEWARE` | `$user`, `$socialUser`, `$auth` | Before the user is updated or registered. `$user` is `null` for a new user. |
+| `USER_MUTATE` | `$user`, `$socialUser`, `$auth` | After the social data are filled in. Return the user. |
+| `USER_UPDATE` | `$user`, `$socialUser`, `$auth` | Before an existing user is saved |
+| `USER_CREATED` | `$user`, `$password`, `$socialUser`, `$auth` | After a new user is saved |
+| `USER` | `$user`, `$socialUser`, `$auth` | Before every successful login |
+| `SUCCESS_DATA_RESPONSE` | `$auth` | Returns the data of the success response, see below |
+
+Throw `SocialMessageException` in any hook to stop the login and show its message. Other exceptions show the `messages.error` text of the config and are logged.
+
+## Events
+
+| Event | Dispatched |
+| --- | --- |
+| `Admin\Socialite\Events\UserRegistered` | After a new user is registered. Has `$user` and `$password`. |
+| `Admin\Socialite\Events\OnSocialiteCallback` | On the callback route, before the user is fetched |
+
+```php app/Providers/EventServiceProvider.php
+protected $listen = [
+    \Admin\Socialite\Events\UserRegistered::class => [
+        \App\Listeners\SendWelcomeEmail::class,
+    ],
+];
+```
+
+## Success response
+
+Stateless and JSON responses contain `auth_token`, `expires_in` and `previous_path`. Add your own data with `SUCCESS_DATA_RESPONSE`:
+
+```php
+SocialAuth::setEvent('SUCCESS_DATA_RESPONSE', function (SocialAuth $auth) {
+    return [
+        ...$auth->getDefaultSuccessData(),
+        'is_new' => $auth->getUser()->wasRecentlyCreated,
+    ];
+});
+```
+
+Return a response instead of an array to replace the whole response.
+
+## Using SocialAuth in your controller
+
+```php app/Http/Controllers/Auth/SocialController.php
+use Admin\Socialite\SocialAuth;
+
+public function login($driver)
+{
+    return (new SocialAuth($driver))
+        ->allowRegister(false)
+        ->onSuccess(fn (SocialAuth $auth) => ['user' => $auth->getUser()])
+        ->callbackResponse(request('token'), request('expires_in'));
+}
+```
+
+| Method | Description |
+| --- | --- |
+| `callbackResponse($token = null, $expiresIn = null)` | Finishes the login from the callback, or from a provider token |
+| `allowRegister($allow)` | Overrides the `register` config |
+| `onSuccess($callback)` | Same as the `SUCCESS_DATA_RESPONSE` hook |
+| `getUser()` | The signed in or registered user |
+| `getDriver()` | Account of the provider |
+| `getDriverType()` | Name of the driver |
+| `getStorage($key)` | Parameter kept with `store` |
+| `isStateless()`, `isRest()` | Mode of the current request |
+
+Turn off avatars of all drivers with `SocialAuth::$photoColumn = null`, or store them in another field with `SocialAuth::$photoColumn = 'avatar'`.

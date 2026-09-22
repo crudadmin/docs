@@ -1,0 +1,53 @@
+---
+title: "REST API"
+description: "The crudadmin/api package: a REST API and an OpenAPI description of every admin model."
+icon: "plug"
+---
+
+`crudadmin/api` exposes the admin models through a REST API at `/admin/api/v1`. It also serves an OpenAPI description, so API clients and AI agents learn the models without further documentation.
+
+Rows are read and written through the same code as the administration. Permissions, [`scopeAdminRows()`](/admin/model/listing), validation, uploads, history, [admin rules](/admin/model/rules-events) and model events apply the same way.
+
+| Feature | Description |
+| --- | --- |
+| [Endpoints](/admin/model/api#endpoints) | List, read, create, update and delete rows of any admin model |
+| [Tokens](/admin/model/api#tokens) | Sanctum tokens with read or write access, valid only for the REST API |
+| [Query parameters](/admin/model/api#query-parameters) | Filters, sorting, relations, selected columns and pagination |
+| [OpenAPI and Swagger](/admin/model/api#openapi-and-swagger) | Description of the accessible models and a Swagger UI for administrators |
+| [Extending](/packages/api/extending) | Model hooks, scope filters and a custom response format |
+
+## Requirements
+
+- CrudAdmin 6 and `crudadmin/framework` 6.0.1 or newer
+- [`crudadmin/helpers`](/packages/helpers) for the login and every data endpoint. Without it, only the Swagger UI of signed in administrators is registered.
+
+## Installation
+
+```bash
+composer require crudadmin/api crudadmin/helpers
+```
+
+The service provider is discovered automatically. The package has no config file to publish and no commands. Its options live in `config/admin.php`, see [REST API configuration](/admin/configuration#rest-api).
+
+## What is exposed
+
+Every registered admin model is available at `/admin/api/v1/models/{table}`. There is no opt-in. Access is limited by:
+
+- the [permissions](/admin/model/permissions) of the signed in administrator
+- the abilities of the token, `read` or `write`
+- `$insertable`, `$editable` and `$deletable` of the model
+
+Rows contain the id, foreign keys, fields and the timestamps. Password fields, `inaccessible` fields and `$hidden` attributes are never returned.
+
+## Quick start
+
+```bash
+curl -X POST https://example.com/admin/api/v1/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"email": "admin@example.com", "password": "…", "access": "read"}'
+
+curl https://example.com/admin/api/v1/models/orders?sort=-created_at&include=customer \
+  -H 'Authorization: Bearer 6|Qth…'
+```
+
+The full reference of the endpoints, tokens, parameters and responses is on the [REST API](/admin/model/api) page.

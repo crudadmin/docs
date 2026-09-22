@@ -39,7 +39,7 @@ See the [bootstrap request](/development/bootstrap) for a larger example.
   `uploadable()`, `linkable()` and `encryptText()`: available with the `crudadmin/website` package (`composer require crudadmin/website`).
 </Note>
 
-With the [frontend editor](/admin/configuration#frontend-editor) enabled, administrators can replace images and links rendered by these helpers directly on the website. Without the editor, the default values are returned.
+With the [frontend editor](/admin/configuration#frontend-editor) enabled, administrators can replace images and links rendered by these helpers directly on the website. Without the editor, the default values are returned. See [Frontend editor](/packages/website/frontend-editor) for everything the editor can change.
 
 ```blade
 {{-- image with a key, default asset and optional resize --}}
@@ -61,7 +61,7 @@ Translation helpers (`_()`, `localeUrl()`, `switchLocale()`, `localizedRoutes()`
 ### Text obfuscation
 {/* feature: helper.encryptText */}
 
-`encryptText($text)` obfuscates e-mails or phone numbers as base64 for frontend decoding. It is not encryption and should not be used to protect secrets.
+`encryptText($text)` obfuscates e-mails or phone numbers as base64 for frontend decoding. It is not encryption and should not be used to protect secrets. Decoding on the website is described in [Obfuscated e-mails](/packages/website/scripts#obfuscated-e-mails).
 
 ## Admin facade
 

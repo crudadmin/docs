@@ -1,0 +1,140 @@
+---
+title: "Socialite"
+description: "The crudadmin/socialite package: social login which finds or registers users in an admin model."
+icon: "users"
+---
+
+`crudadmin/socialite` connects [Laravel Socialite](https://laravel.com/docs/socialite) with CrudAdmin. After a social login it finds the user by e-mail or provider id, or registers a new one. Then it fills in the e-mail, name, avatar and provider columns, and either signs the user in or returns an API token.
+
+| Feature | Description |
+| --- | --- |
+| [Login flows](/packages/socialite/flows) | Session login on websites, tokens for separate frontends, token login from mobile SDKs, Google One Tap and linking accounts |
+| [Customization](/packages/socialite/customization) | Custom drivers, hooks, events and the success response |
+
+## Requirements
+
+Version 1.x supports CrudAdmin 3 to 6. It installs `laravel/socialite`, `socialiteproviders/manager` and `google/apiclient`.
+
+## Installation
+
+```bash
+composer require crudadmin/socialite
+php artisan vendor:publish --tag=socialite.config
+```
+
+The config is published to `config/admin_socialite.php`. The package has no migrations. The columns come from the fields of your user model.
+
+<Warning>
+  With CrudAdmin 6, also install `laravel/helpers`. The package still calls the global `array_wrap()` and `str_random()` helpers, which CrudAdmin 6 no longer installs.
+</Warning>
+
+## Configuration
+
+```php config/admin_socialite.php
+return [
+    // registers the /socialite/{driver} routes
+    'routes' => true,
+
+    // false: session login and redirect back, true: return a token
+    'stateless' => false,
+
+    // allow registration of new users, true or a list of drivers
+    'register' => true,
+
+    // guard used for the session login and for the signed in user
+    'guard' => 'web',
+
+    // redirect target when no previous url is known
+    'app_url' => env('APP_NUXT_URL') ?: env('APP_URL'),
+
+    // table of the user model, or a list of tables
+    'users_table' => 'clients',
+
+    // download the avatar into the photo field
+    'avatars' => true,
+
+    'messages' => [
+        'error' => _('Login with %s failed, please try again later.'),
+    ],
+];
+```
+
+With a list of tables, users are looked up in every model. New users are registered in the first one.
+
+## Providers
+
+| Driver | Column prefix | Provider |
+| --- | --- | --- |
+| `google` | `gp` | Laravel Socialite |
+| `facebook` | `fb` | Laravel Socialite |
+| `onetap` | `gp` | Google One Tap, included in the package |
+| `apple` | `apple` | `socialiteproviders/apple` |
+| `paypal` | `pp` | `socialiteproviders/paypal` |
+| `instagrambasic` | `ig` | `socialiteproviders/instagram-basic` |
+| `azure` | `az` | `socialiteproviders/microsoft-azure` |
+| `clickup` | `cu` | `socialiteproviders/clickup` |
+
+Install and register the SocialiteProviders package of the providers which are not in Laravel Socialite:
+
+```bash
+composer require socialiteproviders/apple
+```
+
+```php app/Providers/EventServiceProvider.php
+protected $listen = [
+    \SocialiteProviders\Manager\SocialiteWasCalled::class => [
+        'SocialiteProviders\\Apple\\AppleExtendSocialite@handle',
+    ],
+];
+```
+
+### Credentials
+
+The package adds the `services` config of Google, Facebook, Apple, PayPal and Instagram. The redirect url is `{SOCIALITE_APP_URL}/socialite/{driver}/callback`, `SOCIALITE_APP_URL` defaults to `APP_URL`.
+
+| Provider | Environment variables |
+| --- | --- |
+| Google, One Tap | `GOOGLE_ID`, `GOOGLE_SECRET` |
+| Facebook | `FACEBOOK_ID`, `FACEBOOK_SECRET` |
+| Apple | `APPLE_CLIENT_ID`, `APPLE_CLIENT_SECRET`, `APPLE_TEAM_ID`, `APPLE_KEY_ID`, `APPLE_PRIVATE_KEY` |
+| PayPal | `PAYPAL_MODE`, `PAYPAL_LIVE_CLIENT_ID`, `PAYPAL_LIVE_CLIENT_SECRET`, `PAYPAL_SANDBOX_CLIENT_ID`, `PAYPAL_SANDBOX_CLIENT_SECRET` |
+| Instagram | `INSTAGRAM_ID`, `INSTAGRAM_SECRET` |
+
+- A provider defined in your `config/services.php` replaces the whole block of the package.
+- With `APPLE_PRIVATE_KEY`, the package generates the client secret of Apple for every callback, so `APPLE_CLIENT_SECRET` can stay empty.
+- `PAYPAL_MODE=sandbox` switches the `paypal` driver to the sandbox.
+
+## User model
+
+The package writes into these fields when they exist in the user model:
+
+| Field | Value |
+| --- | --- |
+| `email` | E-mail of the provider |
+| `username` | Name of the provider account |
+| `photo` | Avatar, only for new users or users without a photo |
+| `password` | Random password of new users |
+| `{prefix}_id` | Id of the provider account, used to find the user again |
+| `{prefix}_email` | E-mail of the provider account |
+| `{prefix}_token`, `{prefix}_token_expires_at` | Access token of the provider |
+
+```php app/Models/User.php
+public function fields()
+{
+    return [
+        'username' => 'name:Name|required|max:90',
+        'email' => 'name:E-mail|email|max:60',
+        'photo' => 'name:Photo|type:file|image|resize:600',
+        'gp_id' => 'name:Google ID|index|max:30',
+        'fb_id' => 'name:Facebook ID|index|max:30',
+        'apple_id' => 'name:Apple ID|index|max:64',
+    ];
+}
+```
+
+- When `username` is required and the provider returns no name, the package calls `generateUsername()` of the model when it exists.
+- Stateless flows create a token with `createToken()`. Use `HasApiTokens` of Sanctum in the model.
+
+<Warning>
+  An existing user with the same e-mail is signed in without confirmation, and the provider id is stored in his account. Enable only providers which verify e-mail addresses, or reject unverified ones in the [`DRIVER_MIDDLEWARE`](/packages/socialite/customization#hooks) hook.
+</Warning>

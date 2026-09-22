@@ -1,0 +1,142 @@
+---
+title: "Frontend editor"
+description: "Let administrators edit texts, images, files and links directly on the website."
+icon: "pencil"
+---
+
+A signed in administrator sees a floating button on the website. It links to the administration and turns on the **Edit mode**. In the edit mode, texts, images, files and links of the page get a pencil and are edited in place.
+
+## Enabling the editor
+
+```php config/admin.php
+'frontend_editor' => [
+    'enabled' => true,
+],
+```
+
+`'frontend_editor' => true` works as well. Run `php artisan admin:migrate`. It creates the table of the static content, which stores the edited images and links.
+
+Add the [`@gettext`](/packages/website/scripts#gettext-in-javascript) directive to your layout. It loads the editor for administrators with access:
+
+```blade resources/views/layouts/app.blade.php
+        @gettext
+        @vite('resources/js/app.js')
+    </body>
+</html>
+```
+
+## What can be edited
+
+| Content | How |
+| --- | --- |
+| Static texts | Every `_('…')` text rendered on the page, see [Gettext](/admin/model/localization). Needs localization and gettext enabled. |
+| Rich texts | `@editor('…')`, edited with CKEditor |
+| Images | `uploadable()` in `src`, or in an inline `background-image` style |
+| Files | `uploadable()` in `href` |
+| Links | `linkable()` in `href` |
+| Model fields | `editor` and `longeditor` fields rendered on the page |
+
+```blade
+<h1>{{ _('Our story') }}</h1>
+
+@editor('We have been baking bread <b>since 1990</b>.')
+
+<img src="{{ uploadable('hero', 'images/hero.jpg', [1200, 600]) }}" alt="">
+
+<section style="background-image: url('{{ uploadable('career-photo', 'images/career.jpg') }}')"></section>
+
+<a href="{{ uploadable('price-list', 'files/price-list.pdf') }}">{{ _('Price list') }}</a>
+
+<a href="{{ linkable('footer.contact', '/contact') }}">{{ _('Contact') }}</a>
+
+{!! $article->content !!}
+```
+
+A text used more than once on a page can not be edited in place. Change it in the translations of the administration.
+
+## Images and files
+
+```php
+uploadable('images/hero.jpg');                      // the path is the key
+uploadable('hero', 'images/hero.jpg');              // own key and default asset
+uploadable('images/hero.jpg', [1200, 600]);         // resized
+uploadable('hero', 'images/hero.jpg', [1200, 600]);
+```
+
+- On the first render, the default asset is copied into the uploads and compressed. When the default asset changes, the copy is replaced.
+- Without the editor, `asset()` of the default is returned, without resizing.
+- `@uploadable(...)` is the Blade form of the helper.
+- Uploaded files other than images are validated by `uploadable_allowed_extensions`.
+
+## Links
+
+```php
+linkable('/contact');                     // the url is the key
+linkable('footer.contact', '/contact');   // own key and default url
+```
+
+The stored url is saved per language. Urls of the same domain are stored as relative paths.
+
+## Editor fields
+
+`editor` and `longeditor` fields of a model are wrapped in an editable element on the website. Administrators with the `update` permission of the model edit them in place. Localized fields save the value of the current language.
+
+```blade
+<article>{!! $article->content !!}</article>
+```
+
+## Permissions
+
+| Content | Permission |
+| --- | --- |
+| Images, files, links, rich texts | `update` of the **Static content** module |
+| Static texts | `update` of the **Languages** module |
+| Editor fields | `update` of the model |
+
+Saving requires a verified login. When [two-factor verification](/admin/configuration#login) is enabled, the administrator has to complete it first.
+
+## Separate frontend
+
+For a frontend on another domain, e.g. Nuxt, enable the stateless mode and set the url of the frontend:
+
+```php config/admin.php
+'frontend_editor' => [
+    'enabled' => true,
+    'stateless' => true,
+],
+```
+
+```bash .env
+WEB_URL=https://www.example.com
+```
+
+1. The top bar of the administration shows a link to the frontend editor. It redirects to `{WEB_URL}/?admin_token=…`.
+2. The frontend calls `GET /admin/api/frontend-editor/initialize` with `Authorization: Bearer {admin_token}`.
+3. The response contains `scripts`, `styles` and `config`. The frontend sets `window.CAEditorConfig` to the config with the `token`, and loads the scripts and styles.
+
+```js plugins/frontend-editor.client.js
+const token = new URLSearchParams(location.search).get('admin_token');
+
+if (token) {
+    const { scripts, styles, config } = await $fetch('/admin/api/frontend-editor/initialize', {
+        baseURL: apiUrl,
+        headers: { Authorization: `Bearer ${token}` },
+    });
+
+    window.CAEditorConfig = { ...config, token };
+
+    styles.forEach((href) => document.head.append(Object.assign(document.createElement('link'), { rel: 'stylesheet', href })));
+    scripts.forEach((src) => document.body.append(Object.assign(document.createElement('script'), { src })));
+}
+```
+
+The token is valid only for the frontend editor, not for the administration or the REST API. The edit mode is stored in the browser.
+
+## Facades
+
+| Method | Description |
+| --- | --- |
+| `FrontendEditor::hasAccess()` | Whether the administrator may edit images and links |
+| `FrontendEditor::isActive()` | Whether the editor is loaded on the current page |
+| `FrontendEditor::editor($html)` | PHP form of `@editor` |
+| `EditorMode::isActive()` | Whether the edit mode is turned on |

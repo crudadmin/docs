@@ -1,0 +1,75 @@
+---
+title: "Utilities"
+description: "Middleware, the bootstrap request, SMS and session pruning of the helpers package."
+icon: "wrench"
+---
+
+## Optional authentication
+
+`auth.optional` signs the user in when the request has a valid token, and lets guests through. Use it for routes which return more data to signed in users, like the bootstrap request.
+
+```php routes/api.php
+Route::middleware('auth.optional:user')->group(function () {
+    Route::any('bootstrap', [BootstrapController::class, 'index']);
+});
+```
+
+List several guards to accept users of more models. The first guard with a signed in user is used for the request:
+
+```php
+Route::middleware('auth.optional:customer,courier')->group(function () {
+    // ...
+});
+```
+
+## Phone number format
+
+`AdminHelpers\Auth\Middleware\FixPhoneNumber` formats the `phone` parameter of the request to E.164, e.g. `0900 123 456` to `+421900123456`. It needs `propaganistas/laravel-phone` and the [`phoneValidatorSupportedCountries()`](/packages/helpers/authentication#project-helpers) function.
+
+## Bootstrap request
+
+`AdminHelpers\Utilities\BootstrapRequest` extends the bootstrap request of `crudadmin/framework`. It adds the signed in client, the auth token and its response. See [Bootstrap request](/development/bootstrap).
+
+| Method | Description |
+| --- | --- |
+| `setToken($name)` | Creates a new token named `$name` in the `auth` section, e.g. after login |
+| `isAuthorized()` | Whether a client is signed in |
+| `auth()` | The same data as the [login response](/packages/helpers/authentication/login#login-response) |
+| `onClient($client)` | Hook called with the signed in client |
+| `getBundleKey()` | Version of the frontend build in `NUXT_PATH` or `IONIC_PATH`. Apps compare it to reload after a deploy. |
+
+## SMS
+
+`AdminHelpers\Sms\SmartSms` sends SMS messages, and the package registers the `sms` notification channel. See [SMS codes](/packages/helpers/authentication/otp#sms-codes).
+
+```php
+(new \AdminHelpers\Sms\SmartSms)->sendSMS('+421900123456', 'Your order is ready.');
+```
+
+## Sessions
+
+The package prunes expired sessions with `session:prune` every day at 01:00, and turns off the random session cleanup of Laravel (`session.lottery`). Run the command manually with a number of minutes to delete older sessions:
+
+```bash
+php artisan session:prune 120
+```
+
+## Helper functions
+
+| Function | Description |
+| --- | --- |
+| `isTestEnvironment()` | `true` in the `local` and `stagging` environments |
+| `hasOtpEnabled()` | Whether OTP codes are enabled |
+| `isTestIdentifier($identifier)` | Whether the e-mail or phone receives no real OTP codes |
+| `notificationModel()` | Instance of the notification model |
+| `createNotification($type, $data, $options)` | See [Push notifications](/packages/helpers/notifications#creating-notifications) |
+
+## Logs button
+
+`AdminHelpers\Shared\Buttons\LogsButton` shows the rows of the `logs` relation of any admin model, with the number of entries in its name.
+
+```php app/Models/Export.php
+protected $buttons = [
+    \AdminHelpers\Shared\Buttons\LogsButton::class,
+];
+```

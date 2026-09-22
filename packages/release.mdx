@@ -1,0 +1,89 @@
+---
+title: "Release"
+description: "Publish tagged versions of CrudAdmin packages to packages.crudadmin.com with crudadmin-release."
+icon: "rocket"
+---
+
+`crudadmin/release` is the command line tool `crudadmin-release`. It publishes a version of a package to `packages.crudadmin.com` when you push its git tag.
+
+## Installation
+
+Install the tool once per computer, e.g. as a link in your `PATH`:
+
+```bash
+ln -s /path/to/dependencies/release/bin/crudadmin-release ~/.local/bin/crudadmin-release
+```
+
+Then install the git hook in every clone of a package:
+
+```bash
+cd dependencies/gutenberg
+crudadmin-release install
+```
+
+The hook runs before `git push`. It replaces older release hooks of the package, and refuses to overwrite a hook it did not create.
+
+## Releasing a version
+
+```bash
+git tag 1.2.0
+git push origin 1.2.0
+```
+
+Every pushed tag in the `x.y.z` format is released before it reaches the remote, `v1.2.0` and pre-release suffixes like `1.2.0-beta.1` work too. A failed release stops the push. Pushes of branches pass through.
+
+1. The package name is read from `composer.json` of the tag.
+2. The optional build command runs.
+3. The package is archived with `git archive`, without the `export-ignore` paths of `.gitattributes`.
+4. The zip is uploaded with the date of the tagged commit. The date decides which licenses may install the version.
+
+A version which is already released is skipped, so a failed push can be repeated.
+
+## Commands
+
+| Command | Description |
+| --- | --- |
+| `crudadmin-release <tag>` | Releases one tag manually |
+| `crudadmin-release backfill` | Releases the latest tag of each major version |
+| `crudadmin-release backfill --all` | Releases every tag. Tags of another package name, e.g. of an upstream fork, are skipped. |
+| `crudadmin-release install` | Installs the pre-push hook |
+| `--dry-run` | Builds and checks the zip without uploading it |
+
+## Token
+
+The tool reads the release token from, in this order:
+
+1. the `CRUDADMIN_RELEASE_TOKEN` environment variable
+2. the macOS Keychain, service `crudadmin-release-token`
+3. the file `~/.config/crudadmin/release-token`, readable only by you
+
+The package has to exist on `packages.crudadmin.com`, and the token must be allowed to release it.
+
+| Variable | Description |
+| --- | --- |
+| `CRUDADMIN_PACKAGES_URL` | Server, default `https://packages.crudadmin.com` |
+| `CRUDADMIN_SKIP_RELEASE=1` | Pushes tags without releasing them |
+
+## Built assets
+
+Packages with a frontend build configure it in `composer.json`. The build runs on the tagged commit with a clean working tree, and the built files are added to the zip:
+
+```json composer.json
+"extra": {
+    "crudadmin-release": {
+        "build": "cd app && npm run build",
+        "include": ["dist/build"],
+        "forbid": ["map", "vue"]
+    }
+}
+```
+
+`forbid` lists extensions which must not be in the zip, `map` by default. Source maps are never included.
+
+Exclude development files from the zip in `.gitattributes`:
+
+```text .gitattributes
+/tests export-ignore
+/phpunit.xml export-ignore
+/.github export-ignore
+```

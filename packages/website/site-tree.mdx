@@ -1,0 +1,86 @@
+---
+title: "Site tree"
+description: "Build the navigation of the website in the administration, from groups, urls and model records."
+icon: "list-tree"
+---
+
+The **Website structure** module lets administrators build menus from groups, urls and records of your models. The website reads the tree and renders the navigation.
+
+## Enabling the site tree
+
+```php config/admin.php
+'sitetree' => true,
+```
+
+Run `php artisan admin:migrate`.
+
+Developers define the structure: groups like the main menu or the footer, and which item types each part accepts. Allow editing of the structure with an environment variable, e.g. only locally:
+
+```bash .env
+ADMIN_SITETREE_EDITOR=true
+```
+
+Administrators without it only add, rename and sort items where the structure allows it.
+
+## Items
+
+| Type | Description |
+| --- | --- |
+| Group | A named part of the tree, e.g. `main-menu`. Its key is used in the code. |
+| Group link | A group which is also a link |
+| Url | A link to any url |
+| Model | A record of an admin model |
+
+Names and urls are translatable when localization is enabled.
+
+## Models in the site tree
+
+Allow records of a model in the tree with `$sitetree`. The value is the label column:
+
+```php app/Models/Branch.php
+protected $sitetree = 'name';
+
+// limit the records offered in the tree
+public function scopeOnSiteTreeLoad($query)
+{
+    $query->where('visible', true);
+}
+
+// url of the record
+public function getTreeAction()
+{
+    return action([BranchController::class, 'show'], $this->slug);
+}
+```
+
+The tree loads the id, the label column and `slug`. Add more columns with `siteTreeColumns()`, or use the `AdminWebsite\Eloquent\Concerns\HasSiteTree` trait, which provides the default methods.
+
+## Rendering the navigation
+
+```blade resources/views/partials/menu.blade.php
+<nav>
+    @foreach (SiteTree::getGroup('main-menu')?->tree ?? [] as $item)
+        <a href="{{ $item->treeAction }}" @if ($item->isCrossAction()) target="_blank" @endif>
+            {{ $item->name }}
+        </a>
+    @endforeach
+</nav>
+```
+
+| Method | Description |
+| --- | --- |
+| `SiteTree::getTree()` | The whole tree |
+| `SiteTree::getGroup($key)` | One group, or `null` |
+| `SiteTree::hasGroup($key)` | Whether the group exists |
+| `SiteTree::getFirstLevelGroups()` | Groups of the first level |
+
+Each item has:
+
+| Member | Description |
+| --- | --- |
+| `tree` | Child items |
+| `treeAction` | Url of the item |
+| `isCrossAction()` | Whether the url leads to another domain |
+| `isGroup()`, `isModel()`, `isUrl()` | Type of the item |
+| `getRow()` | The model record of a model item |
+| `setApiResponse()` | Limits the item to `name`, `type`, `model`, `key`, `treeAction` and `apiTree`, the children, for separate frontends |

@@ -1,0 +1,147 @@
+---
+title: "Custom blocks"
+description: "Register your own blocks and editor settings in JavaScript, and change how blocks render in PHP."
+---
+
+## Loading your script
+
+Build a script with your blocks and add it to the administration. It loads after the editor, so `window.Gutenberg` and the WordPress globals `wp.blocks`, `wp.element`, `wp.editor`, `wp.components` and `wp.data` are available.
+
+```php config/admin.php
+'gutenberg' => true,
+'scripts' => ['js/gutenberg.js'],
+'styles' => ['css/gutenberg.css'],
+```
+
+Compile JSX to `wp.element.createElement`, e.g. with Vite:
+
+```js vite.gutenberg.config.js
+import { defineConfig, transformWithEsbuild } from 'vite';
+
+export default defineConfig({
+    publicDir: false,
+    build: {
+        outDir: 'public',
+        emptyOutDir: false,
+        rollupOptions: {
+            input: 'resources/js/admin/gutenberg.js',
+            output: {
+                entryFileNames: 'js/gutenberg.js',
+                assetFileNames: 'css/gutenberg.[ext]',
+            },
+        },
+    },
+    plugins: [
+        {
+            name: 'gutenberg-jsx',
+            transform(code, id) {
+                if (!id.includes('/resources/js/admin/') || !id.endsWith('.js')) {
+                    return null;
+                }
+
+                return transformWithEsbuild(code, id, {
+                    loader: 'jsx',
+                    jsxFactory: 'wp.element.createElement',
+                    jsxFragment: 'wp.element.Fragment',
+                });
+            },
+        },
+    ],
+});
+```
+
+```bash
+npx vite build --config vite.gutenberg.config.js
+```
+
+## Registering blocks
+
+```js resources/js/admin/gutenberg.js
+Gutenberg.registerCategory('Bakery', 'bakery');
+
+Gutenberg.registerBlock('bakery/reviews', {
+    title: 'Reviews',
+    icon: 'star-filled',
+    category: 'bakery',
+    attributes: {
+        limit: { type: 'number', default: 5 },
+    },
+    edit: () => <div className="reviews-placeholder">Reviews of customers</div>,
+    save: () => null, // rendered in PHP
+});
+
+wp.blocks.registerBlockStyle('core/button', {
+    name: 'primary',
+    label: 'Primary button',
+});
+```
+
+Blocks are registered when the editor boots. `registerBlock()` accepts the settings of [`registerBlockType()`](https://developer.wordpress.org/block-editor/reference-guides/block-api/block-registration/).
+
+## Editor settings
+
+```js resources/js/admin/gutenberg.js
+Gutenberg.configure.push((options) => {
+    options.colors = [
+        { name: 'Brand', color: '#2a3896' },
+    ];
+
+    return options;
+});
+
+// remove more blocks
+Gutenberg.unregister_blocks.push('core/table', 'core/code');
+
+// load data before the editor starts
+Gutenberg.beforeBoot.push(async () => {
+    window.bakeryProducts = await fetch('/api/products').then((response) => response.json());
+});
+
+Gutenberg.onBoot.push((options) => {
+    // the editor is ready
+});
+```
+
+These blocks are removed by default: archives, calendar, categories, classic editor, latest comments, latest posts, more, page break, RSS, search, shortcode, tag cloud and verse.
+
+## Rendering blocks in PHP
+
+The renderer of the package calls filters like WordPress. Register them in an autoloaded file of your project:
+
+```php app/Utilities/blocks.php
+// dynamic block rendered by a Blade view
+add_filter('render_block_before_bakery/reviews', function ($content, $block) {
+    return view('blocks.reviews', [
+        'limit' => $block['attrs']['limit'] ?? 5,
+    ])->render();
+}, 10, 2);
+
+// change the HTML of a core block
+add_filter('render_block_core/list', function ($html) {
+    return str_replace('<ul', '<ul class="styled-list"', $html);
+}, 10, 1);
+
+// add classes to the wrapper of top-level blocks
+add_filter('render_block_class', function ($class, $content, $options) {
+    if ( ! ($options['parent'] ?? false) ) {
+        return $class;
+    }
+
+    return $class.' '.(str_contains($content, 'alignfull') ? 'container-fluid' : 'container');
+}, 10, 3);
+```
+
+```json composer.json
+"autoload": {
+    "files": ["app/Utilities/blocks.php"]
+}
+```
+
+| Filter | Arguments | Called |
+| --- | --- | --- |
+| `render_block_before_{name}` | `$content`, `$block`, `$options` | Before the block is rendered. Return HTML to replace it. |
+| `render_block` | `$content`, `$block`, `$options` | For every block |
+| `render_block_{name}` | `$content`, `$block`, `$options` | After the block is rendered |
+| `render_block_class` | `$class`, `$content`, `$options` | Classes of the block wrapper |
+
+`$block` contains `blockName`, `attrs`, `innerBlocks` and `innerHTML`. `$options['parent']` is `true` for top-level blocks.

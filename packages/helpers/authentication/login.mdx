@@ -1,0 +1,157 @@
+---
+title: "Login"
+description: "Sign users in with a password, an OTP code or a social account, and customize the login response."
+---
+
+`AdminAuth::login()` registers four routes:
+
+| Route | Parameters | Description |
+| --- | --- | --- |
+| `POST auth/login` | `email`, `phone` or `identifier`, `password` | Password login |
+| `POST auth/login/otp` | `email`, `phone` or `identifier`, `verificator` | Sends a login code |
+| `POST auth/login/otp-verify` | `email`, `phone` or `identifier`, `token` | Signs in with the code |
+| `POST auth/login/socialite/{driver}` | `token` | Signs in with a social account |
+
+## Finding the user
+
+The user is found by the first of these parameters:
+
+- `identifier`, compared with every login column of the model, i.e. `email` and `phone`
+- `email`
+- `phone`, formatted to E.164
+
+Add another login column by overriding `getRequestCasts()` in your controller:
+
+```php app/Http/Controllers/Auth/LoginController.php
+protected function getRequestCasts()
+{
+    return [
+        ...parent::getRequestCasts(),
+        'personal_number' => fn ($value) => trim($value),
+    ];
+}
+```
+
+Override `findUser()` when users are stored in several models, or when some of them must not sign in:
+
+```php app/Http/Controllers/Auth/LoginController.php
+use App\Models\Customer;
+
+public function findUser()
+{
+    return $this->findUserFromRequest(
+        Customer::where('disabled', false)
+    );
+}
+```
+
+## Password login
+
+```json POST /api/auth/login
+{ "email": "jane@example.com", "password": "secret" }
+```
+
+Wrong credentials answer `401`.
+
+## OTP login
+
+1. `POST auth/login/otp` sends a code to the e-mail or phone of the user. `verificator` selects the channel, `email` or `phone`. It defaults to `AUTH_VERIFICATOR`.
+2. `POST auth/login/otp-verify` with `token` signs the user in, and marks the e-mail or phone as verified.
+
+The code is valid for 15 minutes. Enable and configure OTP codes first, see [OTP codes](/packages/helpers/authentication/otp).
+
+## Social login
+
+`POST auth/login/socialite/{driver}` signs in with an access token or ID token from a mobile or web SDK of the provider. The user is found or registered by the [`crudadmin/socialite`](/packages/socialite) package, and its e-mail is marked as verified.
+
+```json POST /api/auth/login/socialite/google
+{ "token": "ya29.a0AfH6SM..." }
+```
+
+## Login response
+
+```json
+{
+    "type": "success",
+    "message": "You have been signed in successfully.",
+    "error": false,
+    "data": {
+        "driver": "users",
+        "user": {
+            "id": 13,
+            "username": "Jane Doe",
+            "email": "jane@example.com"
+        },
+        "token": {
+            "token": "1|pjSjjD86fs3FgOcdJpcKRSzoYExrgljWrMiVMkPH72270f65",
+            "expiration": null,
+            "abilities": ["*"]
+        }
+    }
+}
+```
+
+- `driver` is the table of the user model.
+- `user` is the result of `setAuthResponse()` of the model.
+- `device_tokens` lists the push notification tokens of the user when [notifications](/packages/helpers/notifications) are enabled.
+- `token` is a new Sanctum token. Send it as `Authorization: Bearer {token}`.
+
+## Login controller
+
+Extend the default controller to change the guard or the response.
+
+```php app/Http/Controllers/Auth/LoginController.php
+<?php
+
+namespace App\Http\Controllers\Auth;
+
+use AdminHelpers\Auth\Controllers\LoginController as AdminLoginController;
+
+class LoginController extends AdminLoginController
+{
+    protected $guard = 'user';
+}
+```
+
+### Custom response
+
+Override `authorizedResponse()`. Share it with the registration controller through a trait, so both return the same data. This example returns the [bootstrap request](/development/bootstrap) of the signed in user:
+
+```php app/Utilities/Traits/HasAuthResponse.php
+<?php
+
+namespace App\Utilities\Traits;
+
+use AppRequest;
+
+trait HasAuthResponse
+{
+    public function authorizedResponse($user, $type = null)
+    {
+        return autoAjax()->store(
+            AppRequest::setToken($type ?: 'login')->authenticated()
+        )->message(_('Welcome back!'));
+    }
+}
+```
+
+`$type` is the name of the new token: `login`, `register` or `social`. It is `null` for the `user` route, which creates no token.
+
+### Token abilities
+
+Tokens have the `*` ability by default. Override `tokenAbilities()` to limit them:
+
+```php app/Http/Controllers/Auth/LoginController.php
+protected function tokenAbilities($user)
+{
+    return ['orders:read'];
+}
+```
+
+## Signed in user
+
+`GET user` returns the same response as the login, without a new token. Register it in a group with your `auth` middleware.
+
+## Logout
+
+`auth/logout` deletes the current token, and the push notification tokens of the device which used it.

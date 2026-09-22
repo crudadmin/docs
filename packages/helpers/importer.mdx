@@ -1,0 +1,120 @@
+---
+title: "Importer"
+description: "XLS, XLSX and CSV imports uploaded and processed in the administration."
+icon: "file-spreadsheet"
+---
+
+The importer adds the **Import files** module to the administration. Administrators upload a file, choose its type and the importer class of that type processes the rows. Every step is logged.
+
+## Installation
+
+```bash
+composer require phpoffice/phpspreadsheet
+```
+
+Add the `importer` section and run `php artisan admin:migrate`:
+
+```php config/admin_helpers.php
+'importer' => [
+    'enabled' => true,
+    'extensions' => ['xls', 'csv', 'xlsx'],
+    'imports' => [
+        [
+            'name' => 'Products',
+            'class' => App\Imports\ProductsImport::class,
+            'extensions' => ['csv', 'xlsx'],
+            'autoimport' => true,
+        ],
+    ],
+],
+```
+
+| Key | Description |
+| --- | --- |
+| `name` | Type of the import shown in the administration |
+| `class` | Importer class |
+| `extensions` | Accepted files, added to the global `extensions` |
+| `autoimport` | `true` processes the file right after the upload. `false` waits for the **Process import** button. |
+
+Other keys of an import are allowed. Read them in your importer.
+
+## Importer class
+
+```php app/Imports/ProductsImport.php
+<?php
+
+namespace App\Imports;
+
+use Admin\Eloquent\AdminModel;
+use AdminHelpers\Importer\Imports\BaseImport;
+use App\Models\Product;
+
+class ProductsImport extends BaseImport
+{
+    public function getColumns()
+    {
+        return [
+            'ean' => ['required' => true, 'format' => 'ean'],
+            'name' => ['required' => true],
+            'price' => ['required' => true, 'cast' => 'price'],
+            'note' => ['nullable' => true],
+        ];
+    }
+
+    public function isValidEan($value)
+    {
+        return preg_match('/^\d{8,14}$/', $value) === 1;
+    }
+
+    public function castPrice($value)
+    {
+        return (float) str_replace(',', '.', $value);
+    }
+
+    public function import(AdminModel $import)
+    {
+        foreach ($this->getRows() as $row) {
+            Product::updateOrCreate(['ean' => $row['ean']], $row);
+        }
+
+        $import->logReport('success', 'imported', _('Products were imported.'));
+    }
+}
+```
+
+- Column keys are the headers of the file converted to lower case with underscores, e.g. `Product name` becomes `product_name`.
+- `format` calls `isValid{Format}($value, $row)` of the importer. Rows with invalid values are listed in the error.
+- `cast` calls `cast{Cast}($value)` before the row is returned.
+- Empty cells are `null`.
+- Override `validate(AdminModel $import)` for checks of the whole file.
+
+## States and logs
+
+| State | Meaning |
+| --- | --- |
+| new | Uploaded |
+| ready | Valid, waiting for processing |
+| error | Validation or import failed |
+| completed | Imported |
+
+Write your own log entries with `$import->logReport($type, $code, $message, $log)`, where `$type` is `info`, `error` or `success`. Log exceptions with `$import->logException($e)`. The **Show logs** button of each import shows them.
+
+## Custom import model
+
+Extend `AdminHelpers\Importer\Models\ImportsFile` to change when files can be processed again:
+
+```php app/Models/Import/ImportsFile.php
+use AdminHelpers\Importer\Models\ImportsFile as BaseImportsFile;
+
+class ImportsFile extends BaseImportsFile
+{
+    public function canReimport()
+    {
+        return true;
+    }
+}
+```
+
+Other overridable methods: `getImports()`, `getImporter()`, `canImport()` and `canProcess()`.
+
+The type select of the form renders a `ShowSampleImportFile` component under the field. Create it in your [component directory](/admin/configuration#vue-component-directory) to offer a sample file.

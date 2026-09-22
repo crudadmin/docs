@@ -8,6 +8,9 @@
     "dark": "#4a54e2"
   },
   "favicon": "/favicon.svg",
+  "icons": {
+    "library": "lucide"
+  },
   "navigation": {
     "tabs": [
       {
@@ -106,22 +109,78 @@
         ]
       },
       {
-        "tab": "Helpers package",
+        "tab": "Packages",
         "groups": [
           {
             "group": "Getting started",
             "pages": [
-              "helpers/installation"
+              "packages/index"
             ]
           },
           {
-            "group": "Authentication",
-            "icon": "arrow-right-to-bracket",
+            "group": "Helpers",
+            "icon": "key-round",
             "pages": [
-              "helpers/authentication/index",
-              "helpers/authentication/otp",
-              "helpers/authentication/registration",
-              "helpers/authentication/login"
+              "packages/helpers/index",
+              {
+                "group": "Authentication",
+                "icon": "log-in",
+                "pages": [
+                  "packages/helpers/authentication/index",
+                  "packages/helpers/authentication/login",
+                  "packages/helpers/authentication/otp",
+                  "packages/helpers/authentication/registration",
+                  "packages/helpers/authentication/identifier",
+                  "packages/helpers/authentication/oauth"
+                ]
+              },
+              "packages/helpers/notifications",
+              "packages/helpers/importer",
+              "packages/helpers/utilities"
+            ]
+          },
+          {
+            "group": "Socialite",
+            "icon": "users",
+            "pages": [
+              "packages/socialite/index",
+              "packages/socialite/flows",
+              "packages/socialite/customization"
+            ]
+          },
+          {
+            "group": "REST API",
+            "icon": "plug",
+            "pages": [
+              "packages/api/index",
+              "packages/api/extending"
+            ]
+          },
+          {
+            "group": "Website",
+            "icon": "globe",
+            "pages": [
+              "packages/website/index",
+              "packages/website/frontend-editor",
+              "packages/website/scripts",
+              "packages/website/seo",
+              "packages/website/site-tree"
+            ]
+          },
+          {
+            "group": "Gutenberg",
+            "icon": "blocks",
+            "pages": [
+              "packages/gutenberg/index",
+              "packages/gutenberg/blocks"
+            ]
+          },
+          {
+            "group": "Package development",
+            "icon": "hammer",
+            "pages": [
+              "packages/skeleton",
+              "packages/release"
             ]
           }
         ]
@@ -165,5 +224,19 @@
     "socials": {
       "github": "https://github.com/crudadmin"
     }
-  }
+  },
+  "redirects": [
+    {
+      "source": "/helpers/installation",
+      "destination": "/packages/helpers"
+    },
+    {
+      "source": "/helpers/authentication",
+      "destination": "/packages/helpers/authentication"
+    },
+    {
+      "source": "/helpers/authentication/:slug*",
+      "destination": "/packages/helpers/authentication/:slug*"
+    }
+  ]
 }

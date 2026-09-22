@@ -1,0 +1,84 @@
+---
+title: "Website"
+description: "The crudadmin/website package: frontend editor, gettext for Blade, language prefixes in urls, SEO and the site tree."
+icon: "globe"
+---
+
+`crudadmin/website` contains the features of public websites managed from CrudAdmin. It works with Blade websites and with separate frontends, e.g. Nuxt. Projects which have only an administration do not need it.
+
+| Feature | Description |
+| --- | --- |
+| [Frontend editor](/packages/website/frontend-editor) | Administrators edit texts, images, files and links directly on the website |
+| [Scripts and translations](/packages/website/scripts) | Gettext in JavaScript, `action()` urls of Laravel routes and obfuscated e-mails |
+| [Localized urls](/admin/model/localization#localized-routes-and-urls) | Language prefixes in urls, e.g. `/en/articles`, and switching the language |
+| [SEO](/packages/website/seo) | Meta tag fields of models, SEO of routes and rendering of meta tags |
+| [Site tree](/packages/website/site-tree) | Navigation of the website built in the administration |
+
+<Info>
+  In CrudAdmin 5 and older, these features are part of `crudadmin/crudadmin`. See the [upgrade guide](/admin/upgrade-guide/v6#public-website-features-moved-to-crudadminwebsite).
+</Info>
+
+## Requirements
+
+CrudAdmin 6 and `crudadmin/framework` 6.0.1 or newer.
+
+## Installation
+
+```bash
+composer require crudadmin/website
+php artisan admin:update
+```
+
+`admin:update` publishes the scripts and styles of the package into `public/vendor/crudadmin-website`. Publish them manually with:
+
+```bash
+php artisan vendor:publish --tag=admin_website.assets
+```
+
+Run `php artisan admin:migrate` after you enable the frontend editor, the SEO of routes or the site tree. They create their own admin models.
+
+## Configuration
+
+The options live in `config/admin.php`. The package provides their defaults.
+
+```php config/admin.php
+'frontend_editor' => [
+    'enabled' => false,
+    'stateless' => false,
+],
+
+// SEO of routes
+'seo' => false,
+'seo_separator' => '-',
+
+'sitetree' => false,
+
+// the default language has no prefix in urls
+'localization_remove_default' => true,
+
+// extensions of non image files uploaded in the frontend editor,
+// the default lists common documents, archives, audio and video
+'uploadable_allowed_extensions' => 'pdf,doc,docx,xls,xlsx,zip',
+
+// serves translations as JSON for separate frontends
+'gettext_json' => false,
+```
+
+Check the switches in your code with `AdminWebsite\Features`:
+
+```php
+use AdminWebsite\Features;
+
+Features::frontendEditor();
+Features::statelessFrontendEditor();
+Features::seo();
+Features::sitetree();
+```
+
+## Environment variables
+
+| Variable | Description |
+| --- | --- |
+| `WEB_URL`, `APP_NUXT_URL` | Url of the separate frontend, target of the [stateless editor](/packages/website/frontend-editor#separate-frontend) |
+| `ADMIN_SITETREE_EDITOR` | `true` allows editing the structure of the [site tree](/packages/website/site-tree) |
+| `APP_NAME` | Default title of the [meta tags](/packages/website/seo#rendering-meta-tags) |
