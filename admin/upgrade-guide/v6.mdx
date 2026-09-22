@@ -395,3 +395,26 @@ CrudAdmin 6 moves configuration properties that share a name with a value of the
 - Role permissions are read only from the JSON cast. Permissions saved as plain strings by CrudAdmin 3 and 4.1 are no longer decoded; resave the roles in the administration.
 - `date` values stored in the `d.m.Y` format are no longer read; the value is `null`. Convert such columns to `Y-m-d`. Writing `d.m.Y` strings from your code still works.
 - With a symlinked cache folder, old `/uploads/cache/…` image URLs no longer redirect to `/cache/…`. Update hardcoded image URLs.
+
+## Renamed upload properties
+
+- `$delete_files` is renamed to `$deleteFiles`.
+- `$imageLossyCompression`, `$imageMaximumProportions` and `$imageLosslessCompression` are replaced by one property `$imageProcessing` with the keys `lossy`, `resize` and `lossless`. Declare only the keys you change, the others keep their defaults:
+
+```php
+// Before
+protected $imageLossyCompression = 70;
+protected $imageMaximumProportions = false;
+
+// After
+protected $imageProcessing = ['lossy' => 70, 'resize' => false];
+```
+
+## Internal model methods are private
+
+Methods of `AdminModel` used only by CrudAdmin itself are `private` or `protected`. Calling them from outside the model ends with `BadMethodCallException` from the query builder, because Eloquent forwards unknown calls there.
+
+- Now `protected`, override them in the model as before: `hasRowHistory()`, `hasGettextSupport()`, `defaultModelPermissions()`, `getUserPermissions()`, `addModule()`, `addSkipDroppingColumn()`, `cachableFieldsProperties()`, `withMultiCast()`, `getFieldsGeneration()`, `newInstanceWithoutConstructor()`, `canPermanentlyDeleteFiles()`, `isAllowedHistorySlugs()`, `generateEncryptedHash()`, `getComponentPaths()`, `hasAutoLogoutSupport()`, `getLogoutSessionKey()`, `getFullAccessMessage()`, the login verificator `sendVerificatorCode()`, `generateVerificationCode()` and `verificatorMaxAttempts()`, and `AdminRule::isFieldDirty()`.
+- Now `private`, no longer available in models: `initTrait()`, `flattenGroups()`, `makeFillable()`, `makeDateable()`, `makeSingle()`, `removeHidden()`, `removeVisible()`, `removeAppends()`, `buildBaseFields()`, `bootAdminModules()`, `bootCachableProperties()`, `bootRelationships()`, `getModules()`, `getModulesWithMethod()`, `getFieldsByRow()`, `refreshFields()`, `withoutOptions()`, `getCachedRelationsTree()`, `toAdminArray()`, `getHistoryRows()`, `castHistoryData()`, `removeWithRelations()`, `isRuleSilent()` and the internal helpers of casts, slugs, rules and the replicator.
+- Removed unused methods: `getFieldsWithOptions()`, `getBaseModelTable()`, `returnRelationItems()` and the old relation resolver (`returnAdminRelationship()`, `relationResponse()`, `isAdminRelationLoaded()`, `getRelationFromCache()`). Relations are resolved by `bootRelationships()` since CrudAdmin 5.
+- Removed `AdminModel::$adminBooted`. `$globalPublishable` and `$globalModelPublishable` are private, use `setGlobalPublishable()` and `setGlobalModelPublishable()`. `$callableProperties` and `$localizedResponseLocalArray` are private. `AdminModelModule::$model` is protected, use `getModel()`.

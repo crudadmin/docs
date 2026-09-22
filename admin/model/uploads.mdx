@@ -18,18 +18,18 @@ protected $privateUploads = true;
 In the administration, private files are served through `/uploads/{table}/{field}/{filename}` only to logged administrators with the `read` [permission](/admin/model/permissions#private-files) of the model. A guest receives `401`. On the website use the signed [`download()`](/admin/frontend/files#download) link.
 
 ## Deleting old files
-{/* feature: model.delete_files */}
+{/* feature: model.deleteFiles */}
 
 When a file is replaced in the form, or a record is deleted, the original files are deleted from the storage, including files of `multiple` fields. Keep them with:
 
 ```php app/Models/Invoice.php
-protected $delete_files = false;
+protected $deleteFiles = false;
 ```
 
 Resized copies of images in the cache are removed in both cases. To keep the files of all models, set [`reduce_space`](/admin/configuration#disk-space) to `false`.
 
 ## Image compression and maximum size
-{/* feature: model.imageLossyCompression, model.imageMaximumProportions, model.imageLosslessCompression */}
+{/* feature: model.imageProcessing */}
 
 Uploaded `jpg`, `jpeg` and `png` images are post-processed:
 
@@ -38,17 +38,19 @@ Uploaded `jpg`, `jpeg` and `png` images are post-processed:
 3. JPEG images are encoded with the `image_lossy_compression_quality` quality (85 by default),
 4. optimized by shell tools (`jpegoptim`, `optipng`, `pngquant`, ...) when `image_lossless_compression` is enabled.
 
-Every step can be changed per model:
+Every step can be changed per model in `$imageProcessing`. Keys the model does not declare keep their defaults (`true`):
 
 ```php app/Models/Gallery.php
-// JPEG quality in percent, false keeps full quality
-protected $imageLossyCompression = 70;
+protected $imageProcessing = [
+    // JPEG quality in percent, false keeps full quality
+    'lossy' => 70,
 
-// Keep the original dimensions of uploaded images
-protected $imageMaximumProportions = false;
+    // Keep the original dimensions of uploaded images
+    'resize' => false,
 
-// Skip shell optimizers
-protected $imageLosslessCompression = false;
+    // Skip shell optimizers
+    'lossless' => false,
+];
 ```
 
 The global defaults are described in the [configuration](/admin/configuration#images).

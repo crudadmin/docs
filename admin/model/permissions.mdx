@@ -148,7 +148,7 @@ Without user groups and for super administrators the check always passes. For a 
 ### Custom permissions
 {/* feature: model.setModelPermissions(), model.defaultModelPermissions() */}
 
-Add your own permission keys to a module. They appear in the user group editor and can be checked with `hasAccess()`. `defaultModelPermissions()` returns the default keys of the module.
+Add your own permission keys to a module. They appear in the user group editor and can be checked with `hasAccess()`. `->defaultModelPermissions()` returns the default keys of the module inside the model.
 
 ```php
 public function setModelPermissions($permissions)

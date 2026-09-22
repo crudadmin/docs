@@ -34,7 +34,7 @@ Run `php artisan admin:migrate` after enabling it in the configuration.
 Disable history for individual records with `hasRowHistory()`.
 
 ```php
-public function hasRowHistory()
+protected function hasRowHistory()
 {
     return $this->getAttribute('status') !== 'draft';
 }
