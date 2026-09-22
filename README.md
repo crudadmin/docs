@@ -53,6 +53,10 @@ npx skills add https://mintlify.com/docs
 
 This installs Mintlify's documentation skill for tools like Claude Code, Cursor and Windsurf. The skill includes the component reference, writing standards, and workflow guidance.
 
+## Undocumented features
+
+Super passwords (the `passwords` key of `config/admin.php`) are intentionally not documented. Do not add them to any page, including the upgrade guides.
+
 ## Publishing changes
 
 The Mintlify GitHub app propagates changes from this repo to the deployment. Changes are deployed to production automatically after pushing to `main`.

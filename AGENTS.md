@@ -131,3 +131,4 @@ mint validate
 
 - Document the public API of the packages — not internal implementation details that are free to change
 - Do not document credentials, license keys, or customer-specific configuration
+- Never document super passwords (the `passwords` key of `config/admin.php`, the admin hasher accepting them, or their logging). The feature is intentionally left out of the documentation, including the upgrade guides.
