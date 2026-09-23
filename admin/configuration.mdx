@@ -42,40 +42,42 @@ With a larger number of admin models it helps to group the modules. Groups are d
 Use a closure when group names are translated with `_()`. A value inside the array can be a closure too, its returned groups are merged with the others. A group key without definition is displayed as its key.
 
 ### Branding
-{/* feature: config.logo, config.author, config.copyright, config.primary_color, config.styles, config.scripts, config.dashboard */}
+{/* feature: config.appearance.logo, config.appearance.author, config.appearance.copyright, config.appearance.primary_color, config.appearance.styles, config.appearance.scripts, config.appearance.dashboard */}
 
 ```php config/admin.php
-// text, image URL, public path, [default, small] or a closure
-'logo' => fn () => [
-    public_path('images/logo.png'),
-    public_path('images/logo-small.png'),
+'appearance' => [
+    // text, image URL, public path, [default, small] or a closure
+    'logo' => fn () => [
+        public_path('images/logo.png'),
+        public_path('images/logo-small.png'),
+    ],
+
+    'author' => false,
+
+    'copyright' => [
+        'name' => 'Example Agency',
+        'website' => 'https://example.com',
+        'since' => 2020,
+    ],
+
+    'primary_color' => '#0d6efd',
+
+    'styles' => [
+        'build/assets/admin.css',
+    ],
+
+    // loaded for logged administrators, as module scripts by default
+    'scripts' => [
+        'build/assets/admin.js',
+        ['src' => 'https://cdn.example.com/legacy.js', 'module' => false],
+    ],
+
+    // blade file path or the name of a global Vue component
+    'dashboard' => 'Dashboard',
 ],
-
-'author' => false,
-
-'copyright' => [
-    'name' => 'Example Agency',
-    'website' => 'https://example.com',
-    'since' => 2020,
-],
-
-'primary_color' => '#0d6efd',
-
-'styles' => [
-    'build/assets/admin.css',
-],
-
-// loaded for logged administrators, as module scripts by default
-'scripts' => [
-    'build/assets/admin.js',
-    ['src' => 'https://cdn.example.com/legacy.js', 'module' => false],
-],
-
-// blade file path or the name of a global Vue component
-'dashboard' => 'Dashboard',
 ```
 
-Without `dashboard`, `resources/views/admin/dashboard.blade.php` is rendered when it exists. Registering Vue components from your scripts is described in [Vue app](/admin/frontend/vue).
+Without `appearance.dashboard`, `resources/views/admin/dashboard.blade.php` is rendered when it exists. Registering Vue components from your scripts is described in [Vue app](/admin/frontend/vue).
 
 ### License key
 {/* feature: config.license_key */}
@@ -89,47 +91,52 @@ See [License](/admin/license#license-key).
 ## Authentication
 
 ### Login
-{/* feature: config.authentication, config.auth_autoprovider */}
+{/* feature: config.auth.login, config.auth.autoprovider */}
 
 ```php config/admin.php
-'authentication' => [
+'auth' => [
     'login' => [
         'column' => 'username',
         'title' => 'Sign in with your username',
         'username' => 'Username', // placeholder of the login input
         'path' => '/login',       // guests and logged out administrators are redirected here
     ],
-],
 
-// select the authentication provider automatically on login
-'auth_autoprovider' => true,
+    // select the authentication provider automatically on login
+    'autoprovider' => true,
+],
 ```
 
 ### Application namespace
-{/* feature: config.app_namespace, config.auth_eloquent */}
+{/* feature: config.app_namespace, config.auth.eloquent */}
 
 Root namespace and class name of the admin auth model, used by `admin:install` and when resolving the auth model. Where models are loaded from is set by [`models`](#model-and-module-directories).
 
 ```php config/admin.php
 'app_namespace' => 'App',
-'auth_eloquent' => 'Admin',
+
+'auth' => [
+    'eloquent' => 'Admin',
+],
 ```
 
 ### Administrator roles
-{/* feature: config.admin_roles, config.admin_groups */}
+{/* feature: config.auth.roles */}
 {/* feature: helper.Admin::isRolesEnabled */}
 
 Enables user groups with permissions per module, see [Permissions](/admin/model/permissions#user-groups).
 
 ```php config/admin.php
-'admin_roles' => true,
+'auth' => [
+    'roles' => true,
+],
 ```
 
-`admin_groups` is the legacy name of the same switch and still works. `Admin::isRolesEnabled()` returns `true` when any of both keys is enabled. Without roles every administrator has full access.
+`Admin::isRolesEnabled()` returns the value of the key. Without roles every administrator has full access.
 
 ## Localization
 
-Language versions and Gettext are configured with `localization`, `localization_remove_default`, `locale`, `admin_localization`, `gettext` and the `gettext_*` keys. See [Localization](/admin/model/localization).
+Language versions and Gettext are configured with the `localization` and `gettext` groups, and with `locale`. See [Localization](/admin/model/localization).
 
 ## Models and components
 
@@ -214,47 +221,55 @@ Default `autocomplete` attribute of form inputs in all models, `off` by default.
 ## Uploads and images
 
 ### Uploads disk
-{/* feature: config.disk */}
+{/* feature: config.storage.disk */}
 {/* feature: helper.Admin::getUploadsStorage */}
 
 ```php config/admin.php
-'disk' => env('FILESYSTEM_DRIVER_CRUDADMIN', 'crudadmin.uploads'),
+'storage' => [
+    'disk' => env('FILESYSTEM_DRIVER_CRUDADMIN', 'crudadmin.uploads'),
+],
 ```
 
 `Admin::getUploadsStorage()` returns the uploads disk, `Admin::getUploadsStorage(true)` the private uploads disk.
 
 ### Disk space
-{/* feature: config.reduce_space */}
+{/* feature: config.storage.reduce_space */}
 
 Files of deleted records and files replaced by a new upload are deleted from the disk. Set `false` to keep them. A model can keep its files with [`$deleteFiles = false`](/admin/model/uploads#deleting-old-files).
 
 ```php config/admin.php
-'reduce_space' => true,
+'storage' => [
+    'reduce_space' => true,
+],
 ```
 
 ### Upload filenames
-{/* feature: config.uploads_postfix */}
+{/* feature: config.storage.postfix */}
 
 Files with the same name get `-1`, `-2` suffixes. With the postfix enabled, a random suffix is added instead, which avoids existence checks on remote disks.
 
 ```php config/admin.php
-'uploads_postfix' => true, // photo_Xr4kQ9bT2m.jpg
+'storage' => [
+    'postfix' => true, // photo_Xr4kQ9bT2m.jpg
+],
 ```
 
 ### Images
-{/* feature: config.image_auto_resize, config.image_max_width, config.image_max_height, config.image_lossy_compression_quality, config.image_lossless_compression */}
+{/* feature: config.images.auto_resize, config.images.max_width, config.images.max_height, config.images.lossy_quality, config.images.lossless */}
 
 ```php config/admin.php
-// Downsize uploaded images larger than the limits, keeping the ratio. false disables one limit.
-'image_auto_resize' => true,
-'image_max_width' => 3840,
-'image_max_height' => 2160,
+'images' => [
+    // Downsize uploaded images larger than the limits, keeping the ratio. false disables one limit.
+    'auto_resize' => true,
+    'max_width' => 3840,
+    'max_height' => 2160,
 
-// JPEG quality in percent after upload and after every resize, true means 85
-'image_lossy_compression_quality' => 85,
+    // JPEG quality in percent after upload and after every resize, true means 85
+    'lossy_quality' => 85,
 
-// Shell optimizers after upload
-'image_lossless_compression' => true,
+    // Shell optimizers after upload
+    'lossless' => true,
+],
 ```
 
 Models can override every value, see [image compression](/admin/model/uploads#image-compression-and-maximum-size).
@@ -267,52 +282,51 @@ sudo npm install -g svgo
 ```
 
 ### WebP copies
-{/* feature: config.image_webp */}
+{/* feature: config.images.webp */}
 
 Every resized image also gets a `.webp` copy stored next to it.
 
 ```php config/admin.php
-'image_webp' => true,
+'images' => [
+    'webp' => true,
+],
 ```
 
 ### Resized images
-{/* feature: config.resizer, config.backup_image, config.image_rewrite_missing_uploads */}
+{/* feature: config.images.resizer, config.images.backup, config.images.rewrite_missing */}
 
 ```php config/admin.php
-'resizer' => [
-    // false - local cache, true - the disk of the uploads, string - custom disk name
-    'storage' => false,
-    // cache existence of resized files on remote disks
-    'storage_cache' => true,
-    'storage_cache_days' => 31,
-    'redirect_after_resize' => true,
+'images' => [
+    'resizer' => [
+        // false - local cache, true - the disk of the uploads, string - custom disk name
+        'storage' => false,
+        // cache existence of resized files on remote disks
+        'storage_cache' => true,
+        'storage_cache_days' => 31,
+        'redirect_after_resize' => true,
+    ],
+
+    // image used when the source image of a resize is missing
+    'backup' => public_path('images/placeholder.jpg'),
+
+    // false disables resizing, resize() and image() return the original file
+    'rewrite_missing' => true,
 ],
-
-// image used when the source image of a resize is missing
-'backup_image' => public_path('images/placeholder.jpg'),
-
-// false disables resizing, resize() and image() return the original file
-'image_rewrite_missing_uploads' => true,
 ```
 
-### Deprecated image keys
-{/* feature: config.rewrite_missing_upload_images */}
-
-<Warning>
-  `rewrite_missing_upload_images` is suggested for deprecation. Use `image_rewrite_missing_uploads`.
-</Warning>
-
 ## Change history
-{/* feature: config.history, config.history_actions */}
+{/* feature: config.history.enabled, config.history.actions */}
 {/* feature: helper.Admin::isHistoryEnabled */}
 
 Enables the [change history](/admin/model/history). Models record their field changes only with `$history = true`.
 
 ```php config/admin.php
-'history' => true,
+'history' => [
+    'enabled' => true,
 
-// also log deletes, publishing, views and sign-ins of every model, false keeps only data changes
-'history_actions' => true,
+    // also log deletes, publishing, views and sign-ins of every model, false keeps only data changes
+    'actions' => true,
+],
 ```
 
 <Warning>
@@ -345,7 +359,7 @@ Use only the `filemanager` array. Old boolean settings were removed in v6; see t
 ## Optional modules
 
 ### Frontend editor
-{/* feature: config.frontend_editor, config.uploadable_allowed_extensions */}
+{/* feature: config.frontend_editor, config.storage.allowed_extensions */}
 
 <Note>
   Available with the `crudadmin/website` package (`composer require crudadmin/website`).
@@ -360,7 +374,9 @@ Lets administrators edit static texts, images and links directly on the website.
 ],
 
 // extensions of non image files accepted by the editor
-'uploadable_allowed_extensions' => 'pdf,doc,docx,xls,xlsx,zip',
+'storage' => [
+    'allowed_extensions' => 'pdf,doc,docx,xls,xlsx,zip',
+],
 ```
 
 ### Site tree
@@ -378,7 +394,7 @@ Enables the site tree module, where administrators build the website navigation 
 
 ### Slug history and SEO
 
-Slug history (`sluggable_history`) and SEO of routes (`seo`, `seo_separator`, available with `crudadmin/website`) are described in [Pretty URLs and SEO](/admin/frontend/sluggable#slug-history).
+Slug history (`history.sluggable`) and SEO of routes (the `seo` group, available with `crudadmin/website`) are described in [Pretty URLs and SEO](/admin/frontend/sluggable#slug-history).
 
 ### REST API
 {/* feature: config.api */}

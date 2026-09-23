@@ -7,7 +7,7 @@ icon: "languages"
 This page covers the localization settings in `config/admin.php` and how to use them.
 
 ## Enabling localization
-{/* feature: config.localization */}
+{/* feature: config.localization.enabled */}
 {/* feature: helper.Admin::isEnabledLocalization */}
 
 If the application needs multiple language versions, switch the parameter to `true`. Then run the database migration, which creates the `languages` table and adds the language management module to the administration.
@@ -46,12 +46,14 @@ The client is redirected to the default language version on arrival — `http://
 With localization active, **every route** is redirected to the address carrying the language code — `http://example.com/articles` redirects to `http://example.com/sk/articles`.
 
 ### Disabling the forced redirect
-{/* feature: config.localization_remove_default */}
+{/* feature: config.localization.remove_default */}
 
 The forced redirect can be turned off. On the default language version, every URL is then available without the language code.
 
 ```php config/admin.php
-'localization_remove_default' => true,
+'localization' => [
+    'remove_default' => true,
+],
 ```
 
 <Info>
@@ -79,12 +81,15 @@ use Illuminate\Support\Facades\Route;
 ```
 
 ### Administration language
-{/* feature: config.locale, config.admin_localization */}
+{/* feature: config.locale, config.localization.admin */}
 {/* feature: helper.Admin::isEnabledAdminLocalization */}
 
 ```php config/admin.php
-'locale' => 'en',              // default language of the administration (en, sk, cs)
-'admin_localization' => true,  // administrators can switch the administration language
+'locale' => 'en', // default language of the administration (en, sk, cs)
+
+'localization' => [
+    'admin' => true, // administrators can switch the administration language
+],
 ```
 
 `Admin::isEnabledLocalization()` and `Admin::isEnabledAdminLocalization()` return the state of both switches.
@@ -94,7 +99,7 @@ use Illuminate\Support\Facades\Route;
 Together with the Gettext extension, CrudAdmin collects every static source text in the application and makes it translatable as *.po* files for [PoEdit](https://poedit.net/), or through the online editor in the administration.
 
 ### Enabling Gettext
-{/* feature: config.gettext */}
+{/* feature: config.gettext.enabled */}
 
 Enable the extension in `config/admin.php`.
 
@@ -199,33 +204,35 @@ export default {
 ```
 
 ### Gettext options
-{/* feature: config.gettext_source_paths, config.gettext_admin_source_paths, config.gettext_supported_codes, config.gettext_json, config.gettext_remove_missing */}
+{/* feature: config.gettext.source_paths, config.gettext.admin_source_paths, config.gettext.supported_codes, config.gettext.json, config.gettext.remove_missing */}
 
 ```php config/admin.php
-// Sources scanned for website translations, merged with the package defaults
-// (routes, app/Http, app/Mail, app/Notifications, app/Models, resources/views, resources/js, ...)
-'gettext_source_paths' => [
-    'app/Services',
-    'resources/views',
+'gettext' => [
+    // Sources scanned for website translations, merged with the package defaults
+    // (routes, app/Http, app/Mail, app/Notifications, app/Models, resources/views, resources/js, ...)
+    'source_paths' => [
+        'app/Services',
+        'resources/views',
+    ],
+
+    // Sources scanned for administration translations
+    'admin_source_paths' => ['app/Admin', 'app/Models'],
+
+    // Language slugs which can not be resolved to a gettext locale automatically
+    'supported_codes' => [
+        'cz' => 'cs_CZ',
+        'english' => 'en_GB',
+    ],
+
+    // /vendor/js/ca-translates-json.js returns translations as JSON
+    'json' => true,
+
+    // Remove translations missing in sources instead of flagging them
+    'remove_missing' => true,
 ],
-
-// Sources scanned for administration translations
-'gettext_admin_source_paths' => ['app/Admin', 'app/Models'],
-
-// Language slugs which can not be resolved to a gettext locale automatically
-'gettext_supported_codes' => [
-    'cz' => 'cs_CZ',
-    'english' => 'en_GB',
-],
-
-// /vendor/js/ca-translates-json.js returns translations as JSON
-'gettext_json' => true,
-
-// Remove translations missing in sources instead of flagging them
-'gettext_remove_missing' => true,
 ```
 
-The language slug chosen in the administration is used in the URL, for example `example.com/cz`. Built-in codes resolve `sk` to `sk_SK` and `cz` to `cs_CZ`, five letter codes are used as they are. Register other slugs in `gettext_supported_codes` for translations to work.
+The language slug chosen in the administration is used in the URL, for example `example.com/cz`. Built-in codes resolve `sk` to `sk_SK` and `cz` to `cs_CZ`, five letter codes are used as they are. Register other slugs in `gettext.supported_codes` for translations to work.
 
 ### Managing the translations
 

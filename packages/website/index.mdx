@@ -48,20 +48,28 @@ The options live in `config/admin.php`. The package provides their defaults.
 ],
 
 // SEO of routes
-'seo' => false,
-'seo_separator' => '-',
+'seo' => [
+    'enabled' => false,
+    'separator' => '-',
+],
 
 'sitetree' => false,
 
-// the default language has no prefix in urls
-'localization_remove_default' => true,
+'localization' => [
+    // the default language has no prefix in urls
+    'remove_default' => true,
+],
 
-// extensions of non image files uploaded in the frontend editor,
-// the default lists common documents, archives, audio and video
-'uploadable_allowed_extensions' => 'pdf,doc,docx,xls,xlsx,zip',
+'storage' => [
+    // extensions of non image files uploaded in the frontend editor,
+    // the default lists common documents, archives, audio and video
+    'allowed_extensions' => 'pdf,doc,docx,xls,xlsx,zip',
+],
 
-// serves translations as JSON for separate frontends
-'gettext_json' => false,
+'gettext' => [
+    // serves translations as JSON for separate frontends
+    'json' => false,
+],
 ```
 
 Check the switches in your code with `AdminWebsite\Features`:

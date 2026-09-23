@@ -126,12 +126,14 @@ public function show(int $id, string $slug)
 ```
 
 ## Slug history
-{/* feature: config.sluggable_history, model.sluggable_history */}
+{/* feature: config.history.sluggable, model.sluggable_history */}
 
-With `sluggable_history` enabled, every changed slug is stored in the `sluggable_histories` table, and `findBySlug()` / `findBySlugOrFail()` redirect old URLs with `301` to the current slug.
+With `history.sluggable` enabled, every changed slug is stored in the `sluggable_histories` table, and `findBySlug()` / `findBySlugOrFail()` redirect old URLs with `301` to the current slug.
 
 ```php config/admin.php
-'sluggable_history' => true,
+'history' => [
+    'sluggable' => true,
+],
 ```
 
 Run `php artisan admin:migrate` after enabling it. Marking routes with `seo()` and rendering the meta tags is described in [SEO](/packages/website/seo). A single model can opt out:
@@ -197,15 +199,17 @@ protected $slugUnique = false;
 ```
 
 ### SEO of routes
-{/* feature: config.seo, config.seo_separator */}
+{/* feature: config.seo.enabled, config.seo.separator */}
 
 The `seo` configuration enables the **SEO routes** module, where administrators set meta tags of any URL of the website.
 
 ```php config/admin.php
-'seo' => true,
+'seo' => [
+    'enabled' => true,
 
-// separator between the page title and the site title in SEO::getTitle()
-'seo_separator' => ' | ',
+    // separator between the page title and the site title in SEO::getTitle()
+    'separator' => ' | ',
+],
 ```
 
 Run `php artisan admin:migrate` after enabling it.

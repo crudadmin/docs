@@ -66,7 +66,7 @@ uploadable('hero', 'images/hero.jpg', [1200, 600]);
 - On the first render, the default asset is copied into the uploads and compressed. When the default asset changes, the copy is replaced.
 - Without the editor, `asset()` of the default is returned, without resizing.
 - `@uploadable(...)` is the Blade form of the helper.
-- Uploaded files other than images are validated by `uploadable_allowed_extensions`.
+- Uploaded files other than images are validated by `storage.allowed_extensions`.
 
 ## Links
 

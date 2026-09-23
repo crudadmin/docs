@@ -26,7 +26,7 @@ When a file is replaced in the form, or a record is deleted, the original files 
 protected $deleteFiles = false;
 ```
 
-Resized copies of images in the cache are removed in both cases. To keep the files of all models, set [`reduce_space`](/admin/configuration#disk-space) to `false`.
+Resized copies of images in the cache are removed in both cases. To keep the files of all models, set [`storage.reduce_space`](/admin/configuration#disk-space) to `false`.
 
 ## Image compression and maximum size
 {/* feature: model.imageProcessing */}
@@ -34,9 +34,9 @@ Resized copies of images in the cache are removed in both cases. To keep the fil
 Uploaded `jpg`, `jpeg` and `png` images are post-processed:
 
 1. rotated by EXIF orientation,
-2. resized when larger than `image_max_width` × `image_max_height` (3840 × 2160 by default, the ratio is kept),
-3. JPEG images are encoded with the `image_lossy_compression_quality` quality (85 by default),
-4. optimized by shell tools (`jpegoptim`, `optipng`, `pngquant`, ...) when `image_lossless_compression` is enabled.
+2. resized when larger than `images.max_width` × `images.max_height` (3840 × 2160 by default, the ratio is kept),
+3. JPEG images are encoded with the `images.lossy_quality` quality (85 by default),
+4. optimized by shell tools (`jpegoptim`, `optipng`, `pngquant`, ...) when `images.lossless` is enabled.
 
 Every step can be changed per model in `$imageProcessing`. Keys the model does not declare keep their defaults (`true`):
 
@@ -80,8 +80,8 @@ The second argument accepts an `UploadedFile`, a path to a local file (the sourc
 | Option | Description |
 | --- | --- |
 | `filename` | stored name, `'Invoice 2026.pdf'` is stored as `invoice-2026.pdf` |
-| `postfix` | `true` appends a random key (`invoice_x8Kd02LmQa.pdf`), default from [`uploads_postfix`](/admin/configuration#upload-filenames) |
-| `disk` | filesystem disk name |
+| `postfix` | `true` appends a random key (`invoice_x8Kd02LmQa.pdf`), default from [`storage.postfix`](/admin/configuration#upload-filenames) |
+| `storage.disk` | filesystem disk name |
 
 Filenames are slugged and an existing file is never overwritten (`invoice-1.pdf`). The filename can be changed by the [`set{Key}Filename()`](/admin/model/fields/uploads#changing-the-filename) method of the model.
 

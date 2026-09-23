@@ -31,8 +31,10 @@ Without meta tag fields, the model name, description and image are used. The tit
 Enable the module and run `php artisan admin:migrate`:
 
 ```php config/admin.php
-'seo' => true,
-'seo_separator' => ' | ',
+'seo' => [
+    'enabled' => true,
+    'separator' => ' | ',
+],
 ```
 
 Mark the GET routes which administrators may describe with `seo()`:
@@ -78,7 +80,7 @@ Render the tags in the `<head>` of the layout. The array is the default of pages
 
 `@metatags` renders `<title>`, the description, keywords and author, the Open Graph and Twitter tags and the canonical url.
 
-- The title is `{page title} {seo_separator} {website title}`. The website title is the default title, or `APP_NAME`.
+- The title is `{page title} {seo.separator} {website title}`. The website title is the default title, or `APP_NAME`.
 - Descriptions and keywords are stripped of HTML and shortened to 300 characters.
 - Uploaded images are resized to 1200 × 630.
 - Values of the **SEO routes** module match urls with and without a language prefix.

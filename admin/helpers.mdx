@@ -179,7 +179,7 @@ class PackageServiceProvider extends AdminHelperServiceProvider
         $this->mergeAdminConfigs([
             'groups' => fn () => ['store' => [_('Store'), 'fa-shopping-cart']],
             'modules' => ['Vendor\Package\Admin\Modules' => __DIR__.'/Admin/Modules'],
-            'gettext_source_paths' => [__DIR__.'/Views'],
+            'gettext' => ['source_paths' => [__DIR__.'/Views']],
         ]);
 
         // adds __DIR__.'/../Admin/Components' relative to the provider
