@@ -106,8 +106,12 @@ protected $icon = 'fa-truck';
 ```
 
 <Info>
-  Without `$icon`, well known table names get an icon automatically, e.g. a table ending with `articles` gets `fa-file-alt`, `orders` gets `fa-credit-card`.
+  Without `$icon`, well known table names get an icon automatically, e.g. a table ending with `articles` gets `fa-file-alt`, `orders` gets `fa-credit-card`. The name is matched by the singular of the last segment of the table name, so `articles_categories` is matched as `category`.
 </Info>
+
+<Warning>
+  Only the solid and the regular Font Awesome sets are bundled with the administration. A brand icon such as `fa-wpforms` renders nothing.
+</Warning>
 
 ### Disabling the module
 {/* feature: model.active */}

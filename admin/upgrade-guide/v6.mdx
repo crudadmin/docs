@@ -44,6 +44,12 @@ Breaking change for every custom admin component that opens a modal or a toast. 
 - `columns.*.name` now takes precedence over a field's `column_name`, so editor changes also apply to fields with a custom column label.
 - Editing requires full superadmin access, `APP_DEBUG=true` and a non-production environment. Production uses the deployed map without exposing the editor.
 
+## Default module icons and form texts
+
+- Known table names supply many more default sidebar icons (warehouses, stock, prices, branches, workers, courses, questions, notifications and others). A module without `$icon` that showed no icon can now show one; declare `$icon` when the module has to keep its own.
+- Tables ending with `forms`, `inquiries`, `submissions` and `applications` used `fa-wpforms`, a brand icon the administration does not bundle, so nothing rendered. They now use `far fa-list-alt`.
+- Default titles and buttons are merged key by key. Models of the `time`, `appointment`, `booking`, `lector` and `training` table names that declared only some of `title.create`, `title.update` or `buttons.create` used to lose the remaining defaults; those are applied now. Declare the setting explicitly to keep a different text.
+
 ## Removed field types
 
 ### type:array
