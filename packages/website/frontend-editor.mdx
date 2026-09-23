@@ -110,27 +110,41 @@ For a frontend on another domain, e.g. Nuxt, enable the stateless mode and set t
 WEB_URL=https://www.example.com
 ```
 
-1. The top bar of the administration shows a link to the frontend editor. It redirects to `{WEB_URL}/?admin_token=…`.
-2. The frontend calls `GET /admin/api/frontend-editor/initialize` with `Authorization: Bearer {admin_token}`.
-3. The response contains `scripts`, `styles` and `config`. The frontend sets `window.CAEditorConfig` to the config with the `token`, and loads the scripts and styles.
+The stateless editor signs the administrator in with a Sanctum token, so the api needs the
+`personal_access_tokens` table. Run `php artisan migrate`; without it the editor link ends in
+an error instead of opening the website.
 
-```js plugins/frontend-editor.client.js
-const token = new URLSearchParams(location.search).get('admin_token');
+The **Editor mode** dropdown of the administration then offers **Webový editor**, which opens
+`{WEB_URL}/?admin_token=…` in a new tab.
 
-if (token) {
-    const { scripts, styles, config } = await $fetch('/admin/api/frontend-editor/initialize', {
-        baseURL: apiUrl,
-        headers: { Authorization: `Bearer ${token}` },
-    });
+On a Nuxt frontend, do not write this by hand. The `@crudadmin/helpers` layer ships the whole
+handshake as the auto-imported `installEditor()`; call it once when the app mounts:
 
-    window.CAEditorConfig = { ...config, token };
-
-    styles.forEach((href) => document.head.append(Object.assign(document.createElement('link'), { rel: 'stylesheet', href })));
-    scripts.forEach((src) => document.body.append(Object.assign(document.createElement('script'), { src })));
-}
+```vue app/app.vue
+<script setup>
+onMounted(() => {
+    installEditor();
+});
+</script>
 ```
 
-The token is valid only for the frontend editor, not for the administration or the REST API. The edit mode is stored in the browser.
+It reads `admin_token` from the url, stores it in `localStorage` (`ca_admin_token`) and strips
+the query string, so the editor survives navigation and reloads. Then it calls
+`GET /admin/api/frontend-editor/initialize` with `Authorization: Bearer {admin_token}`, puts the
+answer into `window.CAEditorConfig` and injects the returned `scripts` and `styles`.
+
+The layer has to be extended for the composable to be available:
+
+```ts nuxt.config.ts
+extends: ['./node_modules/@crudadmin/helpers/nuxt'],
+```
+
+The endpoints are not under `api/`, so `config/cors.php` has to let the frontend origin reach
+`admin/*` and `vendor/*`.
+
+A frontend built with something else repeats the same handshake on its own. The token is valid
+only for the frontend editor, not for the administration or the REST API. The edit mode is
+stored in the browser.
 
 ## Facades
 
