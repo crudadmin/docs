@@ -334,7 +334,7 @@ public function getFilterStates()
 - The stateless frontend editor token (`/admin/translations/editor`) has only the `frontend-editor` ability, it is refused by the administration and the REST API.
 - Passwords, tokens and secrets are left out of the REST API request log.
 - The session Swagger scheme moved from `/admin/api/v1/openapi.json|yaml` to `/admin/api/v1/docs/openapi.json|yaml`; `/admin/api/v1/openapi.json|yaml` is now a token route for API clients. The scheme is generated in PHP: `/admin/api/v1/scheme` returns valid YAML with quoted values, and the description now includes the `DELETE` operation.
-- Removed `Admin\Controllers\Crud\Concerns\CRUDRelations` and the validation and insert methods of `CRUDController`, `InsertController` and `UpdateController`; they live in `Admin\Crud\RowWriter`. `UpdateController` no longer extends `InsertController`. `getModel()` of the CRUD controllers comes from `Admin\Crud\Concerns\ResolvesAdminModels`.
+- Renamed `Admin\Controllers\Crud\Concerns\CRUDRelations` to `Admin\Crud\Concerns\SyncsBelongsToMany`; admin rules reading pivot data of a `belongsToMany` field (`getPivotData()`) use the new trait. Removed the validation and insert methods of `CRUDController`, `InsertController` and `UpdateController`; they live in `Admin\Crud\RowWriter`. `UpdateController` no longer extends `InsertController`. `getModel()` of the CRUD controllers comes from `Admin\Crud\Concerns\ResolvesAdminModels`.
 
 ## Login security
 
