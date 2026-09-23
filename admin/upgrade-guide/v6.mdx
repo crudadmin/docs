@@ -131,7 +131,8 @@ Breaking change for every project. Outside production the administration throws 
 - `admin.frontend_editor` was truthy whenever the `crudadmin/website` package was installed, because its default is an array. It is read as `frontend_editor.enabled` now, so images of a project with the editor disabled are no longer routed through the editor.
 - Deleted keys which no longer did anything: `sitebuilder` (the module was removed) and `image_compression_quality` (unread since v5, use `images.lossy_quality`). The migrator deletes them; their values are not moved, because a key that did nothing must not start applying.
 - `name`, `locale`, `license_key`, `groups`, `models`, `modules`, `components`, `app_namespace`, `resources_provider`, `custom_rules`, `global_rules`, `filemanager`, `api` and `sitetree` are unchanged.
-- Packages merging their defaults into `config('admin')` merge them key by key inside a group now, so a project value no longer replaces the whole group of the package.
+- Packages merging their defaults into `config('admin')` merge them key by key inside a group now, so a project value no longer replaces the whole group of the package. Values of the project stay in front of the values a package appends, across any number of packages.
+- A package still merging an old key has it mapped onto the new one and logged as a warning instead of throwing, because the project can not migrate a package. Migrate the config of your own packages with `admin:config-migrate --path=src/Config/admin.php`.
 
 ### File browser configuration
 

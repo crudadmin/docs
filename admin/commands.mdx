@@ -65,7 +65,7 @@ php artisan admin:config-migrate --dry-run
 php artisan admin:config-migrate
 ```
 
-The command moves every declaration as it is written, so comments, `env()` calls and closures survive the move, and it deletes the keys which no longer do anything. It reports what it cannot convert: a key whose new path is already declared, and two old keys of one new key holding different values. `--path` migrates another config file than `config/admin.php`. The full list of moved keys is in the [v6 upgrade guide](/admin/upgrade-guide/v6#config-keys-grouped).
+The command moves every declaration as it is written, so comments, `env()` calls and closures survive the move, and it deletes the keys which no longer do anything. It reports what it cannot convert: a key whose new path is already declared, and two old keys of one new key holding different values. `--path` migrates another config file than `config/admin.php`, for example the `src/Config/admin.php` of a package. The full list of moved keys is in the [v6 upgrade guide](/admin/upgrade-guide/v6#config-keys-grouped).
 
 Outside production the administration throws on boot while an old key is still declared, so run the command before starting the application. The command itself is never blocked by that check.
 
