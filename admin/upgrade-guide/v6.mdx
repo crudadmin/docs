@@ -418,3 +418,11 @@ Methods of `AdminModel` used only by CrudAdmin itself are `private` or `protecte
 - Now `private`, no longer available in models: `initTrait()`, `flattenGroups()`, `makeFillable()`, `makeDateable()`, `makeSingle()`, `removeHidden()`, `removeVisible()`, `removeAppends()`, `buildBaseFields()`, `bootAdminModules()`, `bootCachableProperties()`, `bootRelationships()`, `getModules()`, `getModulesWithMethod()`, `getFieldsByRow()`, `refreshFields()`, `withoutOptions()`, `getCachedRelationsTree()`, `toAdminArray()`, `getHistoryRows()`, `castHistoryData()`, `removeWithRelations()`, `isRuleSilent()` and the internal helpers of casts, slugs, rules and the replicator.
 - Removed unused methods: `getFieldsWithOptions()`, `getBaseModelTable()`, `returnRelationItems()` and the old relation resolver (`returnAdminRelationship()`, `relationResponse()`, `isAdminRelationLoaded()`, `getRelationFromCache()`). Relations are resolved by `bootRelationships()` since CrudAdmin 5.
 - Removed `AdminModel::$adminBooted`. `$globalPublishable` and `$globalModelPublishable` are private, use `setGlobalPublishable()` and `setGlobalModelPublishable()`. `$callableProperties` and `$localizedResponseLocalArray` are private. `AdminModelModule::$model` is protected, use `getModel()`.
+
+## Reserved column names
+
+`admin:migrate` reports fields named like a property of the model, for example `table`, `visible`, `hidden`, `casts` or `attributes`. Eloquent returns the property instead of the value of the row, so such a column is unreadable inside the model and, since PHP 8.5, also in other admin models.
+
+- A **new** field with such a name stops the migration. Rename the column.
+- A column of an already migrated table is only reported, projects keep working.
+- Keep the name with `protected $ignoredReservedColumns = ['table'];` on the model and read the value with `getAttribute('table')`.

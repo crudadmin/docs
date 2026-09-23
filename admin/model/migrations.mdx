@@ -103,6 +103,27 @@ A model without a table, e.g. a dashboard built from [layouts](/admin/model/layo
 protected $skipMigration = true;
 ```
 
+## Reserved column names
+{/* feature: model.ignoredReservedColumns */}
+
+A column named like a property of the model shadows the value of the row. Eloquent returns the property instead of calling `__get()`, so `$row->table` returns the table name and `$row->attributes` the whole row. It happens inside the model, in its traits, and since PHP 8.5 also in every other admin model. Configuration properties of CrudAdmin (`$name`, `$title`, `$icon`, …) are moved out of the model instance and are safe; properties of Eloquent (`$table`, `$connection`, `$casts`, `$hidden`, `$visible`, `$fillable`, `$guarded`, `$appends`, `$with`, `$exists`, `$timestamps`, `$primaryKey`, `$perPage`, `$attributes`, `$original`, `$relations`, …) are not.
+
+`admin:migrate` reports such fields:
+
+- a new field stops the migration with an error, rename the column;
+- a column of an already migrated table is only reported, so existing projects keep working.
+
+Keep the column and read it with `getAttribute()`, or `$row['column']`:
+
+```php app/Models/Lead.php
+protected $ignoredReservedColumns = ['table'];
+
+public function getModuleAttribute()
+{
+    return Admin::getModelByTable($this->getAttribute('table'));
+}
+```
+
 ## Skipping column removal
 {/* feature: model.skipDropping */}
 
