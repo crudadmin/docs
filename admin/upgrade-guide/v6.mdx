@@ -38,11 +38,33 @@ Breaking change for every custom admin component that opens a modal or a toast. 
 ## Model settings editor
 
 - UI settings can now be stored in `app/Admin/model-settings.php`; commit and deploy this file. Existing `$settings`, `settings()` and mutators remain supported, with map overrides applied last.
-- Title aliases are normalized in the settings payload: `title.insert` becomes `title.create` and takes precedence over an old `title.create`; `title.edit` becomes `title.update` when no update title is set. Update custom frontend consumers that read the old keys.
-- Use column snapshots instead of new `columns.*.before` / `columns.*.after` declarations. Run `admin:settings-migrate --dry-run`, then `admin:settings-migrate` to move supported literals and convert legacy ordering. Resolve reported dynamic expressions manually.
+- Use column snapshots instead of new `columns.*.before` / `columns.*.after` declarations on field columns. A virtual column still needs `before` / `after`, it has no field to anchor it. Run `admin:settings-migrate --dry-run`, then `admin:settings-migrate` to move supported literals and convert the ordering. Resolve reported dynamic expressions manually.
 - Explicit column visibility overrides can reveal `hidden` fields; snapshots retain shared visibility and order, while personal preferences remain above them. Password and inaccessible columns remain excluded.
 - `columns.*.name` now takes precedence over a field's `column_name`, so editor changes also apply to fields with a custom column label.
 - Editing requires full superadmin access, `APP_DEBUG=true` and a non-production environment. Production uses the deployed map without exposing the editor.
+
+## Renamed and removed model settings
+
+`admin:settings-migrate` rewrites these in models under `app/` and reports what it cannot convert. Settings of packages and of dynamic `settings()` methods have to be changed by hand.
+
+Renamed:
+
+- `title.insert` → `title.create` and `title.edit` → `title.update`. Both were aliases with their own precedence rules; declare one heading per form. A model declaring the alias next to its target is reported and left unchanged.
+- `title.tab` → `tabs.name`, `form.tabs` → `tabs.enabled`, `tabs_autoload` → `tabs.autoload`. Every tab setting lives under `tabs.*` now. Write `'tabs.enabled' => false`, not `'tabs' => false`, so the key stays usable next to `tabs.default`.
+- `sortable` → `table.sortable`. The `$sortable` model property (drag and drop of rows) is not affected, the setting only turns off sorting by clicking column headers.
+- `grid.splitmode` → `table.splitmode`.
+
+Removed:
+
+- `orderBy`. Use the [`$orderBy`](/admin/model/listing#default-order-of-records) model property, which orders the query and the table at once.
+- `rows.eachRequestInitial`. Only the first rows request of a model is initial again, so field options and `getAdminModelInitialData()` are no longer rebuilt on every refresh of a model that declared it.
+- `columns.*.invisible` and `columns.*.column_visible`. Use `columns.*.hidden`; a virtual column declared with `invisible` was hidden and is now visible unless `hidden` is set.
+
+Grid:
+
+- `grids` → `grid.sizes`, and `grid` as a list of sizes, `grid.enabled`, `grid.disabled` and `grid.{size}.enabled` / `.disabled` are all replaced by that one list. The switcher hides itself when one size is left, so `'grid.enabled' => false` becomes `'grid.sizes' => ['<the size you keep>']`.
+- The migrator computes the list from the old keys. It reports a dynamic grid value, a switcher turned off without `grid.default`, and old keys declared next to a size list.
+- `grid.default` stays and keeps its second effect: a form of 20 or more fields opens in the full grid unless the model declares `grid.default` or `grid.sizes`.
 
 ## Default module icons and form texts
 
@@ -181,11 +203,6 @@ Breaking change for every custom admin component that opens a modal or a toast. 
 
 - Removed `grid.header` from the feature reference; remove it from model settings if present.
 - The administration never read this key, so removing it does not change the layout or headers.
-
-## Removed title.edit
-
-- Removed the unused `title.edit` setting from the feature reference; replace it with `title.update` to customize the edit form heading.
-- `title.edit` never changed the heading. Using `title.update` makes your configured text take effect.
 
 ## Removed header.visiblePermanently
 

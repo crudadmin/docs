@@ -5,7 +5,7 @@ icon: "settings-2"
 ---
 
 ## Edit settings in the administration
-{/* feature: model.settings-editor */}
+{/* feature: admin.editor-mode */}
 
 Enable **Editor mode** in its own dropdown beside the administration language switch. The dropdown also opens every setting of the model you are looking at. The switch is available only to a signed-in administrator with full access (`hasAdminAccess()`) with `APP_DEBUG=true` outside the `production` environment. The server applies the same restrictions to reads and writes. With roles enabled, full access requires `permissions = true`; with roles disabled, CrudAdmin administrators already have full access.
 
@@ -73,7 +73,7 @@ Settings can be written as nested arrays or with dot keys. Both forms produce th
 ```php
 protected $settings = [
     'grid' => ['default' => 'full'],
-    'grid.big.disabled' => true,
+    'grid.sizes' => ['half', 'full'],
 ];
 ```
 
@@ -96,14 +96,13 @@ Texts in `title.*`, `buttons.*` and `columns.*.name` are translated with gettext
 </Info>
 
 ## Form texts
-{/* feature: settings.title.rows, settings.title.create, settings.title.insert, settings.title.update, settings.title.tab, settings.buttons.create, settings.buttons.insert, settings.buttons.update, settings.buttons.show-history */}
+{/* feature: settings.title.rows, settings.title.create, settings.title.update, settings.buttons.create, settings.buttons.insert, settings.buttons.update, settings.buttons.show-history */}
 
 ```php app/Models/Client.php
 protected $settings = [
     'title.rows' => 'Clients',
     'title.create' => 'New client',
     'title.update' => 'Editing client :name (no. :id)',
-    'title.tab' => 'Basic information',
     'buttons.create' => 'Add client',
     'buttons.insert' => 'Create client',
     'buttons.update' => 'Save client',
@@ -115,10 +114,7 @@ protected $settings = [
 | --- | --- | --- |
 | `title.rows` | heading above the table | model name |
 | `title.create` | heading of the new record form | "Add new" |
-| `title.insert` | legacy alias, normalized to `title.create`; wins over a legacy `title.create` when both are set | — |
-| `title.edit` | legacy alias, normalized to `title.update` when an explicit update title is absent | — |
 | `title.update` | heading of an opened record | `name`, `title`, `username` or `number` of the record |
-| `title.tab` | name of the first tab holding fields outside of tabs | "General" |
 | `buttons.create` | add new record button above the table | "Add new" |
 | `buttons.insert` | submit button of the new record form | "Send" |
 | `buttons.update` | submit button of an opened record | "Save" |
@@ -164,7 +160,7 @@ protected $settings = [
 Use `columns.*.name` to customize column headers, for example `columns.price.name`.
 
 ### Adding new columns
-{/* feature: settings.columns.*.encode, settings.columns.*.component, settings.columns.*.column_visible */}
+{/* feature: settings.columns.*.encode, settings.columns.*.component */}
 
 A column which is not a field adds a new column to the table. Its value is added by [`setAdminAttributes`](/admin/model/listing#row-attributes) or loaded in [`scopeAdminRows`](/admin/model/listing#columns-loaded-by-the-query).
 
@@ -188,10 +184,10 @@ protected $settings = [
 - `before` / `after` place the column next to an existing one. A virtual column is not part of the model definition, so a default column snapshot cannot position it; declare it here.
 - `'encode' => false` renders the value as HTML and disables the text limit.
 - `component` renders the cell with a Vue component from the [component directories](/admin/configuration#vue-component-directory). The component receives the `value`, `valueMutated`, `valueLimited`, `field`, `row` and `model` props. Unknown component names are ignored.
-- `'hidden' => true` or `'invisible' => true` adds the column turned off, `'column_visible' => true` forces it on.
+- `'hidden' => true` adds the column turned off, the administrator can still enable it in the columns list.
 
 ## Table and grid
-{/* feature: settings.table, settings.table.small, settings.table.clickable, settings.table.switchcolumns, settings.checking, settings.increments, settings.dates, settings.sortable, settings.orderBy, settings.default, settings.actions, settings.editable, settings.recursivity.name, settings.recursivity.max_depth */}
+{/* feature: settings.table, settings.table.small, settings.table.clickable, settings.table.switchcolumns, settings.table.sortable, settings.table.splitmode, settings.checking, settings.increments, settings.dates, settings.default, settings.actions, settings.editable, settings.recursivity.name, settings.recursivity.max_depth */}
 
 ```php app/Models/StockMovement.php
 protected $settings = [
@@ -199,7 +195,6 @@ protected $settings = [
     'checking' => false,
     'table.small' => true,
     'table.switchcolumns' => false,
-    'orderBy' => ['created_at' => 'desc'],
 ];
 ```
 
@@ -209,34 +204,33 @@ protected $settings = [
 | `table.small` | compact table |
 | `table.clickable` | `false` does not open records by clicking the row |
 | `table.switchcolumns` | `false` hides the columns list |
+| `table.sortable` | `false` disables sorting by clicking column headers, drag and drop is controlled by [`$sortable`](/admin/model/tree#reordering-records) |
+| `table.splitmode` | `true` keeps the table and the form side by side also in the full grid |
 | `checking` | `false` hides the checkboxes for bulk actions |
 | `increments` | `false` hides the id column and the id search option |
 | `dates` | `true` shows created and updated dates in the row actions |
-| `sortable` | `false` disables sorting by clicking column headers, drag and drop is controlled by [`$sortable`](/admin/model/tree#reordering-records) |
-| `orderBy` | initial sort of the table, `['column' => 'asc']` |
 | `actions` | `false` hides the row action buttons |
-| `editable` | `false` shows opened records read-only |
+| `editable` | `false` shows opened records read-only, see [read-only forms](#read-only-forms) |
 | `default` | `true` opens this module after login |
 | `recursivity.name` | tab name of a model nested in itself |
 | `recursivity.max_depth` | maximum nesting of a model in itself, default `10` |
 
 ### Grid
-{/* feature: settings.grid, settings.grids, settings.grid.default, settings.grid.splitmode, settings.grid.{size} */}
+{/* feature: settings.grid.sizes, settings.grid.default */}
 
 The grid defines how the table and the form share the screen: `small`, `big`, `half` (alias `medium`) and `full`.
 
 ```php
 protected $settings = [
-    'grid.default' => 'half',        // default size when the administrator has not chosen one
-    'grid.big.disabled' => true,     // disable a single size, or 'grid.full.enabled' => true
-    'grid.enabled' => false,         // hide the size switcher
-    'grids' => ['half', 'full'],     // allow only these sizes
-    'grid.splitmode' => true,        // keep table and form side by side in full size
+    'grid.default' => 'half',           // size used until the administrator picks one
+    'grid.sizes' => ['half', 'full'],   // sizes the administrator can switch between
 ];
 ```
 
+`grid.sizes` is the only way to restrict the sizes. The switcher hides itself when one size is left, so `'grid.sizes' => ['full']` locks the module to the full grid.
+
 <Note>
-  A list of sizes can be written as `'grid' => ['half', 'full']` only when no other `grid.*` key is set. Together with `grid.default` use the `grids` key.
+  A form with 20 or more fields opens in the full grid. Declaring `grid.default` or `grid.sizes` turns that rule off and keeps your own sizes.
 </Note>
 
 ## Search, filters and pagination
@@ -258,7 +252,7 @@ protected $settings = [
 By default the search bar appears when the table has at least 3 rows. Filter buttons are defined by [`getFilterStates()`](/admin/model/listing#filter-buttons), which fills `filter.items` automatically. `'filter.enabled' => false` hides them.
 
 ## Form behaviour
-{/* feature: settings.form, settings.form.modal, settings.form.actions, settings.form.tabs, settings.form.header, settings.form.footer, settings.form.autocomplete, settings.header, settings.tabs.default, settings.tabs_autoload, settings.autoreset, settings.refresh_interval, settings.reloadOnUpdate, settings.rows.eachRequestInitial */}
+{/* feature: settings.form, settings.form.modal, settings.form.actions, settings.form.header, settings.form.footer, settings.form.autocomplete, settings.header, settings.tabs.enabled, settings.tabs.default, settings.tabs.autoload, settings.tabs.name, settings.autoreset, settings.refresh_interval, settings.reloadOnUpdate */}
 
 ```php app/Models/Booking.php
 protected $settings = [
@@ -275,15 +269,27 @@ protected $settings = [
 | `form` | `false` hides the form, only the table is shown |
 | `form.modal` | opens records in a modal in the full grid, `form.modal.width` sets its width |
 | `form.actions` | shows the row action buttons in the header of an opened record |
-| `form.tabs` / `form.header` / `form.footer` | `false` hides the tabs, the form header or the footer with the submit button |
+| `form.header` / `form.footer` | `false` hides the form header or the footer with the submit button |
 | `form.autocomplete` | `autocomplete` attribute of text inputs, default from the [`model.settings.form.autocomplete`](/admin/configuration#default-form-autocomplete) config |
 | `header` | `false` hides the module header with the grid switcher, search and add button |
+| `tabs.enabled` | `false` does not render the form tabs |
 | `tabs.default` | index of the tab opened by default |
-| `tabs_autoload` | `false` loads child models of a tab only when the tab is opened |
+| `tabs.autoload` | `false` loads child models of a tab only when the tab is opened |
+| `tabs.name` | name of the first tab holding fields outside of tabs, default "General" |
 | `autoreset` | `false` keeps the created record opened instead of resetting the form |
 | `refresh_interval` | automatic refresh of rows in milliseconds, `false` refreshes once per hour, default 60–120 s |
 | `reloadOnUpdate` | reloads all rows after a record is saved |
-| `rows.eachRequestInitial` | every rows request is initial, so field options and `getAdminModelInitialData()` are refreshed |
+
+### Read-only forms
+{/* feature: settings.editable */}
+
+`'editable' => false` renders an opened record without the save button. It changes the browser only, the server still accepts updates; use the [`$editable`](/admin/model/permissions#editing-records) parameter to forbid them.
+
+The setting is meant to be switched at runtime, so a custom component can close the form for a record it decides about:
+
+```js
+model.setSettings('editable', row.state === 'closed');
+```
 
 ## File fields in the form
 {/* feature: settings.fields.*.canDownload, settings.fields.*.canDelete, settings.fields.*.options */}
