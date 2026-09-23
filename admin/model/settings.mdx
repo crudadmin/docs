@@ -40,7 +40,7 @@ In editor mode, arrange and toggle columns in the column dropdown, then choose *
 
 Existing personal column preferences remain above the shared defaults. When the developer changes table settings, the open model previews the new defaults. Newly introduced columns are inserted after their nearest predecessor from the current model definition and use that definition's visibility. Removed fields are ignored; migrated virtual columns are retained explicitly.
 
-Use snapshots for new ordering configuration. Legacy `columns.*.before` and `columns.*.after` declarations remain readable for compatibility and can be converted by [`admin:settings-migrate`](/admin/commands#model-settings-migration).
+Use snapshots to reorder columns of fields. Keep `columns.*.before` and `columns.*.after` for [virtual columns](#adding-new-columns): a column without a field is not part of the model definition, so the declaration is the only place its position can be stated. Existing `before` / `after` declarations on field columns can be converted by [`admin:settings-migrate`](/admin/commands#model-settings-migration).
 
 ## Defining settings
 {/* feature: model.settings */}
@@ -154,7 +154,7 @@ protected $settings = [
 | `name` | column header, also used in the [table download](/admin/model/listing#table-download) |
 | `hidden` | the column is turned off by default, the administrator can turn it on in the columns list |
 | `limit` | maximum length of the text in the cell, `0` shows the whole text |
-| `before` / `after` | legacy ordering; use a default column snapshot for new configuration |
+| `before` / `after` | places the column next to another column; keep it for [virtual columns](#adding-new-columns), which have no field to anchor them, and use a default column snapshot to reorder field columns |
 | `add_before` / `add_after` | text added before or after a non-empty value, for example a unit |
 | `clickable` | `false` does not open the record when the cell is clicked |
 | `format` | date format of the value, also for columns added by `setAdminAttributes` |
@@ -185,6 +185,7 @@ protected $settings = [
 ];
 ```
 
+- `before` / `after` place the column next to an existing one. A virtual column is not part of the model definition, so a default column snapshot cannot position it; declare it here.
 - `'encode' => false` renders the value as HTML and disables the text limit.
 - `component` renders the cell with a Vue component from the [component directories](/admin/configuration#vue-component-directory). The component receives the `value`, `valueMutated`, `valueLimited`, `field`, `row` and `model` props. Unknown component names are ignored.
 - `'hidden' => true` or `'invisible' => true` adds the column turned off, `'column_visible' => true` forces it on.
