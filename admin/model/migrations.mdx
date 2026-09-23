@@ -17,7 +17,7 @@ The command compares every admin model with the last migrated state. Unchanged m
 | --- | --- |
 | `--force`, `-f` | Migrate all models, even unchanged ones. |
 | `--auto-drop` | Drop unknown columns without asking. A leftover `language_id` column is never dropped this way, it is only reported and asked about without the option. |
-| `--unknown`, `-u` | With `--force`, list tables that do not belong to any admin model and ask to drop each of them. |
+| `--unknown`, `-u` | With `--force`, list tables that do not belong to any admin model and ask to drop each of them. Tables of Laravel and of its first party packages (queues, cache, sessions, Passport, Sanctum, Telescope, Pulse) are never listed. |
 
 When a column exists in the table but not in the fields, the command prints `+ Unknown column: name` and asks whether to drop it. Use [`$skipDropping`](#skipping-column-removal) for columns managed elsewhere.
 
