@@ -42,6 +42,10 @@ Breaking change for every custom admin component that opens a modal or a toast. 
 - Explicit column visibility overrides can reveal `hidden` fields; snapshots retain shared visibility and order, while personal preferences remain above them. Password and inaccessible columns remain excluded.
 - `columns.*.name` now takes precedence over a field's `column_name`, so editor changes also apply to fields with a custom column label.
 - Editing requires full superadmin access, `APP_DEBUG=true` and a non-production environment. Production uses the deployed file without exposing the editor.
+- The editor mode is the separate development package `crudadmin/admin-editor`: run `composer require --dev crudadmin/admin-editor`. Without it the administration has no editor mode, no pencils and no settings endpoints; `bootstrap/admin.php` is still read. `config('admin_editor.enabled') = false` turns it off in a project that has it installed.
+- The endpoints `GET|PUT /admin/api/models/{table}/settings` (route names `admin.models.settings.*`) and `Admin\Controllers\Dev\ModelSettingsController` moved into the package, the controller is `AdminEditor\Controllers\ModelSettingsController` and its gate `AdminEditor\Editor::available()`.
+- The frontend of the editor is built by the package itself (`dist/admin-editor.js`, published to `public/vendor/crudadmin-admin-editor` by `php artisan admin:update`); the resources build carries no editor code. The administration renders what the package registers into named places (`EditorSlot`, `useEditorExtensions()`), custom components read the switch with `useEditorMode().isActive()` instead of `useEditorModeStore()`. `useModelApi().settings()` and `updateSettings()` were removed.
+- Packages building their own scripts for the administration import its API as `@crudadmin/admin`, mapped onto `window.crudadmin.admin` (`useSettingStore`, `useModelStore`, `useTableStore`, `useHeaderStore`, `useAuthStore`, `useAxios`, `useApiUrl`, `useGenerateUuid`, `useEditorExtensions`, `useEditorMode`, `Modal`, `Toast`); `vue`, `pinia`, `vuedraggable` and `lodash` are the existing globals. `crudadmin/skeleton` carries the build setup.
 
 ## Renamed and removed model settings
 
@@ -157,7 +161,8 @@ Breaking change for every project. Outside production the administration throws 
 - `image_rewrite_missing_uploads` and `rewrite_missing_upload_images` were two keys for one behaviour, as were `admin_groups` and `admin_roles`. Keep one of each pair; the migrator reports a project declaring both with different values and leaves them for you to resolve.
 - `admin.frontend_editor` was truthy whenever the `crudadmin/website` package was installed, because its default is an array. It is read as `frontend_editor.enabled` now, so images of a project with the editor disabled are no longer routed through the editor.
 - Deleted keys which no longer did anything: `sitebuilder` (the module was removed) and `image_compression_quality` (unread since v5, use `images.lossy_quality`). The migrator deletes them; their values are not moved, because a key that did nothing must not start applying.
-- `name`, `locale`, `license_key`, `groups`, `models`, `modules`, `components`, `app_namespace`, `resources_provider`, `custom_rules`, `global_rules`, `filemanager`, `api` and `sitetree` are unchanged.
+- `groups` moved into the navigation section of `bootstrap/admin.php`, see [Menu in the navigation section](#menu-in-the-navigation-section).
+- `name`, `locale`, `license_key`, `models`, `modules`, `components`, `app_namespace`, `resources_provider`, `custom_rules`, `global_rules`, `filemanager`, `api` and `sitetree` are unchanged.
 - Packages merging their defaults into `config('admin')` merge them key by key inside a group now, so a project value no longer replaces the whole group of the package. Values of the project stay in front of the values a package appends, across any number of packages.
 - A package still merging an old key has it mapped onto the new one and logged as a warning instead of throwing, because the project can not migrate a package. Migrate the config of your own packages with `admin:upgrade:config --path=src/Config/admin.php`.
 
@@ -289,7 +294,7 @@ Breaking change for every project. Outside production the administration throws 
 ## Removed $bus
 
 - Removed the global `$bus` and `useEventHub()` APIs. Replace custom listeners with `window.addEventListener()` and emit `CustomEvent` events; payloads are available as `event.detail`. Remove listeners when components unmount.
-- Sidebar and Gutenberg editor switching now use native browser events. Update resources together with the Gutenberg integration; custom code using the old `closeMenu` or `disableGutenbergEditors` events must be updated.
+- Gutenberg editor switching uses native browser events. Update resources together with the Gutenberg integration; custom code using the old `closeMenu` or `disableGutenbergEditors` events must be updated. The sidebar keeps the state of its opened groups itself.
 
 ## Replaced settings.xls with TableExportXls
 
@@ -383,7 +388,7 @@ public function getFilterStates()
 - The public-page editor fetches its own restricted bootstrap configuration. Publish matching resources assets together with the PHP changes. Login and successful verification now return bootstrap data and navigate without an admin document reload.
 - PHP `crudadmin/helpers` 2.0 requires CrudAdmin 6 and framework 6.0.1 or the matching `6.0-dev` branch. Its `BootstrapRequest` inherits section composition and cache from the framework; existing project subclasses retain their namespace, client and token handling. Replace pinned `1.4.0` constraints with `^2.0` when upgrading.
 
-- App store startup flags now live in `boot` (`ready`, `loading`, `error`, `componentsLoaded`); replace `booted` checks with `boot.ready === true` and `isLoaded` with `boot.componentsLoaded`. Read `locale` and content `languages` from `useLocaleStore()` (`@crudadmin/helpers/store`). Replace `admin_languages` with `useSettingStore().languages`, read the selected interface language from the locally extended `useLocaleStore().current` getter, and read `gettext` from `settingStore.editor.gettext`. The temporary `appStore.localization` group is removed, and `model_settings` is now `settingStore.editor.modelSettings`. Update custom components reading the old top-level fields.
+- App store startup flags now live in `boot` (`ready`, `loading`, `error`, `componentsLoaded`); replace `booted` checks with `boot.ready === true` and `isLoaded` with `boot.componentsLoaded`. Read `locale` and content `languages` from `useLocaleStore()` (`@crudadmin/helpers/store`). Replace `admin_languages` with `useSettingStore().languages`, read the selected interface language from the locally extended `useLocaleStore().current` getter, and read `gettext` from `settingStore.editor.gettext`. The temporary `appStore.localization` group is removed, and `model_settings` is now `settingStore.editor.available`, set by `crudadmin/admin-editor`. Update custom components reading the old top-level fields.
 - The admin-specific bootstrap request and controller live in `crudadmin/crudadmin` (`Admin\Bootstrap\AdminBootstrapRequest`, `Admin\Controllers\BootstrapController`). The reusable `Admin\Core\Utilities\BootstrapRequest` remains in `crudadmin/framework`.
 
 - CKEditor receives filebrowser URLs directly in its instance configuration. Custom editor initializers must supply those options from `useSettingStore().filemanager` inside the admin or `CAEditor.config.filemanager` after public-page editor bootstrap. Republish the matching CKEditor `config.js`; the `window.crudadmin.ckeditorConfig(config)` customization hook remains supported.
@@ -526,15 +531,44 @@ An `AdminModel` descendant without `$migration_date` was skipped silently. It is
 - A class of such a subtree which is a module anyway, for example a pivot with its own fields or menu item, implements `Admin\Core\Eloquent\Concerns\AdminModule`. A remaining `$migration_date` still keeps it registered until the upgrade replaces it.
 - Anything else without a date stops the boot with a message naming the class and both options.
 
-## Menu order captured into the admin settings
+## Menu in the navigation section
 
-`php artisan admin:upgrade:navigation` writes the current menu structure into the `navigation` section of `bootstrap/admin.php`, so the order derived from `$migration_date` survives its removal. Run it once and commit the file. Models whose `group()` depends on the logged administrator are reported and have to be placed by hand. The administration does not read the section yet.
+The menu is declared by the `navigation` section of `bootstrap/admin.php`, a tree of model basenames and `#groups` with their `name` and `icon`. The `groups` config key and the `$migration_date` ordering are replaced by it.
+
+```php bootstrap/admin.php
+'navigation' => [
+    'Article',
+    '#store' => [
+        'name' => _('Store'),
+        'icon' => 'fa-shopping-cart',
+        'Order',
+        '#catalog' => [
+            'name' => _('Catalog'),
+            'Product',
+        ],
+    ],
+],
+```
+
+- `php artisan admin:upgrade:navigation` captures the menu CrudAdmin 5 renders, before `admin:upgrade:dates` removes the dates which order it. It moves every group of `groups` into the section with its name in the source language and its icon, including groups without a model, removes the `groups` key from `config/admin.php`, removes a literal `protected $group` from the `app/` models the section places (a `group()` method stays) and writes the order of child models into their parent's `childs` setting. Models switched off with `$active = false` are not captured. A model whose `group()` needs the logged administrator is reported and keeps being placed at runtime. Run it once and commit the files; `--force` captures again over an existing section.
+- `admin.groups` is reported by the config check like the other changed keys; its value keeps working until the step moves it. Packages still merge their groups into `config('admin.groups')`, they are used for groups the section does not name.
+- A model the section does not list is placed by `$group` at the end of that group, so `$group` stays the default placement of new models and of package models. A project without the section renders the CrudAdmin 5 menu.
+- The order of the models set follows the section; `models_order` of the development line is no longer read and is dropped by the next write of the file. Children of a model are ordered by its `childs` setting, then by the models set.
+- `getModelGroupsTree()` was removed from admin models. Read the menu from `AdminTree::get()` or `Admin\Helpers\Navigation\Navigation`.
+- The sidebar was rewritten: `SidebarRow.vue` is replaced by `SidebarMenu`, `SidebarItem`, `SidebarGroup` and `SidebarModel`, and the `crudadmin:close-sidebar-menu` browser event no longer exists. Classes (`sidebar-menu`, `treeview`, `treeview-list`, `treeview-menu`, `active`) and the `data-model` attribute are unchanged.
+- With `crudadmin/admin-editor`, **Upraviť menu** in the Editor mode dropdown (or the pencil of the sidebar) edits the section in a modal: drag models and groups, create groups, rename groups and models, change their icons. Renaming a model rewrites `protected $name` in its source file.
+
+## Model icons in bootstrap/admin.php
+
+- The icon of a model is read from `models.<Basename>.icon` of `bootstrap/admin.php` first, `$icon` of the model is the default when the file does not name one. The same holds for `models.<Basename>.name` and `$name`, e.g. a renamed model of a package; a `name()` method is not overridden. Both keys are properties of the model, not part of its settings.
+- `php artisan admin:upgrade:icons` moves a literal `protected $icon` of the models of `app/` into the file and removes it from the model. An `icon()` method and the models of packages keep their own. `admin:upgrade` runs it after `admin:upgrade:settings`.
 
 ## `$migration_date` is gone
 
 The models set is keyed by class name and ordered by the administration, not by a date declared on every model.
 
-- `php artisan admin:upgrade:dates` removes the property. Run it as the last upgrade step, after `admin:upgrade:navigation`, which captures the order first. The command writes `models_order` into `bootstrap/admin.php` and the administration boots from it. Both sections name models by their class basename, so moving a model to another namespace keeps its position.
+- `php artisan admin:upgrade:dates` removes the property. Run it as the last upgrade step, after `admin:upgrade:navigation`, which captures the order first; it refuses to run without the navigation section. The section names models by their class basename, so moving a model to another namespace keeps its position.
+- `php artisan admin:model` no longer writes `$migration_date` into new models.
 - Two models with the same date are no longer a conflict, and a model without one is an ordinary module.
 - A `NotAdminModule` model was registered only by its date. The command adds `implements AdminModule` with its import before it removes the date, so the model stays registered. A model outside `app/` or with an inherited date keeps the date and is reported.
 - Migration order no longer depends on the date: foreign keys are added after every table exists.

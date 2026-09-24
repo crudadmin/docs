@@ -23,23 +23,13 @@ Shown in the page title, and used as a text logo when no logo is set.
 ### Module groups
 {/* feature: config.groups */}
 
-With a larger number of admin models it helps to group the modules. Groups are defined in the configuration, and admin models are then [assigned to them](/admin/model/tree#module-group).
+With a larger number of admin models it helps to group the modules. Groups, their names, icons and the order of the whole menu are declared in the [navigation section](/admin/model/tree#menu-order-and-groups) of `bootstrap/admin.php`, not in `config/admin.php`.
 
 <Frame>
   <img src="/images/menu_groups.png" alt="Administration menu with grouped modules" />
 </Frame>
 
-```php config/admin.php
-'groups' => function () {
-    return [
-        'settings' => _('Settings'),                 // group without an icon
-        'store' => [_('Store'), 'fa-shopping-cart'], // group with an icon
-        'store.products' => _('Products'),           // nested group, $group = 'store.products'
-    ];
-},
-```
-
-Use a closure when group names are translated with `_()`. A value inside the array can be a closure too, its returned groups are merged with the others. A group key without definition is displayed as its key.
+The `groups` config key of older versions is moved there by `php artisan admin:upgrade:navigation`. Packages still merge their groups into `config('admin.groups')`; such a group is used when the navigation section does not name it, and a group key without any definition is displayed as its key.
 
 ### Branding
 {/* feature: config.appearance.logo, config.appearance.author, config.appearance.copyright, config.appearance.primary_color, config.appearance.styles, config.appearance.scripts, config.appearance.dashboard */}

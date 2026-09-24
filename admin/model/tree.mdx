@@ -230,7 +230,7 @@ public function single()
 ### Module group
 {/* feature: model.group */}
 
-An admin model can be assigned to a menu group defined in the [configuration](/admin/configuration#module-groups). Use dot notation for nested groups.
+`$group` is the default place of a model in the menu, used while the [navigation section](#menu-order-and-groups) does not list the model: a new model, a model of a package, or a project without the section. Use dot notation for nested groups.
 
 ```php
 protected $group = 'settings';
@@ -242,7 +242,43 @@ protected $group = 'shop.catalog'; // "Catalog" group inside "Shop"
   <img src="/images/group-settings.png" alt="Admin model assigned to a menu group" />
 </Frame>
 
-A group missing in the configuration uses its key as the name. The group can also be returned by a `group()` method.
+The model is added at the end of that group. A group the navigation section does not declare uses its key as the name. The group can also be returned by a `group()` method, for example when it depends on the logged administrator.
+
+### Menu order and groups
+
+The order of the menu, its groups with their names and icons, and the group of every model are declared in the `navigation` section of `bootstrap/admin.php`. A model is written by its class basename, a group as `#key` holding its `name`, `icon` and its own models and groups.
+
+```php bootstrap/admin.php
+'navigation' => [
+    'Article',
+    '#store' => [
+        'name' => _('Store'),
+        'icon' => 'fa-shopping-cart',
+        'Order',
+        '#catalog' => [
+            'name' => _('Catalog'),
+            'Product',
+            'Category',
+        ],
+    ],
+    '#settings' => [
+        'name' => _('Settings'),
+        'icon' => 'fa-gear',
+        'Admin',
+    ],
+],
+```
+
+The key of a nested group is its path, the `Catalog` group above is `store.catalog` for `$group`. Group names are written in the source language of the administration and translated with gettext; `bootstrap/admin.php` is a gettext source path of the administration. A group without a model to show is not rendered.
+
+The children of a model are shown in its form in the order of its `childs` setting, a list of their basenames; children it does not list follow.
+
+With [`crudadmin/admin-editor`](/admin/model/settings#edit-settings-in-the-administration) installed, **Upraviť menu** in the Editor mode dropdown, or the pencil of the sidebar while editor mode is on, opens the section in a modal:
+
+- models and groups are dragged into place, **Nová skupina** at the end of a group adds a group inside it; groups can be nested three levels deep,
+- a click on a name rewrites it in place: the name of a group in the section; the name of a model of `app/` which declares a plain `protected $name` in its own source file is rewritten there, any other model (a package model, an inherited `$name`) gets `models.<Basename>.name` in `bootstrap/admin.php`; a model with a `name()` method shows its name read only,
+- a click on an icon picks another one from the Font Awesome sets of the administration: the icon of a group in the section, the icon of a model in the `models` section,
+- **Uložiť menu** writes everything at once and the sidebar repaints right away.
 
 ### Menu visibility
 {/* feature: model.inMenu */}

@@ -7,6 +7,12 @@ icon: "settings-2"
 ## Edit settings in the administration
 {/* feature: admin.editor-mode */}
 
+Editor mode is a development tool of the separate `crudadmin/admin-editor` package. Install it as a development dependency, production installs without dev dependencies carry no editor code at all:
+
+```bash
+composer require --dev crudadmin/admin-editor
+```
+
 Enable **Editor mode** in its own dropdown beside the administration language switch. The dropdown also opens every setting of the model you are looking at. The switch is available only to a signed-in administrator with full access (`hasAdminAccess()`) with `APP_DEBUG=true` outside the `production` environment. The server applies the same restrictions to reads and writes. With roles enabled, full access requires `permissions = true`; with roles disabled, CrudAdmin administrators already have full access.
 
 Pencils beside form headings, table headers, buttons, filters and the column picker open a shared settings modal. Their tooltips show the setting keys. A button pencil opens all three button texts: opening a new form, submitting a new record and saving an existing record. The pencil beside the table heading opens all editable settings for that model. Every modal edits only the settings its pencil covers. Edits render in the administration immediately; closing the modal without saving restores the stored settings.
@@ -32,6 +38,8 @@ return [
 ```
 
 Every administration setting lives in this one file, each under its own section. Besides `models` it holds `models_order` and `navigation`; sections a project does not declare are left out.
+
+The same dropdown opens **Upraviť menu**, a modal arranging the menu: see [menu order and groups](/admin/model/tree#menu-order-and-groups).
 
 Enter text in the source language. The editor reads source strings even when your current administration language is different. Translatable values are written using `_('text')`, and `bootstrap/admin.php` is included in administration gettext extraction. Placeholders such as `:name` and `:id` remain supported. The file is never executed, it is read as source, so `_('text')` marks a string for extraction without translating it there.
 
