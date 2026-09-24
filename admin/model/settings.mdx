@@ -59,7 +59,7 @@ protected $settings = [
 public function settings()
 {
     return [
-        'increments' => admin()?->isSuperAdmin() ?? false,
+        'table.increments' => admin()?->isSuperAdmin() ?? false,
         'search.autosave' => true,
         'form.modal' => ['enabled' => true, 'width' => 900],
     ];
@@ -92,11 +92,11 @@ public function setSettingsProperty($settings)
 Texts in `title.*`, `buttons.*` and `columns.*.name` are translated with gettext, so write them in the source language of the administration.
 
 <Info>
-  Most settings only change the administration interface, they do not restrict the server. `'editable' => false` makes the form read-only, but updates are still accepted. Use the [`$editable`](/admin/model/permissions#editing-records) parameter to forbid them.
+  Most settings only change the administration interface, they do not restrict the server. `'form.editable' => false` makes the form read-only, but updates are still accepted. Use the [`$editable`](/admin/model/permissions#editing-records) parameter to forbid them.
 </Info>
 
 ## Form texts
-{/* feature: settings.title.rows, settings.title.create, settings.title.update, settings.buttons.create, settings.buttons.insert, settings.buttons.update, settings.buttons.show-history */}
+{/* feature: settings.title.rows, settings.title.create, settings.title.update, settings.buttons.create, settings.buttons.insert, settings.buttons.update, settings.buttons.show_history */}
 
 ```php app/Models/Client.php
 protected $settings = [
@@ -106,7 +106,7 @@ protected $settings = [
     'buttons.create' => 'Add client',
     'buttons.insert' => 'Create client',
     'buttons.update' => 'Save client',
-    'buttons.show-history' => 'Changes',
+    'buttons.show_history' => 'Changes',
 ];
 ```
 
@@ -118,7 +118,7 @@ protected $settings = [
 | `buttons.create` | add new record button above the table | "Add new" |
 | `buttons.insert` | submit button of the new record form | "Send" |
 | `buttons.update` | submit button of an opened record | "Save" |
-| `buttons.show-history` | history button in the form header | "Show changes" |
+| `buttons.show_history` | history button in the form header | "Show changes" |
 
 Every `:column` placeholder in `title.update` is replaced by the value of the opened record. Values of `select` and `radio` fields are replaced by the option label, translatable values by the first language.
 
@@ -130,7 +130,7 @@ Set `'buttons.create' => false` to hide the add button.
 
 ## Columns
 {/* feature: settings.columns */}
-{/* feature: settings.columns.*.name, settings.columns.*.hidden, settings.columns.*.limit, settings.columns.*.before, settings.columns.*.after, settings.columns.*.add_before, settings.columns.*.add_after, settings.columns.*.clickable, settings.columns.*.format, settings.columns.*.type, settings.columns.*.sortBy */}
+{/* feature: settings.columns.*.name, settings.columns.*.hidden, settings.columns.*.limit, settings.columns.*.before, settings.columns.*.after, settings.columns.*.add_before, settings.columns.*.add_after, settings.columns.*.clickable, settings.columns.*.format, settings.columns.*.type, settings.columns.*.sort_by */}
 
 ```php app/Models/Product.php
 protected $settings = [
@@ -155,7 +155,7 @@ protected $settings = [
 | `clickable` | `false` does not open the record when the cell is clicked |
 | `format` | date format of the value, also for columns added by `setAdminAttributes` |
 | `type` | `integer` sorts the column numerically |
-| `sortBy` | sorts the column by the values of another column |
+| `sort_by` | sorts the column by the values of another column |
 
 Use `columns.*.name` to customize column headers, for example `columns.price.name`.
 
@@ -187,30 +187,30 @@ protected $settings = [
 - `'hidden' => true` adds the column turned off, the administrator can still enable it in the columns list.
 
 ## Table and grid
-{/* feature: settings.table, settings.table.small, settings.table.clickable, settings.table.switchcolumns, settings.table.sortable, settings.table.splitmode, settings.checking, settings.increments, settings.dates, settings.default, settings.actions, settings.editable, settings.recursivity.name, settings.recursivity.max_depth */}
+{/* feature: settings.table.enabled, settings.table.small, settings.table.clickable, settings.table.columns_picker, settings.table.sortable, settings.layout.split_view, settings.table.checkboxes, settings.table.increments, settings.table.timestamps, settings.open_after_login, settings.table.actions, settings.form.editable, settings.recursivity.name, settings.recursivity.max_depth */}
 
 ```php app/Models/StockMovement.php
 protected $settings = [
-    'increments' => false,
-    'checking' => false,
+    'table.increments' => false,
+    'table.checkboxes' => false,
     'table.small' => true,
-    'table.switchcolumns' => false,
+    'table.columns_picker' => false,
 ];
 ```
 
 | Key | Effect |
 | --- | --- |
-| `table` | `false` hides the table, table layouts stay visible |
+| `table.enabled` | `false` hides the table, table layouts stay visible |
 | `table.small` | compact table |
 | `table.clickable` | `false` does not open records by clicking the row |
-| `table.switchcolumns` | `false` hides the columns list |
+| `table.columns_picker` | `false` hides the columns list |
 | `table.sortable` | `false` disables sorting by clicking column headers, drag and drop is controlled by [`$sortable`](/admin/model/tree#reordering-records) |
-| `table.splitmode` | `true` keeps the table and the form side by side also in the full grid |
-| `checking` | `false` hides the checkboxes for bulk actions |
-| `increments` | `false` hides the id column and the id search option |
-| `dates` | `true` shows created and updated dates in the row actions |
-| `actions` | `false` hides the row action buttons |
-| `editable` | `false` shows opened records read-only, see [read-only forms](#read-only-forms) |
+| `layout.split_view` | `true` keeps the table and the form side by side also in the full grid |
+| `table.checkboxes` | `false` hides the checkboxes for bulk actions |
+| `table.increments` | `false` hides the id column and the id search option |
+| `table.timestamps` | `true` shows created and updated dates in the row actions |
+| `table.actions` | `false` hides the row action buttons |
+| `form.editable` | `false` shows opened records read-only, see [read-only forms](#read-only-forms) |
 | `default` | `true` opens this module after login |
 | `recursivity.name` | tab name of a model nested in itself |
 | `recursivity.max_depth` | maximum nesting of a model in itself, default `10` |
@@ -234,7 +234,7 @@ protected $settings = [
 </Note>
 
 ## Search, filters and pagination
-{/* feature: settings.search, settings.search.column, settings.search.autosave, settings.pagination, settings.pagination.limit, settings.pagination.limits, settings.filter, settings.filter.items, settings.filter.max_buttons, settings.filter.single */}
+{/* feature: settings.search.enabled, settings.search.column, settings.search.autosave, settings.pagination.enabled, settings.pagination.limit, settings.pagination.limits, settings.filter.enabled, settings.filter.items, settings.filter.max_buttons, settings.filter.single */}
 
 ```php
 protected $settings = [
@@ -252,57 +252,57 @@ protected $settings = [
 By default the search bar appears when the table has at least 3 rows. Filter buttons are defined by [`getFilterStates()`](/admin/model/listing#filter-buttons), which fills `filter.items` automatically. `'filter.enabled' => false` hides them.
 
 ## Form behaviour
-{/* feature: settings.form, settings.form.modal, settings.form.actions, settings.form.header, settings.form.footer, settings.form.autocomplete, settings.header, settings.tabs.enabled, settings.tabs.default, settings.tabs.autoload, settings.tabs.name, settings.autoreset, settings.refresh_interval, settings.reloadOnUpdate */}
+{/* feature: settings.form.enabled, settings.form.modal, settings.form.actions, settings.form.header, settings.form.footer, settings.form.autocomplete, settings.layout.header, settings.tabs.enabled, settings.tabs.default, settings.tabs.autoload, settings.tabs.name, settings.form.autoreset, settings.table.refresh_interval, settings.table.reload_on_update */}
 
 ```php app/Models/Booking.php
 protected $settings = [
     'form.modal' => ['enabled' => true, 'width' => 900],
     'form.actions' => true,
-    'autoreset' => false,
-    'refresh_interval' => 30000,
-    'reloadOnUpdate' => true,
+    'form.autoreset' => false,
+    'table.refresh_interval' => 30000,
+    'table.reload_on_update' => true,
 ];
 ```
 
 | Key | Effect |
 | --- | --- |
-| `form` | `false` hides the form, only the table is shown |
+| `form.enabled` | `false` hides the form, only the table is shown |
 | `form.modal` | opens records in a modal in the full grid, `form.modal.width` sets its width |
 | `form.actions` | shows the row action buttons in the header of an opened record |
 | `form.header` / `form.footer` | `false` hides the form header or the footer with the submit button |
 | `form.autocomplete` | `autocomplete` attribute of text inputs, default from the [`model.settings.form.autocomplete`](/admin/configuration#default-form-autocomplete) config |
-| `header` | `false` hides the module header with the grid switcher, search and add button |
+| `layout.header` | `false` hides the module header with the grid switcher, search and add button |
 | `tabs.enabled` | `false` does not render the form tabs |
 | `tabs.default` | index of the tab opened by default |
 | `tabs.autoload` | `false` loads child models of a tab only when the tab is opened |
 | `tabs.name` | name of the first tab holding fields outside of tabs, default "General" |
-| `autoreset` | `false` keeps the created record opened instead of resetting the form |
-| `refresh_interval` | automatic refresh of rows in milliseconds, `false` refreshes once per hour, default 60–120 s |
-| `reloadOnUpdate` | reloads all rows after a record is saved |
+| `form.autoreset` | `false` keeps the created record opened instead of resetting the form |
+| `table.refresh_interval` | automatic refresh of rows in milliseconds, `false` refreshes once per hour, default 60–120 s |
+| `table.reload_on_update` | reloads all rows after a record is saved |
 
 ### Read-only forms
-{/* feature: settings.editable */}
+{/* feature: settings.form.editable */}
 
-`'editable' => false` renders an opened record without the save button. It changes the browser only, the server still accepts updates; use the [`$editable`](/admin/model/permissions#editing-records) parameter to forbid them.
+`'form.editable' => false` renders an opened record without the save button. It changes the browser only, the server still accepts updates; use the [`$editable`](/admin/model/permissions#editing-records) parameter to forbid them.
 
 The setting is meant to be switched at runtime, so a custom component can close the form for a record it decides about:
 
 ```js
-model.setSettings('editable', row.state === 'closed');
+model.setSettings('form.editable', row.state === 'closed');
 ```
 
 ## File fields in the form
-{/* feature: settings.fields.*.canDownload, settings.fields.*.canDelete, settings.fields.*.options */}
+{/* feature: settings.fields.*.downloadable, settings.fields.*.deletable, settings.fields.*.options */}
 
 ```php
 protected $settings = [
-    'fields.invoice.canDownload' => false,
-    'fields.invoice.canDelete' => false,
+    'fields.invoice.downloadable' => false,
+    'fields.invoice.deletable' => false,
     'fields.brand_id.options' => ['createOption' => true, 'searchable' => true],
 ];
 ```
 
-- `canDownload` / `canDelete` hide the download link and the remove button of an uploaded file.
+- `downloadable` / `deletable` hide the download link and the remove button of an uploaded file.
 - `options` are passed as props to the select component of the field.
 
 ## Primary key

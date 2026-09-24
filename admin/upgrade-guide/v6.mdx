@@ -52,7 +52,30 @@ Renamed:
 - `title.insert` → `title.create` and `title.edit` → `title.update`. Both were aliases with their own precedence rules; declare one heading per form. A model declaring the alias next to its target is reported and left unchanged.
 - `title.tab` → `tabs.name`, `form.tabs` → `tabs.enabled`, `tabs_autoload` → `tabs.autoload`. Every tab setting lives under `tabs.*` now. Write `'tabs.enabled' => false`, not `'tabs' => false`, so the key stays usable next to `tabs.default`.
 - `sortable` → `table.sortable`. The `$sortable` model property (drag and drop of rows) is not affected, the setting only turns off sorting by clicking column headers.
-- `grid.splitmode` → `table.splitmode`.
+- Every setting now lives under the area it affects, and its name says what it controls instead of naming an action or a database term. The migrator moves all of them.
+
+| Old setting | New setting |
+| --- | --- |
+| `table.switchcolumns` | `table.columns_picker` |
+| `checking` | `table.checkboxes` |
+| `increments` | `table.increments` |
+| `dates` | `table.timestamps` |
+| `actions` | `table.actions` |
+| `refresh_interval` | `table.refresh_interval` |
+| `reloadOnUpdate` | `table.reload_on_update` |
+| `editable` | `form.editable` |
+| `autoreset` | `form.autoreset` |
+| `header` | `layout.header` |
+| `grid.splitmode` and `table.splitmode` | `layout.split_view` |
+| `default` | `open_after_login` |
+| `columns.*.sortBy` | `columns.*.sort_by` |
+| `fields.*.canDownload` / `fields.*.canDelete` | `fields.*.downloadable` / `fields.*.deletable` |
+| `buttons.show-history` | `buttons.show_history` |
+
+- `table.actions` and `layout.header` are the counterparts of `form.actions` and `form.header`, which is what the old `actions` and `header` names hid. `layout.*` holds the settings of the area around the table and the form: `layout.header` is the bar with the grid switcher, search and add button, `layout.split_view` keeps the table next to the form in the full grid.
+- `editable` moved to `form.editable` and keeps its polarity, it is not inverted into a `readonly` key. It still only changes the browser; forbid updates with the [`$editable`](/admin/model/permissions#editing-records) property.
+- A switch of a whole area is its `enabled` key: `table` → `table.enabled`, `form` → `form.enabled`, `search` → `search.enabled`, `pagination` → `pagination.enabled`, `filter` → `filter.enabled`, `form.modal` → `form.modal.enabled`. The bare boolean keeps working, the migrator only normalizes it; a declaration of the same name holding an array is the group itself and is left alone.
+- The settings payload of the Vue app is the nested form of these keys, so custom components read `settings.table.increments` where they read `settings.increments`, and `settings.layout.split_view` instead of `settings.table.splitmode`.
 
 Removed:
 
