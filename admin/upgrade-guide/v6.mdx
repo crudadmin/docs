@@ -582,3 +582,9 @@ The models set is keyed by class name and ordered by the administration, not by 
 - Virtual columns, belongsToMany, `multiple`, `encrypted` and `json` fields are still sorted in the browser within the loaded page, the header says so.
 - `scopeAdminRows()` orders follow the chosen column. `AdminRows::getRowsDataQuery()` applies the `order` request parameter, exports of the table follow it too. A column named like a value the query selects (`withCount`, `withSum`, an alias) is sorted by that alias; code calling `count()` on that query has to drop the order first (`reorder()`).
 - The chosen sorting is remembered in the browser per table. Frontend code reading `getRowsSorted()` gets the rows of the database order unchanged when the database sorted them.
+
+## Editing in the table
+
+- A `column_editable` cell is no longer an input all the time. Cells show their values, a cell switches to its field by the pencil shown on its hover and the whole column by the pencil of its header, so long tables render without a form input in every row.
+- Every column of a field editable in the form can be switched now, not only `column_editable` ones. `column_editable` keeps the pencil of the header visible; turn a column off with `column_editable:false` or the `columns.{key}.editable => false` setting. Columns of `readonly`, `disabled`, `removeFromForm`, `inaccessible` and `invisible` fields, columns with a column component, editors and `json` fields are never switched.
+- A click on a cell of a `column_editable` column opens the record like any other cell, unless the cell is switched to its field.

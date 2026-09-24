@@ -142,7 +142,7 @@ Set `'buttons.create' => false` to hide the add button.
 
 ## Columns
 {/* feature: settings.columns */}
-{/* feature: settings.columns.*.name, settings.columns.*.hidden, settings.columns.*.limit, settings.columns.*.before, settings.columns.*.after, settings.columns.*.add_before, settings.columns.*.add_after, settings.columns.*.clickable, settings.columns.*.format, settings.columns.*.type, settings.columns.*.sort_by, settings.columns.*.sortable */}
+{/* feature: settings.columns.*.name, settings.columns.*.hidden, settings.columns.*.limit, settings.columns.*.before, settings.columns.*.after, settings.columns.*.add_before, settings.columns.*.add_after, settings.columns.*.clickable, settings.columns.*.format, settings.columns.*.type, settings.columns.*.sort_by, settings.columns.*.sortable, settings.columns.*.editable */}
 
 ```php app/Models/Product.php
 protected $settings = [
@@ -169,6 +169,7 @@ protected $settings = [
 | `type` | `integer` sorts the column numerically in the browser |
 | `sort_by` | sorts the column by another column or by a value selected in `scopeAdminRows()`, in the database when the query has it; a list uses the first one the query has |
 | `sortable` | `false` turns off [sorting by the column](/admin/model/listing#sorting-by-a-column) |
+| `editable` | `false` turns off switching the column to its field in the table, see [`column_editable`](/admin/model/fields/ui#listing-table) |
 
 Use `columns.*.name` to customize column headers, for example `columns.price.name`.
 
