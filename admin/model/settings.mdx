@@ -40,7 +40,7 @@ In editor mode, arrange and toggle columns in the column dropdown, then choose *
 
 Existing personal column preferences remain above the shared defaults. When the developer changes table settings, the open model previews the new defaults. Newly introduced columns are inserted after their nearest predecessor from the current model definition and use that definition's visibility. Removed fields are ignored; migrated virtual columns are retained explicitly.
 
-Use snapshots to reorder columns of fields. Keep `columns.*.before` and `columns.*.after` for [virtual columns](#adding-new-columns): a column without a field is not part of the model definition, so the declaration is the only place its position can be stated. Existing `before` / `after` declarations on field columns can be converted by [`admin:settings-migrate`](/admin/commands#model-settings-migration).
+Use snapshots to reorder columns of fields. Keep `columns.*.before` and `columns.*.after` for [virtual columns](#adding-new-columns): a column without a field is not part of the model definition, so the declaration is the only place its position can be stated. Existing `before` / `after` declarations on field columns can be converted by [`admin:upgrade:settings`](/admin/commands#model-settings-migration).
 
 ## Defining settings
 {/* feature: model.settings */}

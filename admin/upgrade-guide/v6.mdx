@@ -38,14 +38,14 @@ Breaking change for every custom admin component that opens a modal or a toast. 
 ## Model settings editor
 
 - UI settings can now be stored in `app/Admin/model-settings.php`; commit and deploy this file. Existing `$settings`, `settings()` and mutators remain supported, with map overrides applied last.
-- Use column snapshots instead of new `columns.*.before` / `columns.*.after` declarations on field columns. A virtual column still needs `before` / `after`, it has no field to anchor it. Run `admin:settings-migrate --dry-run`, then `admin:settings-migrate` to move supported literals and convert the ordering. Resolve reported dynamic expressions manually.
+- Use column snapshots instead of new `columns.*.before` / `columns.*.after` declarations on field columns. A virtual column still needs `before` / `after`, it has no field to anchor it. Run `admin:upgrade:settings --dry-run`, then `admin:upgrade:settings` to move supported literals and convert the ordering. Resolve reported dynamic expressions manually.
 - Explicit column visibility overrides can reveal `hidden` fields; snapshots retain shared visibility and order, while personal preferences remain above them. Password and inaccessible columns remain excluded.
 - `columns.*.name` now takes precedence over a field's `column_name`, so editor changes also apply to fields with a custom column label.
 - Editing requires full superadmin access, `APP_DEBUG=true` and a non-production environment. Production uses the deployed map without exposing the editor.
 
 ## Renamed and removed model settings
 
-`admin:settings-migrate` rewrites these in models under `app/` and reports what it cannot convert. Settings of packages and of dynamic `settings()` methods have to be changed by hand.
+`admin:upgrade:settings` rewrites these in models under `app/` and reports what it cannot convert. Settings of packages and of dynamic `settings()` methods have to be changed by hand.
 
 Renamed:
 
@@ -107,7 +107,7 @@ Grid:
 Breaking change for every project. Outside production the administration throws on boot while `config/admin.php` still declares an old key, because a switch left on its old name is read as unset and turns its feature off silently. In production the old values are still applied and the rename is only logged.
 </Warning>
 
-- Run `php artisan admin:config-migrate --dry-run` and then `php artisan admin:config-migrate` to rewrite `config/admin.php`. The command moves the declarations with their comments and reports what it cannot convert. Keys of packages and configs built at runtime have to be changed by hand.
+- Run `php artisan admin:upgrade:config --dry-run` and then `php artisan admin:upgrade:config` to rewrite `config/admin.php`. The command moves the declarations with their comments and reports what it cannot convert. Keys of packages and configs built at runtime have to be changed by hand.
 - Prefixed keys moved under the group they belong to, and switches which had companion keys became a group with an `enabled` key.
 
 | Old key | New key |
@@ -132,7 +132,7 @@ Breaking change for every project. Outside production the administration throws 
 - Deleted keys which no longer did anything: `sitebuilder` (the module was removed) and `image_compression_quality` (unread since v5, use `images.lossy_quality`). The migrator deletes them; their values are not moved, because a key that did nothing must not start applying.
 - `name`, `locale`, `license_key`, `groups`, `models`, `modules`, `components`, `app_namespace`, `resources_provider`, `custom_rules`, `global_rules`, `filemanager`, `api` and `sitetree` are unchanged.
 - Packages merging their defaults into `config('admin')` merge them key by key inside a group now, so a project value no longer replaces the whole group of the package. Values of the project stay in front of the values a package appends, across any number of packages.
-- A package still merging an old key has it mapped onto the new one and logged as a warning instead of throwing, because the project can not migrate a package. Migrate the config of your own packages with `admin:config-migrate --path=src/Config/admin.php`.
+- A package still merging an old key has it mapped onto the new one and logged as a warning instead of throwing, because the project can not migrate a package. Migrate the config of your own packages with `admin:upgrade:config --path=src/Config/admin.php`.
 
 ### File browser configuration
 
@@ -196,7 +196,7 @@ Breaking change for every project. Outside production the administration throws 
 ## Removed Site builder
 
 - Removed the entire Site builder module: `SiteBuilder`, block types, `Group::builder()`, `getSitebuilderBlocksArray()`, `renderBuilder()`, the block selector and its styles. Replace block editing and rendering with your own implementation.
-- Remove `Admin::isEnabledSitebuilder()` calls and the `admin:sitebuilder:block` command from your project; `admin:config-migrate` deletes the `sitebuilder` config key, remove `sitebuilder_types` by hand. Custom blocks extending `SBType` and published Site builder views need replacing too.
+- Remove `Admin::isEnabledSitebuilder()` calls and the `admin:sitebuilder:block` command from your project; `admin:upgrade:config` deletes the `sitebuilder` config key, remove `sitebuilder_types` by hand. Custom blocks extending `SBType` and published Site builder views need replacing too.
 - Existing block data is not deleted automatically, but CrudAdmin no longer edits or renders it. Migrate any content you still need before upgrading.
 
 ## Public website features moved to crudadmin/website
@@ -482,3 +482,25 @@ Methods of `AdminModel` used only by CrudAdmin itself are `private` or `protecte
 - A **new** field with such a name stops the migration. Rename the column.
 - A column of an already migrated table is only reported, projects keep working.
 - Keep the name with `protected $ignoredReservedColumns = ['table'];` on the model and read the value with `getAttribute('table')`.
+
+## Models without a migration date
+
+An `AdminModel` descendant without `$migration_date` was skipped silently. It is now reported, so a model never disappears from the administration unnoticed.
+
+- A shared parent of admin models must be `abstract`. Non instantiable classes are never registered.
+- A class which is not a menu item by its nature implements `Admin\Core\Eloquent\Concerns\NotAdminModule`. The interface is inherited, so it covers the whole subtree. `AdminPivot` implements it already, its descendants need no change.
+- A `$migration_date` still wins over the marker, a pivot with its own date stays a registered module.
+- Anything else without a date stops the boot with a message naming the class and both options.
+
+## Menu order captured into model settings
+
+`php artisan admin:upgrade:navigation` writes the current menu structure into the `navigation` section of `app/Admin/model-settings.php`, so the order derived from `$migration_date` survives its removal. Run it once and commit the file. Models whose `group()` depends on the logged administrator are reported and have to be placed by hand. The administration does not read the section yet.
+
+## `$migration_date` is gone
+
+The models set is keyed by class name and ordered by the administration, not by a date declared on every model.
+
+- `php artisan admin:upgrade:dates` removes the property. Run it as the last upgrade step, after `admin:upgrade:navigation`, which captures the order first. The command writes `models_order` into `app/Admin/model-settings.php` and the administration boots from it.
+- Two models with the same date are no longer a conflict, and a model without one is an ordinary module.
+- A model implementing `Admin\Core\Eloquent\Concerns\NotAdminModule` is registered only when it declares a date, so the command keeps the date on those and reports them.
+- Migration order no longer depends on the date: foreign keys are added after every table exists.
