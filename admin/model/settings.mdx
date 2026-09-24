@@ -216,7 +216,7 @@ protected $settings = [
 | `table.enabled` | `false` hides the table, table layouts stay visible |
 | `table.small` | compact table |
 | `table.dense` | `true` or `false` forces the dense table, which a page of 100 records and more switches to on its own: tighter rows, smaller type, no drag handle |
-| `table.virtual` | number of records from which the table renders only the rows in view while scrolling, default `100`; `false` renders every row |
+| `table.virtual` | a page with more records than this renders in full only the rows in view while scrolling, the rest as plain text placeholder rows; default `100`, `false` renders every row |
 | `table.clickable` | `false` does not open records by clicking the row |
 | `table.columns_picker` | `false` hides the columns list |
 | `table.sortable` | `false` disables sorting by clicking column headers, drag and drop is controlled by [`$sortable`](/admin/model/tree#reordering-records) |
