@@ -107,7 +107,7 @@ public function fields()
 </ResponseField>
 
 <ResponseField name="column_editable">
-  Every column of a field the user can edit in the form can be switched to that field in the table: a cell by the pencil shown on its hover, the whole column by the pencil of its header. A change saves only this column and is validated by the rules of the field. Columns of `readonly`, `disabled`, `removeFromForm`, `inaccessible` or `invisible` fields, columns with a [column component](/admin/model/fields/components#table-cell-component), editors, `json` and `file` fields and fields drawn as a large inline component (a `radio`, `multiple` dates) are left out.
+  Every column of a field the user can edit in the form can be switched to that field in the table: a cell by the pencil shown on its hover, the whole column by the pencil of its header. A change saves only this column and is validated by the rules of the field. Columns of `readonly`, `disabled`, `removeFromForm`, `inaccessible` or `invisible` fields, columns with a [column component](/admin/model/fields/components#table-cell-component), editors, `json` and `file` fields, fields with their own form `component` or `sub_component` and fields drawn as a large inline component (a `radio`, `multiple` dates) are left out.
 
   `column_editable` keeps the pencil of the header visible, otherwise it appears on the hover of the header. `column_editable:false` turns the switching off for the column, the same as the [`columns.{key}.editable`](/admin/model/settings#columns) setting.
 
