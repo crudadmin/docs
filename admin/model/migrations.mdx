@@ -104,7 +104,7 @@ protected $skipMigration = true;
 ## Reserved column names
 {/* feature: model.ignoredReservedColumns */}
 
-A column named like a property of the model shadows the value of the row. Eloquent returns the property instead of calling `__get()`, so `$row->table` returns the table name and `$row->attributes` the whole row. It happens inside the model, in its traits, and since PHP 8.5 also in every other admin model. Configuration properties of CrudAdmin (`$name`, `$title`, `$icon`, …) are moved out of the model instance and are safe; properties of Eloquent (`$table`, `$connection`, `$casts`, `$hidden`, `$visible`, `$fillable`, `$guarded`, `$appends`, `$with`, `$exists`, `$timestamps`, `$primaryKey`, `$perPage`, `$attributes`, `$original`, `$relations`, …) are not.
+A column named like a property of the model shadows the value of the row. Eloquent returns the property instead of calling `__get()`, so `$row->table` returns the table name and `$row->attributes` the whole row. It happens inside the model, in its traits, and since PHP 8.5 also in every other admin model. Configuration properties of CrudAdmin (`$name`, `$title`, `$active`, …) are moved out of the model instance and are safe; properties of Eloquent (`$table`, `$connection`, `$casts`, `$hidden`, `$visible`, `$fillable`, `$guarded`, `$appends`, `$with`, `$exists`, `$timestamps`, `$primaryKey`, `$perPage`, `$attributes`, `$original`, `$relations`, …) are not.
 
 `admin:migrate` reports such fields:
 

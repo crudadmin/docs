@@ -97,9 +97,9 @@ protected $title = 'Edit the list of articles in the blog section.';
 </Frame>
 
 ### Module icon
-{/* feature: model.icon */}
+{/* feature: settings.icon */}
 
-Font Awesome icon of the module in the sidebar. It is declared in the `models` section of `bootstrap/admin.php`, where the menu editor of [`crudadmin/admin-editor`](/admin/model/tree#menu-order-and-groups) changes it by a click on the icon.
+Font Awesome icon of the module in the sidebar, the `icon` setting. The menu editor of [`crudadmin/admin-editor`](/admin/model/tree#menu-order-and-groups) changes it by a click on the icon and writes it into the `models` section of `bootstrap/admin.php`.
 
 ```php bootstrap/admin.php
 'models' => [
@@ -109,14 +109,16 @@ Font Awesome icon of the module in the sidebar. It is declared in the `models` s
 ],
 ```
 
-`$icon` of the model is the default used while the file does not name one, e.g. for models of packages. `php artisan admin:upgrade:icons` moves a literal `$icon` of the models of `app/` into the file.
+A model of a package declares it in its own settings, `bootstrap/admin.php` overrides it like any other setting. An icon which depends on runtime conditions is returned by `settings()`.
 
 ```php
-protected $icon = 'fa-truck';
+protected $settings = [
+    'icon' => 'fa-truck',
+];
 ```
 
 <Info>
-  Without `$icon`, well known table names get an icon automatically, e.g. a table ending with `articles` gets `fa-file-alt`, `orders` gets `fa-credit-card`. The name is matched by the singular of the last segment of the table name, so `articles_categories` is matched as `category`.
+  Without an icon, well known table names get one automatically, e.g. a table ending with `articles` gets `fa-file-alt`, `orders` gets `fa-credit-card`. The name is matched by the singular of the last segment of the table name, so `articles_categories` is matched as `category`.
 </Info>
 
 <Warning>

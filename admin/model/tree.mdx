@@ -277,7 +277,7 @@ With [`crudadmin/admin-editor`](/admin/model/settings#edit-settings-in-the-admin
 
 - models and groups are dragged into place, **Nová skupina** at the end of a group adds a group inside it; groups can be nested three levels deep,
 - a click on a name rewrites it in place: the name of a group in the section; the name of a model of `app/` which declares a plain `protected $name` in its own source file is rewritten there, any other model (a package model, an inherited `$name`) gets `models.<Basename>.name` in `bootstrap/admin.php`; a model with a `name()` method shows its name read only,
-- a click on an icon picks another one from the Font Awesome sets of the administration: the icon of a group in the section, the icon of a model in the `models` section,
+- a click on an icon picks another one from the Font Awesome sets of the administration: the icon of a group in the section, the `icon` setting of a model in the `models` section,
 - **Uložiť menu** writes everything at once and the sidebar repaints right away.
 
 ### Menu visibility

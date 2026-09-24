@@ -134,7 +134,9 @@ class Dashboard extends AdminModel
 {
     protected $skipMigration = true;
 
-    protected $icon = 'fa-chart-line';
+    protected $settings = [
+        'icon' => 'fa-chart-line',
+    ];
 
     protected $layouts = [
         'model-builder' => 'Dashboard',

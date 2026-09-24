@@ -99,7 +99,7 @@ The rows endpoint (`/admin/api/models/{table}/rows`) and the insert response no 
 
 ## Default module icons and form texts
 
-- Known table names supply many more default sidebar icons (warehouses, stock, prices, branches, workers, courses, questions, notifications and others). A module without `$icon` that showed no icon can now show one; declare `$icon` when the module has to keep its own.
+- Known table names supply many more default sidebar icons (warehouses, stock, prices, branches, workers, courses, questions, notifications and others). A module without an icon that showed none can now show one; declare the `icon` setting when the module has to keep its own.
 - Tables ending with `forms`, `inquiries`, `submissions` and `applications` used `fa-wpforms`, a brand icon the administration does not bundle, so nothing rendered. They now use `far fa-list-alt`.
 - Default titles and buttons are merged key by key. Models of the `time`, `appointment`, `booking`, `lector` and `training` table names that declared only some of `title.create`, `title.update` or `buttons.create` used to lose the remaining defaults; those are applied now. Declare the setting explicitly to keep a different text.
 
@@ -558,10 +558,12 @@ The menu is declared by the `navigation` section of `bootstrap/admin.php`, a tre
 - The sidebar was rewritten: `SidebarRow.vue` is replaced by `SidebarMenu`, `SidebarItem`, `SidebarGroup` and `SidebarModel`, and the `crudadmin:close-sidebar-menu` browser event no longer exists. Classes (`sidebar-menu`, `treeview`, `treeview-list`, `treeview-menu`, `active`) and the `data-model` attribute are unchanged.
 - With `crudadmin/admin-editor`, **Upraviť menu** in the Editor mode dropdown (or the pencil of the sidebar) edits the section in a modal: drag models and groups, create groups, rename groups and models, change their icons. Renaming a model rewrites `protected $name` in its source file.
 
-## Model icons in bootstrap/admin.php
+## `$icon` replaced by the icon setting
 
-- The icon of a model is read from `models.<Basename>.icon` of `bootstrap/admin.php` first, `$icon` of the model is the default when the file does not name one. The same holds for `models.<Basename>.name` and `$name`, e.g. a renamed model of a package; a `name()` method is not overridden. Both keys are properties of the model, not part of its settings.
-- `php artisan admin:upgrade:icons` moves a literal `protected $icon` of the models of `app/` into the file and removes it from the model. An `icon()` method and the models of packages keep their own. `admin:upgrade` runs it after `admin:upgrade:settings`.
+- `$icon` and an `icon()` method are no longer read. The icon of a model is the `icon` setting: declare it in `$settings` or return it from `settings()`, `bootstrap/admin.php` overrides it like any other setting. The model tree still sends it to the Vue app as `icon`.
+- `models.<Basename>.name` in `bootstrap/admin.php` still overrides `$name`, e.g. a renamed model of a package; a `name()` method is not overridden. It is a property of the model, not a setting.
+- `php artisan admin:upgrade:icons` moves a literal `protected $icon` of the models of `app/` into `models.<Basename>.icon` of the file and removes it from the model; an empty `$icon` (`null`, `''`) is only removed. An `icon()` method and a computed `$icon` are reported, move them into `settings()` by hand. Models of packages declare `icon` in their own settings. `admin:upgrade` runs the step after `admin:upgrade:settings`.
+- `getProperty('icon')` returns nothing any more, read `getModelIcon()` of the model.
 
 ## `$migration_date` is gone
 
