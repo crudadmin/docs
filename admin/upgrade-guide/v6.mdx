@@ -89,6 +89,10 @@ Grid:
 - The migrator computes the list from the old keys. It reports a dynamic grid value, a switcher turned off without `grid.default`, and old keys declared next to a size list.
 - `grid.default` stays and keeps its second effect: a form of 20 or more fields opens in the full grid unless the model declares `grid.default` or `grid.sizes`.
 
+## Rows response buttons
+
+The rows endpoint (`/admin/api/models/{table}/rows`) and the insert response no longer repeat every button under each row. `buttons_definitions` carries each button once, keyed the same way as before, and `buttons.{id}` holds per row only the properties in which that row's button differs (a name or class computed from the row). Custom JavaScript reading `response.buttons` has to merge the two; the admin app does it in `setRowsData()` and `addCreatedRows()`, so code working with `model.getRowsData().buttons` or `getButtonsForRow()` is unchanged.
+
 ## Default module icons and form texts
 
 - Known table names supply many more default sidebar icons (warehouses, stock, prices, branches, workers, courses, questions, notifications and others). A module without `$icon` that showed no icon can now show one; declare `$icon` when the module has to keep its own.
