@@ -13,25 +13,29 @@ Pencils beside form headings, table headers, buttons, filters and the column pic
 
 The initial editable set is `increments`, `filter.single`, `filter.max_buttons`, `title.create`, `title.update`, `buttons.create`, `buttons.insert`, `buttons.update`, `columns.*.name`, `columns.*.hidden`, and the default column snapshot. Other settings remain in PHP. The editor uses a shared registry for field types, group titles and server validation; fields are grouped by their prefix into the same cards the administration uses for field groups, and an empty field shows the value the administration renders in its place as the placeholder.
 
-Changes are written to `app/Admin/model-settings.php`, keyed by the full model class. Commit and deploy this file with your application. It contains the current configuration only, not a change history. Existing model settings and mutators remain supported; the map overrides their values. **Restore original setting** removes an override.
+Changes are written to the `models` section of `bootstrap/admin.php`, keyed by the model class basename. Commit and deploy this file with your application. Moving a model to another namespace keeps its settings. The file contains the current configuration only, not a change history. Existing model settings and mutators remain supported; the file overrides their values. **Restore original setting** removes an override.
 
-```php app/Admin/model-settings.php
+```php bootstrap/admin.php
 <?php
 
 return [
-    'App\\Models\\Product' => [
-        'buttons.create' => _('Add product'),
-        'columns.price.name' => _('Price'),
-        'filter.max_buttons' => 4,
-        'title.create' => _('New product'),
-        'title.update' => _('Editing :name'),
+    'models' => [
+        'Product' => [
+            'buttons.create' => _('Add product'),
+            'columns.price.name' => _('Price'),
+            'filter.max_buttons' => 4,
+            'title.create' => _('New product'),
+            'title.update' => _('Editing :name'),
+        ],
     ],
 ];
 ```
 
-Enter text in the source language. The editor reads source strings even when your current administration language is different. Translatable values are written using `_('text')`, and `app/Admin` is included in administration gettext extraction. Placeholders such as `:name` and `:id` remain supported.
+Every administration setting lives in this one file, each under its own section. Besides `models` it holds `models_order` and `navigation`; sections a project does not declare are left out.
 
-The map is independent of `bootstrap/cache/crudadmin.php`: `admin:cache` never overwrites it, and settings are translated at runtime. Conflicting concurrent edits are rejected; reopen the editor to load the current file before saving again.
+Enter text in the source language. The editor reads source strings even when your current administration language is different. Translatable values are written using `_('text')`, and `bootstrap/admin.php` is included in administration gettext extraction. Placeholders such as `:name` and `:id` remain supported. The file is never executed, it is read as source, so `_('text')` marks a string for extraction without translating it there.
+
+The file is independent of `bootstrap/cache/crudadmin.php`: `admin:cache` never overwrites it, and settings are translated at runtime. Conflicting concurrent edits are rejected; reopen the editor to load the current file before saving again.
 
 ### Default columns
 {/* feature: settings.table.columns */}
