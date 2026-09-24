@@ -226,8 +226,43 @@ The table loads records with `POST /admin/api/models/{table}/rows`. Parameters:
 | `search` | list of `{column, query, query_to, interval}` |
 | `scopes` | [request scopes](#request-scopes) |
 | `parentTable`, `parentId` | parent record of a child model |
+| `order` | `[column, asc|desc]`, [sorting by a column](#sorting-by-a-column) in place of `$orderBy` |
 
-Records are ordered by `$orderBy`, sorting by a column header happens in the browser.
+The response returns the applied `order`, or `null` when the column can not be sorted by the database and `$orderBy` stays.
+
+## Sorting by a column
+{/* feature: model.getAdminSortableColumns(), hook.set{Column}AdminSort */}
+
+A click on a column header sorts the whole table in the database, across all pages. The primary key follows the column, so pages never share or skip a record. Empty values follow the others in both directions.
+
+| Column | Sorted by |
+| --- | --- |
+| text, number, date, checkbox, `id`, timestamps | the value |
+| belongsTo | the label of the related record, as the table displays it |
+| select, radio with options | the label of the option, lists of more than 500 options by the value |
+| `locale` | the value of the first language |
+| [`columns.*.sort_by`](/admin/model/settings#columns) | the other column |
+| virtual columns, belongsToMany, `multiple`, `encrypted`, `json`, imaginary fields | in the browser, within the loaded records only |
+| `inaccessible` fields, passwords | not sortable |
+
+While the table has more pages, the header of a column sorted only in the browser says so on hover, and the sorted one shows an info icon. A table whose records are all loaded is sorted in the browser without a request.
+
+The chosen sorting is remembered for every table in the browser. The sorted header is highlighted then, and its cross returns the default order of `$orderBy` or of the field [`orderBy`](/admin/model/fields/ui#listing-table) parameter. `getAdminSortableColumns()` lists the columns sorted by the database.
+
+`set{Column}AdminSort` sorts a column the database can not sort itself, for example a virtual column:
+
+```php app/Models/Product.php
+protected $settings = [
+    'columns.comments_count.name' => 'Comments',
+];
+
+public function setCommentsCountAdminSort($query, $direction)
+{
+    $query->withCount('comments')->orderBy('comments_count', $direction);
+}
+```
+
+`columns.*.sortable => false` turns sorting of a column off.
 
 ## Search
 

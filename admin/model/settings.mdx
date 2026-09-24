@@ -142,7 +142,7 @@ Set `'buttons.create' => false` to hide the add button.
 
 ## Columns
 {/* feature: settings.columns */}
-{/* feature: settings.columns.*.name, settings.columns.*.hidden, settings.columns.*.limit, settings.columns.*.before, settings.columns.*.after, settings.columns.*.add_before, settings.columns.*.add_after, settings.columns.*.clickable, settings.columns.*.format, settings.columns.*.type, settings.columns.*.sort_by */}
+{/* feature: settings.columns.*.name, settings.columns.*.hidden, settings.columns.*.limit, settings.columns.*.before, settings.columns.*.after, settings.columns.*.add_before, settings.columns.*.add_after, settings.columns.*.clickable, settings.columns.*.format, settings.columns.*.type, settings.columns.*.sort_by, settings.columns.*.sortable */}
 
 ```php app/Models/Product.php
 protected $settings = [
@@ -166,8 +166,9 @@ protected $settings = [
 | `add_before` / `add_after` | text added before or after a non-empty value, for example a unit |
 | `clickable` | `false` does not open the record when the cell is clicked |
 | `format` | date format of the value, also for columns added by `setAdminAttributes` |
-| `type` | `integer` sorts the column numerically |
-| `sort_by` | sorts the column by the values of another column |
+| `type` | `integer` sorts the column numerically in the browser |
+| `sort_by` | sorts the column by the values of another column, in the database when that column is a database column |
+| `sortable` | `false` turns off [sorting by the column](/admin/model/listing#sorting-by-a-column) |
 
 Use `columns.*.name` to customize column headers, for example `columns.price.name`.
 

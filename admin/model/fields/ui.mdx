@@ -89,7 +89,7 @@ public function fields()
 </ResponseField>
 
 <ResponseField name="orderBy">
-  The default ordering of the listing by this column, used when the `orderBy` model setting is not set. Always give the direction.
+  The default ordering of the listing by this column, in place of `$orderBy`. The table sends it to the database like [sorting by a column](/admin/model/listing#sorting-by-a-column), across all pages. Always give the direction.
 
   `orderBy:asc` or `orderBy:desc`
 </ResponseField>
