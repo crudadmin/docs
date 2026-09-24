@@ -42,7 +42,6 @@ Breaking change for every custom admin component that opens a modal or a toast. 
 - Explicit column visibility overrides can reveal `hidden` fields; snapshots retain shared visibility and order, while personal preferences remain above them. Password and inaccessible columns remain excluded.
 - `columns.*.name` now takes precedence over a field's `column_name`, so editor changes also apply to fields with a custom column label.
 - Editing requires full superadmin access, `APP_DEBUG=true` and a non-production environment. Production uses the deployed file without exposing the editor.
-- Development working trees of the v6 line which already carry `app/Admin/model-settings.php` keep working: the file is read in the current shape, with models renamed to their basename. `php artisan admin:upgrade:settings-file` (the first step of `admin:upgrade`) moves it into `bootstrap/admin.php`; any other write, such as the editor, moves it as well. Two classes with the same basename stop the move, rename one of them first.
 
 ## Renamed and removed model settings
 
@@ -520,7 +519,7 @@ An `AdminModel` descendant without `$migration_date` was skipped silently. It is
 
 - A shared parent of admin models must be `abstract`. Non instantiable classes are never registered.
 - A class which is not a menu item by its nature implements `Admin\Core\Eloquent\Concerns\NotAdminModule`. The interface is inherited, so it covers the whole subtree. `AdminPivot` implements it already, its descendants need no change.
-- A `$migration_date` still wins over the marker, a pivot with its own date stays a registered module.
+- A class of such a subtree which is a module anyway, for example a pivot with its own fields or menu item, implements `Admin\Core\Eloquent\Concerns\AdminModule`. A remaining `$migration_date` still keeps it registered until the upgrade replaces it.
 - Anything else without a date stops the boot with a message naming the class and both options.
 
 ## Menu order captured into the admin settings
@@ -533,5 +532,5 @@ The models set is keyed by class name and ordered by the administration, not by 
 
 - `php artisan admin:upgrade:dates` removes the property. Run it as the last upgrade step, after `admin:upgrade:navigation`, which captures the order first. The command writes `models_order` into `bootstrap/admin.php` and the administration boots from it. Both sections name models by their class basename, so moving a model to another namespace keeps its position.
 - Two models with the same date are no longer a conflict, and a model without one is an ordinary module.
-- A model implementing `Admin\Core\Eloquent\Concerns\NotAdminModule` is registered only when it declares a date, so the command keeps the date on those and reports them.
+- A `NotAdminModule` model was registered only by its date. The command adds `implements AdminModule` with its import before it removes the date, so the model stays registered. A model outside `app/` or with an inherited date keeps the date and is reported.
 - Migration order no longer depends on the date: foreign keys are added after every table exists.
