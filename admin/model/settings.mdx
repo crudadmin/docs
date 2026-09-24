@@ -167,7 +167,7 @@ protected $settings = [
 | `clickable` | `false` does not open the record when the cell is clicked |
 | `format` | date format of the value, also for columns added by `setAdminAttributes` |
 | `type` | `integer` sorts the column numerically in the browser |
-| `sort_by` | sorts the column by the values of another column, in the database when that column is a database column |
+| `sort_by` | sorts the column by another column or by a value selected in `scopeAdminRows()`, in the database when the query has it; a list uses the first one the query has |
 | `sortable` | `false` turns off [sorting by the column](/admin/model/listing#sorting-by-a-column) |
 
 Use `columns.*.name` to customize column headers, for example `columns.price.name`.

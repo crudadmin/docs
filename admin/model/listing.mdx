@@ -242,12 +242,29 @@ A click on a column header sorts the whole table in the database, across all pag
 | select, radio with options | the label of the option, lists of more than 500 options by the value |
 | `locale` | the value of the first language |
 | [`columns.*.sort_by`](/admin/model/settings#columns) | the other column |
+| a column named like a value `scopeAdminRows()` selects (`withCount`, `withSum`, `selectRaw('... as name')`, `joined_table.column`) | that value, without any setting |
 | virtual columns, belongsToMany, `multiple`, `encrypted`, `json`, imaginary fields | in the browser, within the loaded records only |
 | `inaccessible` fields, passwords | not sortable |
 
 While the table has more pages, the header of a column sorted only in the browser says so on hover, and the sorted one shows an info icon. A table whose records are all loaded is sorted in the browser without a request.
 
 The chosen sorting is remembered for every table in the browser. The sorted header is highlighted then, and its cross returns the default order of `$orderBy` or of the field [`orderBy`](/admin/model/fields/ui#listing-table) parameter. `getAdminSortableColumns()` lists the columns sorted by the database.
+
+A virtual column computed from a selected value names it in `sort_by`. A list uses the first value the query selects, e.g. an alias added only in a [group tab](/admin/model/fields/groups#a-tab-from-an-admin-model) before the one every query has:
+
+```php app/Models/WarehousesLocation.php
+public function scopeAdminRows($query)
+{
+    $query->withSum('productsStocks as location_stock_total', 'quantity');
+}
+
+protected $settings = [
+    'columns.totalStock.name' => 'Stock',
+    'columns.totalStock.sort_by' => ['location_stock_filtrated', 'location_stock_total'],
+];
+```
+
+Selected values are found on the first rows request, the response lists the columns sorted by them in `sortable_aliases`. Queries with `union` are left to the browser. On PostgreSQL and SQL Server, empty values of a selected value are not moved to the end.
 
 `set{Column}AdminSort` sorts a column the database can not sort itself, for example a virtual column:
 
