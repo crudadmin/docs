@@ -7,7 +7,7 @@ icon: "arrow-right-left"
 
 ## Upgrade commands
 
-- The `admin:upgrade` command and its steps (`admin:upgrade:config`, `:settings`, `:icons`, `:navigation`, `:dates`) rewrite source files. Run them in a local working tree and commit the result; in the `production` environment they refuse to run unless `--force` is passed. `admin:upgrade --force` forwards the option to every step.
+- The `admin:upgrade` command and its steps (`admin:upgrade:config`, `:settings`, `:icons`, `:navigation`, `:dates`) rewrite source files. The last step, `admin:upgrade:cache`, only reports closures in config files and `env()` outside them, which have to be changed by hand; it fails while any is left. Run them in a local working tree and commit the result; in the `production` environment they refuse to run unless `--force` is passed. `admin:upgrade --force` forwards the option to every step.
 
 ## Modals and toasts moved to @crudadmin/helpers
 
@@ -186,8 +186,10 @@ Breaking change for every project. Outside production the administration throws 
 
 ### Config cache
 
-- `php artisan optimize` and `config:cache` are supported. Closures in config files make `config:cache` fail: replace them with `[Class::class, 'method']` callables of static methods (`appearance.logo`, `admin_helpers.auth.otp.user`, groups merged by packages as `[[Class::class, 'method']]`).
-- `env()` outside config files returns `null` with a cached config. Move such values into a config file and read them with `config()`.
+- `php artisan optimize` and `config:cache` are supported and belong at the end of the [deploy script](/admin/deployment). Earlier versions were deployed without them.
+- Config files no longer support closures (`function () {}`, `fn () =>`), `config:cache` fails on them. Replace each with a `[Class::class, 'method']` callable of a static method (`appearance.logo`, `admin_helpers.auth.otp.user`, groups merged by packages as `[[Class::class, 'method']]`).
+- `env()` can be called only in config files. Code which called `env()` anywhere else in the project (controllers, models, helpers, routes, blade views, `bootstrap/`) gets `null` with a cached config: move each value into a config file (`config/services.php` or a config file of the project) and read it with `config()`.
+- `php artisan admin:upgrade:cache` lists every closure in the config files and every `env()` call outside them, with files and lines.
 - The file manager `lfm.private_folder_name` is a handler class instead of a closure; a project config which overrides it with a closure has to use a class with a `userField()` method.
 - New config keys read from the same environment variables as before: `admin.storage.clean_items_limit` (`STORAGE_CLEAN_ITEMS_LIMIT`), `admin.sitetree_editor` (`ADMIN_SITETREE_EDITOR`) and `admin.frontend_editor.url` (`APP_NUXT_URL` or `WEB_URL`) of `crudadmin/website`.
 
@@ -541,6 +543,7 @@ An `AdminModel` descendant without `$migration_date` was skipped silently. It is
 - A class which is not a menu item by its nature implements `Admin\Core\Eloquent\Concerns\NotAdminModule`. The interface is inherited, so it covers the whole subtree. `AdminPivot` implements it already, its descendants need no change.
 - A class of such a subtree which is a module anyway, for example a pivot with its own fields or menu item, implements `Admin\Core\Eloquent\Concerns\AdminModule`. A remaining `$migration_date` still keeps it registered until the upgrade replaces it.
 - Anything else without a date stops the boot with a message naming the class and both options.
+- A model extending a registered admin model replaces it, also under another class name (a project `Notification` extending `AppNotification` of `crudadmin/helpers`). v5 did the same through the shared `$migration_date`; the parent is not a module and has no table of its own.
 
 ## Menu in the navigation section
 

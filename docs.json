@@ -25,6 +25,7 @@
               "admin/installation",
               "admin/configuration",
               "admin/commands",
+              "admin/deployment",
               "admin/helpers",
               "admin/license",
               "admin/contact",

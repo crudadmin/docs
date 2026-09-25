@@ -1,0 +1,55 @@
+---
+title: "Deployment"
+description: "The deploy script of a CrudAdmin project: dependencies, schema, assets, caches and workers."
+icon: "rocket"
+---
+
+## Deploy script
+
+Every project keeps a `deploy` file in its root and runs it on the server in the project directory after the new code is ready to be pulled.
+
+```bash deploy
+#!/bin/bash
+git pull
+composer install
+
+# Caches of the previous release must not be read by the steps below
+php artisan optimize:clear
+
+php artisan admin:migrate -f
+php artisan admin:update
+php artisan cache:clear
+
+npm ci
+npm run build
+
+# Config, events, routes, views and the compiled admin models
+php artisan optimize
+
+# Workers boot again with the new code and the new caches
+php artisan queue:restart
+```
+
+| Step | Why |
+| --- | --- |
+| `composer install` | Installs the locked versions, CrudAdmin packages included. |
+| `optimize:clear` | Removes the cached config, routes, events, views and admin models of the previous release, so the migration and the update read the new code. |
+| `admin:migrate -f` | Builds the schema of every admin model, see [Migrations](/admin/model/migrations). A removed field asks before its column is dropped; add `--auto-drop` when the script has to drop it without asking. |
+| `admin:update` | Publishes the admin assets of the installed version. |
+| `cache:clear` | Clears the application cache, cached data of the previous release may not match the new models. |
+| `npm run build` | Builds the frontend of the project. |
+| `optimize` | Caches the config, events, routes and views and compiles the admin models (`admin:cache`), see [Performance cache](/admin/commands#performance-cache). |
+| `queue:restart` | Queue workers finish their job and start again with the new code. |
+
+Restart every other long running process after `optimize` in the same way, for example `php artisan reverb:restart` for a Reverb websocket server or `php artisan octane:reload` for Laravel Octane.
+
+## php artisan optimize
+
+CrudAdmin 6 supports `php artisan optimize`; projects on older versions deployed without it. Without the caches every request loads all config files and route files and discovers the admin models again.
+
+A cached config has two rules, the whole list is in [Config cache](/admin/configuration#config-cache):
+
+- Config files contain no closures, `config:cache` fails on them.
+- `env()` is called only in config files. The `.env` file is not loaded with a cached config, so `env()` returns `null` everywhere else.
+
+`php artisan admin:upgrade:cache` of [crudadmin/upgrade](/admin/commands#upgrade-commands-live-in-a-separate-package) lists both in a project. Change the `.env` file on the server only together with a new `php artisan optimize`, the cached config keeps the old values until then.

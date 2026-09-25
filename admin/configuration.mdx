@@ -11,10 +11,11 @@ The installer publishes `config/admin.php` with the most common keys. Every othe
 
 ### Config cache
 
-`php artisan optimize` and `config:cache` work with CrudAdmin, the packages are not merged again on top of a cached config.
+`php artisan optimize` and `config:cache` work with CrudAdmin, the packages are not merged again on top of a cached config. See [Deployment](/admin/deployment).
 
-- A config value can not be a closure, `config:cache` fails on it. Use a `[Class::class, 'method']` callable of a static method instead; the logo, the groups of a package and `admin_helpers.auth.otp.user` accept it.
+- Config files do not support closures (`function () {}`, `fn () =>`), `config:cache` fails on them. Where a value has to be resolved per request, use a `[Class::class, 'method']` callable of a static method; the logo, the groups of a package and `admin_helpers.auth.otp.user` accept it.
 - Call `env()` only in config files. With a cached config `env()` returns `null` everywhere else, read the value through `config()`.
+- `php artisan admin:upgrade:cache` of `crudadmin/upgrade` lists the closures in config files and the `env()` calls outside them.
 
 ## Basic settings
 

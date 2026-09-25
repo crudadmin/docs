@@ -132,4 +132,4 @@ The migrators which move a project onto this major version ship in `crudadmin/up
 composer require --dev crudadmin/upgrade:^6.0
 ```
 
-`php artisan admin:upgrade` runs every step in order: `admin:upgrade:config`, then `admin:upgrade:settings`, then `admin:upgrade:navigation`. Each step also runs on its own and every one takes `--dry-run`. Do not confuse them with `admin:migrate`, which builds the database schema from the models and stays in the core.
+`php artisan admin:upgrade` runs every step in order: `admin:upgrade:config`, `admin:upgrade:settings`, `admin:upgrade:icons`, `admin:upgrade:navigation`, `admin:upgrade:dates` and `admin:upgrade:cache`. Each step also runs on its own and every one takes `--dry-run`. `admin:upgrade:cache` writes nothing, it lists the closures in config files and the `env()` calls outside them, which break `php artisan optimize`, and fails while any is left. Do not confuse them with `admin:migrate`, which builds the database schema from the models and stays in the core.
