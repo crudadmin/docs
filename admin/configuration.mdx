@@ -9,6 +9,13 @@ icon: "settings"
 
 The installer publishes `config/admin.php` with the most common keys. Every other key described on this page has a package default, add it to `config/admin.php` only when you want to change it. Values from `config/admin.php` always win over the package defaults.
 
+### Config cache
+
+`php artisan optimize` and `config:cache` work with CrudAdmin, the packages are not merged again on top of a cached config.
+
+- A config value can not be a closure, `config:cache` fails on it. Use a `[Class::class, 'method']` callable of a static method instead; the logo, the groups of a package and `admin_helpers.auth.otp.user` accept it.
+- Call `env()` only in config files. With a cached config `env()` returns `null` everywhere else, read the value through `config()`.
+
 ## Basic settings
 
 ### Administration name
@@ -36,11 +43,8 @@ The `groups` config key of older versions is moved there by `php artisan admin:u
 
 ```php config/admin.php
 'appearance' => [
-    // text, image URL, public path, [default, small] or a closure
-    'logo' => fn () => [
-        public_path('images/logo.png'),
-        public_path('images/logo-small.png'),
-    ],
+    // text, image URL, public path, [default, small] or a [Class::class, 'method'] callable
+    'logo' => [App\Admin\Branding::class, 'logo'],
 
     'author' => false,
 

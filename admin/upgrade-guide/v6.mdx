@@ -184,6 +184,13 @@ Breaking change for every project. Outside production the administration throws 
 - These keys already had no effect in v5; file uploads and image resizing are unchanged.
 - Use `images.resizer.storage_cache`, `images.resizer.storage_cache_days` and `images.resizer.redirect_after_resize` to configure the corresponding behavior.
 
+### Config cache
+
+- `php artisan optimize` and `config:cache` are supported. Closures in config files make `config:cache` fail: replace them with `[Class::class, 'method']` callables of static methods (`appearance.logo`, `admin_helpers.auth.otp.user`, groups merged by packages as `[[Class::class, 'method']]`).
+- `env()` outside config files returns `null` with a cached config. Move such values into a config file and read them with `config()`.
+- The file manager `lfm.private_folder_name` is a handler class instead of a closure; a project config which overrides it with a closure has to use a class with a `userField()` method.
+- New config keys read from the same environment variables as before: `admin.storage.clean_items_limit` (`STORAGE_CLEAN_ITEMS_LIMIT`), `admin.sitetree_editor` (`ADMIN_SITETREE_EDITOR`) and `admin.frontend_editor.url` (`APP_NUXT_URL` or `WEB_URL`) of `crudadmin/website`.
+
 ### Localized routes
 
 - Removed the unused `routes` config key; remove it from project configuration if present. Existing routing behavior is unchanged.

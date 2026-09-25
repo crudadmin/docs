@@ -177,7 +177,8 @@ class PackageServiceProvider extends AdminHelperServiceProvider
     public function boot()
     {
         $this->mergeAdminConfigs([
-            'groups' => fn () => ['store' => [_('Store'), 'fa-shopping-cart']],
+            // [Class::class, 'method'] returning ['store' => [_('Store'), 'fa-shopping-cart']]
+            'groups' => [[PackageGroups::class, 'groups']],
             'modules' => ['Vendor\Package\Admin\Modules' => __DIR__.'/Admin/Modules'],
             'gettext' => ['source_paths' => [__DIR__.'/Views']],
         ]);
