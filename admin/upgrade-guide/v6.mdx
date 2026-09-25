@@ -491,7 +491,6 @@ CrudAdmin 6 moves configuration properties that share a name with a value of the
 - Removed unused model methods: `filePath()` (use `getStorageFilePath()` and `getFieldStorage()->path()`), `runAdminRule()`, `scopeFilterByParentField()` and `checkForChildrenModels()` (the `HasChildrens` trait).
 - Removed `hasAccessByTable($table, $permission)` of the admin user. Use `hasAccess(Admin::getModelByTable($table), $permission)`.
 - Removed `Button::errorToast($message)`. Use `toast($message, 'error')`.
-- Removed `AdminFile::getBase64()`. Use `'data:;base64,'.base64_encode($file->get())`.
 - Role permissions are read only from the JSON cast. Permissions saved as plain strings by CrudAdmin 3 and 4.1 are no longer decoded; resave the roles in the administration.
 - `date` values stored in the `d.m.Y` format are no longer read; the value is `null`. Convert such columns to `Y-m-d`. Writing `d.m.Y` strings from your code still works.
 - With a symlinked cache folder, old `/uploads/cache/…` image URLs no longer redirect to `/cache/…`. Update hardcoded image URLs.
