@@ -129,7 +129,7 @@ php artisan admin:preresize
 The migrators which move a project onto this major version ship in `crudadmin/upgrade`, a development dependency. Install it for the upgrade and remove it afterwards, it adds nothing to a running application.
 
 ```bash
-composer require --dev crudadmin/upgrade
+composer require --dev crudadmin/upgrade:^6.0
 ```
 
 `php artisan admin:upgrade` runs every step in order: `admin:upgrade:config`, then `admin:upgrade:settings`, then `admin:upgrade:navigation`. Each step also runs on its own and every one takes `--dry-run`. Do not confuse them with `admin:migrate`, which builds the database schema from the models and stays in the core.
