@@ -93,7 +93,7 @@ Removed:
 
 Grid:
 
-- `grids` → `grid.sizes`, and `grid` as a list of sizes, `grid.enabled`, `grid.disabled` and `grid.{size}.enabled` / `.disabled` are all replaced by that one list. The switcher hides itself when one size is left, so `'grid.enabled' => false` becomes `'grid.sizes' => ['<the size you keep>']`. Declarations which only repeat the default (`'grid.enabled' => true`, `'grid.full.enabled' => true`) are removed.
+- `grids` → `grid.sizes`, and `grid` as a list of sizes, `grid.enabled`, `grid.disabled` and `grid.{size}.enabled` / `.disabled` are all replaced by that one list. The switcher hides itself when one size is left, so `'grid.enabled' => false` becomes `'grid.sizes' => ['<the size you keep>']`. Declarations which only repeat the default (`'grid.enabled' => true`, `'grid.full.enabled' => true`) are removed. Column widths of CrudAdmin 5 (`4`, `8`, `6`, `0`) become `small`, `big`, `half` and `full`; any other number was ignored by CrudAdmin 5 and is removed.
 - The migrator computes the list from the old keys. It reports a dynamic grid value, a switcher turned off without `grid.default`, and old keys declared next to a size list.
 - `grid.default` stays and keeps its second effect: a form of 20 or more fields opens in the full grid unless the model declares `grid.default` or `grid.sizes`.
 
