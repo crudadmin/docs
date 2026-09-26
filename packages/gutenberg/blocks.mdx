@@ -8,9 +8,10 @@ description: "Register your own blocks and editor settings in JavaScript, and ch
 Build a script with your blocks and add it to the administration. It loads after the editor, so `window.Gutenberg` and the WordPress globals `wp.blocks`, `wp.element`, `wp.editor`, `wp.components` and `wp.data` are available.
 
 ```php config/admin.php
-'gutenberg' => true,
-'scripts' => ['js/gutenberg.js'],
-'styles' => ['css/gutenberg.css'],
+'appearance' => [
+    'scripts' => ['js/gutenberg.js'],
+    'styles' => ['css/gutenberg.css'],
+],
 ```
 
 Compile JSX to `wp.element.createElement`, e.g. with Vite:

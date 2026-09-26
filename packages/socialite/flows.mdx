@@ -7,15 +7,13 @@ description: "Session login, stateless tokens, token login from mobile SDKs, Goo
 
 With `routes` enabled, the package registers three routes in the `web` middleware group:
 
-| Route | Description |
-| --- | --- |
-| `GET /socialite/{driver}` | Redirects to the provider |
-| `ANY /socialite/{driver}/callback` | Callback of the provider, signs the user in |
-| `ANY /socialite/{driver}/token` | Signs in with a provider token from a mobile or web SDK |
+| Route | Name | Description |
+| --- | --- | --- |
+| `GET /socialite/{driver}` | `socialite.redirect` | Redirects to the provider |
+| `ANY /socialite/{driver}/callback` | `socialite.callback` | Callback of the provider, signs the user in |
+| `ANY /socialite/{driver}/token` | `socialite.token` | Signs in with a provider token from a mobile or web SDK |
 
-<Warning>
-  With CrudAdmin 6, these routes need the [`crudadmin/website`](/packages/website) package, which provides the `visible()` route macro they use. Projects which only use the token login of [`crudadmin/helpers`](#token-login-with-crudadminhelpers) set `'routes' => false`.
-</Warning>
+Build the links with the route names, e.g. `route('socialite.redirect', 'google')`. Projects which only use the token login of [`crudadmin/helpers`](#token-login-with-crudadminhelpers) set `'routes' => false`.
 
 Apple and Google One Tap send the callback as a POST request. Exclude `socialite/*` from CSRF verification when you use them.
 
@@ -24,7 +22,7 @@ Apple and Google One Tap send the callback as a POST request. Exclude `socialite
 The default for websites, `'stateless' => false`.
 
 ```blade
-<a href="{{ url('socialite/google') }}?url_previous={{ urlencode(url()->current()) }}">
+<a href="{{ route('socialite.redirect', 'google') }}?url_previous={{ urlencode(url()->current()) }}">
     {{ _('Sign in with Google') }}
 </a>
 ```
@@ -84,7 +82,7 @@ The `onetap` driver verifies the `credential` of the Google Identity Services sc
 ```html
 <div id="g_id_onload"
      data-client_id="{{ config('services.google.client_id') }}"
-     data-login_uri="{{ url('socialite/onetap/callback') }}">
+     data-login_uri="{{ route('socialite.callback', 'onetap') }}">
 </div>
 ```
 

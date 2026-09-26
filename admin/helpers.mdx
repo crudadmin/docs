@@ -164,27 +164,98 @@ public function boot()
 
 A model whose class basename is already registered is skipped.
 
-### Merging package config
-{/* feature: helper.AdminHelperServiceProvider::mergeAdminConfigs, helper.AdminHelperServiceProvider::pushComponentsPaths */}
+### Package service provider
+{/* feature: helper.AdminPackageServiceProvider::mergeAdminConfigs, helper.AdminPackageServiceProvider::pushComponentsPaths */}
 
-Extend `Admin\Providers\AdminHelperServiceProvider` and merge your defaults. Values from the application `config/admin.php` always win, lists are appended, and package `scripts` are loaded before application scripts.
+A package has one service provider extending `Admin\Providers\AdminPackageServiceProvider`. It declares what the package brings, the base provider registers it and keeps it working with [`php artisan optimize`](/admin/deployment): config files are merged only when the config is not cached, route files are loaded only when the routes are not cached.
 
-```php
-use Admin\Providers\AdminHelperServiceProvider;
+```php src/Providers/AppServiceProvider.php
+use Admin\Providers\AdminPackageServiceProvider;
 
-class PackageServiceProvider extends AdminHelperServiceProvider
+class AppServiceProvider extends AdminPackageServiceProvider
 {
-    public function boot()
-    {
-        $this->mergeAdminConfigs([
-            // [Class::class, 'method'] returning ['store' => [_('Store'), 'fa-shopping-cart']]
-            'groups' => [[PackageGroups::class, 'groups']],
-            'modules' => ['Vendor\Package\Admin\Modules' => __DIR__.'/Admin/Modules'],
-            'gettext' => ['source_paths' => [__DIR__.'/Views']],
-        ]);
+    // config key => file. Values of the project win, missing keys are added, a list of the project replaces the list of the package
+    protected $config = [
+        'vendor_package' => __DIR__.'/../Config/config.php',
+    ];
 
-        // adds __DIR__.'/../Admin/Components' relative to the provider
-        $this->pushComponentsPaths();
+    // groups the project defines as a whole, the package does not add its items into them
+    protected $replacedConfig = ['vendor_package.types'];
+
+    // merged into config('admin'), lists are appended: scripts, styles, components, gettext paths, groups
+    protected $adminConfig = __DIR__.'/../Config/admin.php';
+
+    // route file => route group attributes
+    protected $routes = [
+        __DIR__.'/../Routes/routes.php' => ['middleware' => 'web', 'namespace' => 'Vendor\Package\Controllers'],
+    ];
+
+    // a directory of models (glob => namespace) or a model class; override models() when they depend on the config
+    protected $models = [
+        __DIR__.'/../Models/**' => 'Vendor\Package\Models',
+        \Vendor\Package\Setting::class,
+    ];
+
+    // blade views, namespace => directory; a directory missing in the release is skipped
+    protected $views = [
+        'vendorpackage' => __DIR__.'/../Views',
+    ];
+
+    // files for php artisan vendor:publish, tag => [source => target in the project]
+    protected $publishable = [
+        'vendor_package.config' => [__DIR__.'/../Config/config.php' => 'config/vendor_package.php'],
+    ];
+
+    // built assets, source => directory in public/; admin:update publishes them and adds the directory into .gitignore
+    protected $assets = [
+        __DIR__.'/../../dist' => 'vendor/package',
+    ];
+
+    protected $assetsTag = 'vendor_package.assets';
+
+    protected $listen = [
+        OrderCreated::class => [SendOrderMail::class],
+    ];
+
+    protected $commands = [SyncCommand::class];
+
+    // field mutations; a RuntimeMutation is applied in the administration only, after fields are compiled
+    protected $mutations = [DefaultVat::class];
+
+    protected $facades = ['Package' => PackageFacade::class];
+
+    protected $routeMiddleware = ['package' => PackageMiddleware::class];
+
+    // changes of the config which a config file can not express, run only when the config is not cached
+    protected function configure()
+    {
+        if (! config()->has('logging.channels.package')) {
+            config()->set('logging.channels.package', ['driver' => 'single', 'path' => storage_path('logs/package.log')]);
+        }
     }
 }
 ```
+
+Models of optional features are returned by `models()`:
+
+```php
+protected function models()
+{
+    return config('vendor_package.invoices') ? [__DIR__.'/../Models/Invoices/**' => 'Vendor\Package\Models\Invoices'] : [];
+}
+```
+
+Keep `register()` and `boot()` for other work (publishes, views, macros) and call `parent::register()` / `parent::boot()` first. Do not add separate config, route or event providers, and do not extend Laravel's `RouteServiceProvider` or `EventServiceProvider`: with the application skeleton of Laravel 11 they load all routes of the application again and add the email verification listener once more.
+
+The config of `$adminConfig` looks like this, the `groups` of a package are `[Class::class, 'method']` callables resolved late for translations:
+
+```php src/Config/admin.php
+return [
+    'groups' => [[PackageGroups::class, 'groups']],
+    'modules' => ['Vendor\Package\Admin\Modules' => __DIR__.'/../Admin/Modules'],
+    'components' => [__DIR__.'/../Admin/Components'],
+    'gettext' => ['source_paths' => [__DIR__.'/../Views']],
+];
+```
+
+Rules for [`php artisan optimize`](/admin/deployment): no closures in config files, `env()` only in config files, `config()->set()` only in `configure()`, routes only with controller actions and unique names prefixed by the package.

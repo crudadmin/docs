@@ -189,9 +189,21 @@ Breaking change for every project. Outside production the administration throws 
 - `php artisan optimize` and `config:cache` are supported and belong at the end of the [deploy script](/admin/deployment). Earlier versions were deployed without them.
 - Config files no longer support closures (`function () {}`, `fn () =>`), `config:cache` fails on them. Replace each with a `[Class::class, 'method']` callable of a static method (`appearance.logo`, `admin_helpers.auth.otp.user`, groups merged by packages as `[[Class::class, 'method']]`).
 - `env()` can be called only in config files. Code which called `env()` anywhere else in the project (controllers, models, helpers, routes, blade views, `bootstrap/`) gets `null` with a cached config: move each value into a config file (`config/services.php` or a config file of the project) and read it with `config()`.
-- `php artisan admin:upgrade:cache` lists every closure in the config files and every `env()` call outside them, with files and lines.
+- `php artisan admin:upgrade:cache` lists every closure in the config files and every `env()`, `getenv()`, `$_ENV` and `Env::get()` call outside them, with files and lines.
+- `route:cache` skips the routes of an application which uses `localizedRoutes()` with localization enabled, their language prefix is resolved per request. Routes marked with `->visible()` are kept in the route action, so the frontend editor finds them also in cached routes.
+- Packages read their environment values through config keys, the variables stay the same: `crudadmin/helpers` (`admin_helpers.auth.verificator`, `admin_helpers.bundle.*`, `admin_helpers.smartsms`), `crudadmin/payments` (`admin_payments.store_debug`, `admin_payments.paypal.webhook_id`, `admin_payments.gopay.*`), `crudadmin/socialite` (`admin_socialite.paypal_mode`, `admin_socialite.instagram_secret`), `crudadmin/invoices` (`invoices.xz_path`, `invoices.omega.*`) and `crudadmin/eshop` (`admin_eshop.nuxt.*`, `admin_eshop.store_debug`, `admin_eshop.delivery.shipping.*`, `admin_eshop.attributes.ids.*`, `admin_eshop.payment_methods.cash_on_delivery.*`, `admin_eshop.reports.archive`; see its `MIGRATION-5.0.md`). The new keys are merged from the package also into a published config file of the project.
+- `crudadmin/gutenberg` publishes its assets with the `admin.resources` tag of `admin:update`; `'gutenberg' => true` is no longer needed for that.
 - The file manager `lfm.private_folder_name` is a handler class instead of a closure; a project config which overrides it with a closure has to use a class with a `userField()` method.
 - New config keys read from the same environment variables as before: `admin.storage.clean_items_limit` (`STORAGE_CLEAN_ITEMS_LIMIT`), `admin.sitetree_editor` (`ADMIN_SITETREE_EDITOR`) and `admin.frontend_editor.url` (`APP_NUXT_URL` or `WEB_URL`) of `crudadmin/website`.
+
+### Package service provider
+
+- Packages extend `Admin\Providers\AdminPackageServiceProvider` and declare their config, admin config, routes, models (`$models` or `models()`), listeners, commands, field mutations, views, assets and publishable files in properties, see [Package service provider](/admin/helpers#package-service-provider). The base provider skips config merging with a cached config and route files with cached routes.
+- Removed `Admin\Providers\AdminHelperServiceProvider`. Extend `AdminPackageServiceProvider`, it has the same helper methods (`mergeAdminConfigs()`, `mergeConfigs()`, `pushComponentsPaths()`, `registerFacades()`, `registerProviders()`, `bootRouteMiddleware()`), and move the work of `register()`/`boot()` into its properties. A subclass which keeps its own `register()` or `boot()` calls `parent::register()` / `parent::boot()`.
+- All CrudAdmin packages have a single provider now. Their separate config, route and event providers were removed; they extended Laravel's `RouteServiceProvider` and `EventServiceProvider`, which with the Laravel 11 skeleton loaded the routes of the application once more per package and added the email verification listener of `Registered` once per package. Projects which referenced such a provider of a package (e.g. `AdminEshop\Providers\RouteServiceProvider`) remove the reference.
+- Built assets of a package are declared in `$assets` (source => directory in `public/`). `admin:update` publishes them with the `admin.resources` tag and crudadmin adds their directories into the project `.gitignore`; the `OnAdminUpdateListener` classes of the packages were removed.
+- Package configs merged by `$config` keep the values of the project and add missing keys, a list of the project replaces the list of the package (e.g. `admin_helpers.notifications.platforms`, `admin_eshop.cart.mutators`). Before, some packages appended their list items to the project list.
+- `crudadmin/socialite` routes are named `socialite.redirect`, `socialite.callback` and `socialite.token`; they are no longer marked `->visible()` for the frontend editor, which needed `crudadmin/website`. `crudadmin/gutenberg` routes are named `gutenberg.oembed` and `gutenberg.image-upload` and use the `admin.panel` middleware group.
 
 ### Localized routes
 
@@ -259,7 +271,7 @@ Breaking change for every project. Outside production the administration throws 
 - Frontend scripts are built in the package and published to `public/vendor/crudadmin-website` (`FrontendEditor.js`, `Gettextable.js`, `frontend.css`) by `php artisan admin:update` or the `admin_website.assets` tag; `admin:update` also adds the directory into the project `.gitignore`, so the built files are not committed. `/vendor/crudadmin/build/assets/FrontendEditor.js`, `Gettextable.js` and `frontend.css` no longer exist; update custom script tags. The administration no longer installs `window.action()` and `window.decryptText()`.
 - `JSTranslations::getJavascript()` moved to the package, `Gettext::getJSPlugin()` became `JSTranslations::getScriptUrl()` of the package. `GET /admin/api/bootstrap` no longer accepts `context=editor`; the editor uses `GET /admin/api/frontend-editor/bootstrap`.
 - Models no longer receive `siteTreeColumns()`, `scopeOnSiteTreeLoad()` and `getTreeAction()`. Models with `$sitetree` load their key, the `$sitetree` column and the slug; declare these methods on the model or use the `AdminWebsite\Eloquent\Concerns\HasSiteTree` trait. `parent::siteTreeColumns()` calls fail without the trait.
-- Removed `AdminHelperServiceProvider::turnOfCacheForAdmin()`. It only set `admin.cache_time`, which nothing read; remove its calls from packages.
+- Removed `turnOfCacheForAdmin()` of the package service provider. It only set `admin.cache_time`, which nothing read; remove its calls from packages.
 
 ## Removed admin preview state
 
@@ -442,6 +454,7 @@ public function getFilterStates()
 - `/admin/api/v1/models` lists only models with the `read` permission. The login credentials are documented in the request body of the OpenAPI description instead of query parameters.
 - The stateless frontend editor token (`/admin/translations/editor`) has only the `frontend-editor` ability, it is refused by the administration and the REST API.
 - Passwords, tokens and secrets are left out of the REST API request log.
+- The `crudadmin` driver of `crudadmin/socialite` reads the signed in administrator from `/admin/api/v1/user` instead of `/admin/api/user`, so the CrudAdmin which acts as the OAuth server needs `crudadmin/api`. Servers which serve the user elsewhere set `user_path` in `services.crudadmin`.
 - The session Swagger scheme moved from `/admin/api/v1/openapi.json|yaml` to `/admin/api/v1/docs/openapi.json|yaml`; `/admin/api/v1/openapi.json|yaml` is now a token route for API clients. The scheme is generated in PHP: `/admin/api/v1/scheme` returns valid YAML with quoted values, and the description now includes the `DELETE` operation.
 - Renamed `Admin\Controllers\Crud\Concerns\CRUDRelations` to `Admin\Crud\Concerns\SyncsBelongsToMany`; admin rules reading pivot data of a `belongsToMany` field (`getPivotData()`) use the new trait. Removed the validation and insert methods of `CRUDController`, `InsertController` and `UpdateController`; they live in `Admin\Crud\RowWriter`. `UpdateController` no longer extends `InsertController`. `getModel()` of the CRUD controllers comes from `Admin\Crud\Concerns\ResolvesAdminModels`.
 
@@ -497,7 +510,7 @@ CrudAdmin 6 moves configuration properties that share a name with a value of the
 - Removed `Admin\Models\Model` (CrudAdmin 1). Extend `Admin\Eloquent\AdminModel`.
 - Removed `Admin\Helpers\File` and `Admin\Core\Helpers\File`. Use `Admin\Core\Helpers\Storage\AdminFile`, which has the same methods.
 - Removed `Admin\Eloquent\Casts\DecimalCast`. CrudAdmin never applied it to any field; copy it into the project if a model uses it in `$casts`.
-- Removed unused model methods: `filePath()` (use `getStorageFilePath()` and `getFieldStorage()->path()`), `runAdminRule()`, `scopeFilterByParentField()` and `checkForChildrenModels()` (the `HasChildrens` trait).
+- Removed unused model methods: `filePath()` (use `getStorageFilePath()` and `getFieldStorage()->path()`), `scopeFilterByParentField()` and `checkForChildrenModels()` (the `HasChildrens` trait).
 - Removed `hasAccessByTable($table, $permission)` of the admin user. Use `hasAccess(Admin::getModelByTable($table), $permission)`.
 - Removed `Button::errorToast($message)`. Use `toast($message, 'error')`.
 - Role permissions are read only from the JSON cast. Permissions saved as plain strings by CrudAdmin 3 and 4.1 are no longer decoded; resave the roles in the administration.

@@ -29,11 +29,7 @@ The package is a fork of [Laraberg](https://github.com/VanOns/laraberg), license
 composer require crudadmin/gutenberg
 ```
 
-Enable publishing of the editor assets and run the update:
-
-```php config/admin.php
-'gutenberg' => true,
-```
+Publish the editor assets:
 
 ```bash
 php artisan admin:update
@@ -42,8 +38,10 @@ php artisan admin:update
 `admin:update` publishes the editor into `public/vendor/gutenberg` and adds the directory to `.gitignore`. Publish it manually with:
 
 ```bash
-php artisan vendor:publish --provider="Admin\Gutenberg\Providers\GutenbergServiceProvider"
+php artisan vendor:publish --tag=admin_gutenberg.assets --force
 ```
+
+The administration waits for every script it loads, so run `admin:update` after each update of the package, as the [deploy script](/admin/deployment) does.
 
 The editor is built into the package, your project needs no npm build. The administration loads its scripts and styles automatically.
 
@@ -119,10 +117,6 @@ Files dropped into the editor are uploaded to `uploads/editor/images/shared` and
     'media_mime_types' => ['image/jpeg', 'image/png', 'image/gif', 'image/svg+xml', 'video/mp4'],
 ],
 ```
-
-<Warning>
-  `gutenberg` is either `true` or an array. With an array, `admin:update` no longer publishes the assets, so publish them manually after each update of the package.
-</Warning>
 
 ## Upgrading from 2.x
 

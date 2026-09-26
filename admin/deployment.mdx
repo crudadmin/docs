@@ -52,4 +52,6 @@ A cached config has two rules, the whole list is in [Config cache](/admin/config
 - Config files contain no closures, `config:cache` fails on them.
 - `env()` is called only in config files. The `.env` file is not loaded with a cached config, so `env()` returns `null` everywhere else.
 
+Websites with [`localizedRoutes()`](/admin/model/localization#localized-routes-and-urls) keep their routes uncached, `optimize` skips them with a warning.
+
 `php artisan admin:upgrade:cache` of [crudadmin/upgrade](/admin/commands#upgrade-commands-live-in-a-separate-package) lists both in a project. Change the `.env` file on the server only together with a new `php artisan optimize`, the cached config keeps the old values until then.

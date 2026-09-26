@@ -29,7 +29,7 @@ The script also writes a `readme.md`, runs `git init -b main` and installs the r
 
 | Path | Content |
 | --- | --- |
-| `src/Providers/AppServiceProvider.php` | Registers the providers, facades, middleware, admin models and views |
+| `src/Providers/AppServiceProvider.php` | The only provider of the package: config, routes, models, events, commands, views |
 | `src/Config/config.php` | Config of the package, published as `config/admin_{name}.php` |
 | `src/Config/admin.php` | Merged into `config/admin.php`: Vue component and gettext directories |
 | `src/Models` | Admin models, registered automatically |
@@ -39,13 +39,16 @@ The script also writes a `readme.md`, runs `git init -b main` and installs the r
 | `src/Helpers/helpers.php` | Global functions, autoloaded |
 | `tests` | Orchestra Testbench tests on SQLite in memory |
 
-The service provider extends `Admin\Providers\AdminHelperServiceProvider`, so the package registers its admin models the same way as CrudAdmin:
+The service provider extends `Admin\Providers\AdminPackageServiceProvider` and declares the package in its properties, see [Package service provider](/admin/helpers#package-service-provider):
 
 ```php src/Providers/AppServiceProvider.php
-public function boot()
-{
-    Admin::registerAdminModels(__DIR__.'/../Models/**', 'AdminLanguageExport\Models');
-}
+protected $config = ['admin_language_export' => __DIR__.'/../Config/config.php'];
+
+protected $adminConfig = __DIR__.'/../Config/admin.php';
+
+protected $routes = [__DIR__.'/../Routes/routes.php' => ['middleware' => 'web']];
+
+protected $models = [__DIR__.'/../Models/**' => 'AdminLanguageExport\Models'];
 ```
 
 ## Next steps

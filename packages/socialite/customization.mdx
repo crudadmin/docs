@@ -35,8 +35,12 @@ SocialAuth::addDriver('crudadmin', 'ca', CrudadminProvider::class);
     'client_secret' => env('CRUDADMIN_OAUTH_SECRET'),
     'redirect' => env('APP_URL').'/socialite/crudadmin/callback',
     'host' => 'https://admin.example.com',
+    // optional, endpoint of the signed in administrator on the host
+    'user_path' => '/admin/api/v1/user',
 ],
 ```
+
+The signed in administrator is read from `user_path` on the host. The default `/admin/api/v1/user` is served by [`crudadmin/api`](/packages/api), install it on the CrudAdmin which signs in.
 
 `ca_id` stores the provider table and the id, e.g. `admins_5`. Use a string field.
 

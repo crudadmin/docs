@@ -80,6 +80,8 @@ use Illuminate\Support\Facades\Route;
 <a href="{{ switchLocale($language) }}">{{ $language->name }}</a> {{-- current URL with ?_locale=de --}}
 ```
 
+The language prefix is added per request, so these routes can not be cached. With localization enabled, `php artisan route:cache` (and the routes step of `php artisan optimize`) leaves the routes uncached and prints a warning; the other caches are built as usual.
+
 ### Administration language
 {/* feature: config.locale, config.localization.admin */}
 {/* feature: helper.Admin::isEnabledAdminLocalization */}
