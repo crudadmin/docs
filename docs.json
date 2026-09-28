@@ -26,6 +26,7 @@
               "admin/configuration",
               "admin/commands",
               "admin/deployment",
+              "admin/octane",
               "admin/helpers",
               "admin/license",
               "admin/contact",

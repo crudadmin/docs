@@ -222,7 +222,13 @@ class AppServiceProvider extends AdminPackageServiceProvider
     // field mutations; a RuntimeMutation is applied in the administration only, after fields are compiled
     protected $mutations = [DefaultVat::class];
 
+    // alias => facade, or alias => ['facade' => ..., 'class' => [abstract, concrete]]; the concrete class is
+    // resolved again for every request, add 'shared' => true for a registry filled by the providers
     protected $facades = ['Package' => PackageFacade::class];
+
+    // static state of one request, reset before every request and queue job of long running processes:
+    // classes with a static flushState() method, or callables
+    protected $flush = [PackageCart::class];
 
     protected $routeMiddleware = ['package' => PackageMiddleware::class];
 
@@ -244,6 +250,8 @@ protected function models()
     return config('vendor_package.invoices') ? [__DIR__.'/../Models/Invoices/**' => 'Vendor\Package\Models\Invoices'] : [];
 }
 ```
+
+`configure()` and `models()` run once for the whole process under [Laravel Octane](/admin/octane) (or once in `config:cache`), they read the config only, never the request, the session or the database. Settings set in `boot()` on a facade of a service bound per request are lost from the first Octane request on, keep them in static properties or in the config.
 
 Keep `register()` and `boot()` for other work (publishes, views, macros) and call `parent::register()` / `parent::boot()` first. Do not add separate config, route or event providers, and do not extend Laravel's `RouteServiceProvider` or `EventServiceProvider`: with the application skeleton of Laravel 11 they load all routes of the application again and add the email verification listener once more.
 

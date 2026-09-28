@@ -1,0 +1,107 @@
+---
+title: "Laravel Octane"
+description: "Running CrudAdmin on Laravel Octane and in other long running processes: what is reset between requests and the rules for project code."
+icon: "zap"
+---
+
+CrudAdmin 6 and its packages run on [Laravel Octane](https://laravel.com/docs/octane) (RoadRunner, Swoole, FrankenPHP) and in long running queue workers (`queue:work`, Horizon). Every request starts from the state the application has right after its boot, the same as a new PHP-FPM request.
+
+## Installation
+
+```bash
+composer require laravel/octane
+```
+
+```bash
+php artisan octane:install --server=roadrunner
+```
+
+Deploy with `php artisan optimize` (see [Deployment](/admin/deployment)) and reload the workers after every deploy:
+
+```bash
+php artisan octane:reload
+```
+
+Websites with [`localizedRoutes()`](/admin/model/localization#localized-routes-and-urls) work on Octane and with `route:cache`, the routes are registered once for every language.
+
+## What CrudAdmin resets between requests
+
+Under PHP-FPM every request is a new process. An Octane worker boots the application once and serves thousands of requests, a queue worker does the same with jobs. Before every request, task, tick and queue job (except jobs of the `sync` connection) CrudAdmin returns its state to the state after the boot:
+
+- `Admin::cache()`, `Admin::get()`, `Admin::set()`, `Admin::push()` and the `cache()` of classes using the `DataStore` trait keep values for one request or job. Only the registry of admin models, derived from the code and the config, is kept for the worker.
+- Base fields and relations trees of the models are kept for the worker, for every language, the same entries `php artisan admin:cache` compiles: built without the administrator, without options of the database. A model is built once per worker and language instead of once per request.
+- Laravel properties the model boots from its fields (`fillable`, `casts`, `dates`, `hidden`) are kept for the worker as well, outside the administration, for every language and for the website and the console separately.
+- Runtime mutations, options of fields, fields of models reading the logged administrator, fields of a given row, the properties of models booted in the administration or on the website, and the admin scopes added to model classes are built again for every request.
+- Static properties marked with `#[RequestScoped]` get their default values back. Static flags changed during a request are returned: `AdminFile::$isApi`, `AdminModel::$localizedResponseArray`, `setGlobalPublishable()`, `setGlobalModelPublishable()`, the fields context of the administrator.
+- The gettext locale and text domain return to the values after the boot, then the localization of the request sets them again.
+- php.ini options changed with `RequestState::iniSet()` get their previous values back.
+- Queue workers forget resolved facades before every job, as Octane does before every request.
+
+Packages register their own resets, see [Package service provider](/admin/helpers#package-service-provider).
+
+## Rules for project code
+
+- `Admin::cache()` is for one request. Do not use a static property, a `static $var` or a singleton for data of a user, a request, a language or the database, it would be kept for the next requests of the worker.
+- A service provider boots once for the whole worker, with a fake console request. Code in `boot()` which reads the request (`request()`, headers, the URL, `Admin::isAdmin()`, `Admin::isFrontend()`) runs in a middleware, in a `RouteMatched` listener or through `RequestState::bootRequestUsing()`:
+
+```php app/Providers/AppServiceProvider.php
+use Admin\Core\Helpers\Store\RequestState;
+
+public function boot(): void
+{
+    // Runs right away under PHP-FPM, at the start of every request under Octane
+    RequestState::bootRequestUsing('app.scanner', function () {
+        if (request()->header('App-Type') === 'scanner') {
+            config()->set('autoajax.store', true);
+        }
+    });
+}
+```
+
+- Config files are loaded once for the worker. A config file must not read the request (`request()`, `$_SERVER`), set such values per request with `config()->set()`; the config is copied for every request.
+- `fields()`, `mutateFields()` and `mutateBootedFields()` of models and modules and the field mutations build the same fields for every request in the same language. They read only the code, the config after the boot and the translations. Everything which depends on the logged administrator, the request, the row or the database belongs into the processing which runs for every request: a [runtime mutation](/admin/model/fields#custom-field-parameters) for the administrator, `getFields($row)` for a row, options loaded with `withOptions()`. A config value changed during a request does not reach fields kept by the worker.
+- A callback registered with `cachableFieldsProperties()` which reads the request returns a different `getCachablePropertiesVariant()` for each case, CrudAdmin models return `admin`, `web` or `console`. A module `boot()` runs once per worker and variant, not for every request.
+- Mark a static property which lives for one request with `#[RequestScoped]`. Before every request and job it gets back the default value of its declaration, reading it stays as fast as any static:
+
+```php
+use Admin\Core\Helpers\Store\RequestScoped;
+
+class MyHelper
+{
+    #[RequestScoped]
+    public static $currentWarehouse = null;
+}
+```
+
+- A static property configured by the service providers (a builder, global options) which a request may still change is marked with `#[RequestScoped(boot: true)]`. It gets back its value after the boot, a change made during a request lives for that request only.
+- Mark a static property which is the same for every request with `#[RequestShared]`: a registry filled in `boot()`, a cache derived only from the code and the config. A value nobody changes is a class constant, not a static property. Every static property carries one of the two attributes, `php artisan admin:upgrade:statics` of `crudadmin/upgrade` lists the ones without them in `app/` and in the crudadmin packages. A `static $var` inside a function can not carry an attribute, move it into a marked static property.
+- State which the default value can not describe (an object, a setting of PHP or of an extension) is reset by a callback registered with `RequestState::flushUsing()`:
+
+```php
+RequestState::flushUsing(function () {
+    MyHelper::resetConnection();
+});
+```
+
+- Facades of services bound with `bind()` are resolved again for every request. Settings set on such a facade in `boot()` are kept only by services which store them statically, for example `PaymentService::setPaymentUrl()`, `Discounts::addDiscount()` or `OrderService::setMutators()` of the CrudAdmin packages.
+- Change php.ini options of a request with `RequestState::iniSet('memory_limit', '1G')` instead of `ini_set()`.
+- Do not call `exit`, `die` or `dd()` in code reachable by a request, they end the worker. `autoAjax()->throw()` throws an exception which Laravel renders.
+- Read the request through Laravel (`request()->getContent()`, `request()->header()`), not through `$_SERVER`, `$_GET`, `$_POST` or `php://input`. RoadRunner and Swoole do not fill them.
+- Do not add CrudAdmin services to `octane.warm`: `admin`, `localization`, `localization.admin`, `admin.payments.service`, `store`, `cart` and bootstrap request classes hold the state of one request.
+- Long imports and exports belong to the queue. Octane stops a request after `max_execution_time` of `config/octane.php`, `ini_set()` does not change it.
+
+## Checking a project
+
+Start one worker, so every request goes through the same process, and use the application as two different users or in two languages:
+
+```bash
+php artisan octane:start --workers=1 --max-requests=10000
+```
+
+Watch the workers of the running RoadRunner server, their handled requests and memory, refreshed every second:
+
+```bash
+php artisan octane:workers
+```
+
+Memory of a worker which grows with every request and drops only when the worker restarts after `max-requests` points to data kept in a static property or a singleton. `--once` lists the workers only once.

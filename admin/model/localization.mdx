@@ -80,7 +80,17 @@ use Illuminate\Support\Facades\Route;
 <a href="{{ switchLocale($language) }}">{{ $language->name }}</a> {{-- current URL with ?_locale=de --}}
 ```
 
-The language prefix is added per request, so these routes can not be cached. With localization enabled, `php artisan route:cache` (and the routes step of `php artisan optimize`) leaves the routes uncached and prints a warning; the other caches are built as usual.
+The routes file is registered once for every language: the prefixed languages first, the default language last (without a prefix when `localization.remove_default` is on). The routes work with `php artisan route:cache` and on [Laravel Octane](/admin/octane). Run `route:cache` again, or reload the Octane workers, after a language is added or its slug changes. When the languages can not be read (e.g. no database during a build), `route:cache` skips the routes with a warning.
+
+Named routes keep their names in the default language, the other languages get the slug as a prefix (`front` and `en.front`). `route('front')` and `action()` return the URL in the current language. For a URL in another language use `LocalizedRoutes::withLocale()`:
+
+```php
+use AdminWebsite\Routing\LocalizedRoutes;
+
+$url = LocalizedRoutes::withLocale('en', fn () => route('front')); // /en/...
+```
+
+On a page of another language `Route::currentRouteName()` returns `en.front`, check the route with `request()->routeIs('front', '*.front')`. A project with its own `URL::formatPathUsing()` calls `LocalizedRoutes::formatPath($path, $route)` inside it.
 
 ### Administration language
 {/* feature: config.locale, config.localization.admin */}

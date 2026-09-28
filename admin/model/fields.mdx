@@ -165,7 +165,7 @@ class Money extends MutationRule
 
 `update($field, $key, $model)` changes the field, `create($field, $key, $model)` returns new fields `key => field` to add next to it, `remove($field, $key, $model)` returns `true` to drop the field. Inside the mutation `$this->getModel()`, `$this->getKey()` and `$this->fields` (all fields of the model) are available.
 
-Fields are built once and cached, `php artisan admin:cache` compiles them in the console. A value which depends on the logged administrator or on data of the database belongs into a runtime mutation: it implements `Admin\Core\Fields\Mutations\RuntimeMutation` and is applied in the administration only, to fields with one of its `$attributes`, on top of the built fields.
+Fields are built once and cached, `php artisan admin:cache` compiles them in the console and [long running processes](/admin/octane) keep them for the whole worker. A value which depends on the logged administrator or on data of the database belongs into a runtime mutation: it implements `Admin\Core\Fields\Mutations\RuntimeMutation` and is applied in the administration only, to fields with one of its `$attributes`, on top of the built fields.
 
 ```php
 use Admin\Core\Eloquent\AdminModel;
