@@ -72,10 +72,10 @@ AdminModel::$localizedResponseArray = false;
 $category->setLocalizedResponse(false)->toArray();
 ```
 
-The `Admin\Helpers\SetApiResponse` middleware does this for you, and switches the language by the `app-locale` request header.
+The `Admin\Http\Middleware\SetApiResponse` middleware does this for you, and switches the language by the `app-locale` request header.
 
 ```php routes/api.php
-use Admin\Helpers\SetApiResponse;
+use Admin\Http\Middleware\SetApiResponse;
 use App\Models\Category;
 
 Route::middleware(SetApiResponse::class)->get('/categories', function () {

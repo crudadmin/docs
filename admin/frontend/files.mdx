@@ -12,7 +12,7 @@ CrudAdmin stores files uploaded in the administration and gives you a file objec
 ```php
 $article = Article::find(1);
 
-$image = $article->image; // Admin\Core\Helpers\Storage\AdminFile
+$image = $article->image; // Admin\Core\Storage\AdminFile
 ```
 
 Rendered as a string, the file returns its public URL, for example `https://example.com/uploads/articles/image/my-photo.jpg`.

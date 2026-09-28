@@ -52,7 +52,7 @@ A button is a PHP class holding its properties and the methods that run when it 
 ```php app/Admin/Buttons/ChangeOrderStatusButton.php
 namespace App\Admin\Buttons;
 
-use Admin\Helpers\Button;
+use Admin\Buttons\Button;
 
 class ChangeOrderStatusButton extends Button
 {
@@ -100,7 +100,7 @@ public $class = 'btn-success';
 
 ```php app/Admin/Buttons/ChangeOrderStatusButton.php
 use Admin\Eloquent\AdminModel;
-use Admin\Helpers\Button;
+use Admin\Buttons\Button;
 use Illuminate\Support\Collection;
 
 class ChangeOrderStatusButton extends Button

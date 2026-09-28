@@ -216,18 +216,63 @@ Breaking change for every project. Outside production the administration throws 
 - `?_locale` with an unknown language redirects to the default language. The redirect of the default language slug is registered whenever `localization.remove_default` is on.
 - Deprecated: the `addLocalizationAttributes()` router macro, `Localization::prefix()`, `addLocalizedRoutes()`, `getLocalizedRouter()` and `$localizedRouters`.
 
+## Renamed framework namespaces
+
+`crudadmin/framework` is grouped by area, the `Helpers`, `Contracts`, `Utilities` and `Requests` namespaces are gone. `php artisan admin:upgrade:namespaces` (the first step of `admin:upgrade`) rewrites the references in the project: imports, fully qualified names, class names in strings and Blade templates, `use DataStore` of classes. While `crudadmin/upgrade` is installed the old names keep working as aliases, so the project boots before the rewrite. The step reports references it can not rewrite. The moved classes:
+
+| Before | After |
+| --- | --- |
+| `Admin\Core\Helpers\AdminCore` | `Admin\Core\AdminCore` |
+| `Admin\Core\Contracts\DataStore` (trait) | `Admin\Core\State\HasDataStore`, `use DataStore` in a class becomes `use HasDataStore` |
+| `Admin\Core\Helpers\DataStore` | `Admin\Core\State\DataStore` |
+| `Admin\Core\Helpers\Store\*` (`RequestState`, `RequestScoped`, `RequestShared`) | `Admin\Core\State\*` |
+| `Admin\Core\Contracts\AdminEvents`, `HasCompiledCache`, `HasConfig`, `HasModules` | `Admin\Core\Concerns\*` |
+| `Admin\Core\Helpers\Storage\*` (`AdminFile`, `AdminUploader`, mutators) | `Admin\Core\Storage\*` |
+| `Admin\Core\Helpers\Image\*` | `Admin\Core\Image\*` |
+| `Admin\Core\Helpers\ImageCompressor\*` | `Admin\Core\Image\Compressor\*` |
+| `Admin\Core\Utilities\BootstrapRequest` | `Admin\Core\Bootstrap\BootstrapRequest` |
+| `Admin\Core\Requests\AdminModelRequest` | `Admin\Core\Http\Requests\AdminModelRequest` |
+
+`crudadmin/crudadmin` is grouped the same way, `Helpers`, `Contracts`, `Controllers`, `Middleware`, `Requests` and `Hashing` are gone:
+
+| Before | After |
+| --- | --- |
+| `Admin\Helpers\Admin` | `Admin\Admin` |
+| `Admin\Controllers\*`, `Admin\Middleware\*`, `Admin\Requests\*` | `Admin\Http\Controllers\*`, `Admin\Http\Middleware\*`, `Admin\Http\Requests\*` |
+| `Admin\Helpers\SetApiResponse` | `Admin\Http\Middleware\SetApiResponse` |
+| `Admin\Helpers\AutoAjax`, `SecureDownloader` | `Admin\Http\AutoAjax`, `Admin\Http\SecureDownloader` |
+| `Admin\Eloquent\Modules\*` (`HistoryModule`, `VerificationModule`, …) | `Admin\Admin\Modules\*` |
+| `Admin\Helpers\Button`, `Admin\Contracts\Buttons\HasButtonsSupport` | `Admin\Buttons\Button`, `Admin\Buttons\Concerns\HasButtonsSupport` |
+| `Admin\Contracts\Exports\*` | `Admin\Exports\*`, the traits `HasAdminExportsGenerators` and `HasExcelAutoformat` in `Admin\Exports\Concerns` |
+| `Admin\Contracts\Commands\MutateAdminModelCommand` | `Admin\Commands\MutateAdminModelCommand` |
+| `Admin\Contracts\Migrations\Columns\*`, `Types\*` | `Admin\Migrations\Columns\*`, `Admin\Migrations\Types\*` |
+| `Admin\Helpers\Localization`, `AdminLocalization`, `Gettext`, `Admin\Helpers\Localization\*` | `Admin\Localization\*` |
+| `Admin\Helpers\Settings\*`, `Admin\Helpers\ModelSettings\*` | `Admin\Settings\*` |
+| `Admin\Helpers\Config\*` | `Admin\Config\*` |
+| `Admin\Helpers\Navigation\Navigation`, `Admin\Helpers\AdminTree` | `Admin\Navigation\*` |
+| `Admin\Helpers\AdminRows`, `AdminRowsSearch`, `AdminCollection`, `Benchmark` | `Admin\Crud\*` |
+| `Admin\Helpers\Layout` | `Admin\Layouts\Layout` |
+| `Admin\Helpers\Statistics\StatisticsView` | `Admin\Statistics\StatisticsView` |
+| `Admin\Helpers\AdminInstall`, `Admin\Helpers\Concerns\HasGitignoreTrait` | `Admin\Commands\AdminInstall`, `Admin\Commands\Concerns\HasGitignoreTrait` |
+| `Admin\Helpers\PersonalAccessToken` | `Admin\Models\PersonalAccessToken` |
+| `Admin\Hashing\*` | `Admin\Eloquent\Auth\*` |
+
+`Admin\Models\*`, `Admin\Admin\Buttons\*`, `Admin\Admin\Rules\*`, `Admin\Eloquent\*` and `Admin\Fields\*` keep their names. `admin:upgrade:namespaces` rewrites these classes too, also real-time facades (`Facades\Admin\Helpers\...`).
+
+Facades (`AdminCore`, `Fields`, `Image`, `ImageCompressor`) and the global helper functions keep their names. Run `composer update crudadmin/framework` after the upgrade, the file with the global functions moved.
+
 ## Laravel Octane and long running processes
 
 CrudAdmin runs on [Laravel Octane](/admin/octane) and in queue workers. Before every request, Octane task and tick and every queue job (except the `sync` connection) the state of CrudAdmin returns to the state after the boot.
 
 - `Admin::cache()`, `Admin::get()`, `Admin::set()`, `Admin::push()` and `cache()` of the `DataStore` trait keep values for one request or queue job, under PHP-FPM nothing changes. Code which relied on a value cached in a queue worker for all following jobs reads it again for every job. A new `DataStore::persist()` keeps values derived from the code and the config for the whole process.
 - Queue workers forget resolved facades before every job (except the `sync` connection), as Octane does before every request.
-- New `Admin\Core\Helpers\Store\RequestScoped` attribute: a static property marked with it gets its default value back before every request and job, with `#[RequestScoped(boot: true)]` its value after the boot. The flushers of the packages are replaced by it: `Cart::flushState()`, `LocalizedRoutes::flushState()`, `ApiSchema::flushState()`, `CKFinderHelper::flushState()`, `LocalizationHelper::flushState()`, `AdminResourcesSyncer::flushState()`, `Benchmark::flushState()` and the `flushState()` of the bank accounts of `crudadmin/invoices` are removed, as the `RestoresBootState` trait and `restoreBootState()` of `crudadmin/eshop`.
+- New `Admin\Core\State\RequestScoped` attribute: a static property marked with it gets its default value back before every request and job, with `#[RequestScoped(boot: true)]` its value after the boot. The flushers of the packages are replaced by it: `Cart::flushState()`, `LocalizedRoutes::flushState()`, `ApiSchema::flushState()`, `CKFinderHelper::flushState()`, `LocalizationHelper::flushState()`, `AdminResourcesSyncer::flushState()`, `Benchmark::flushState()` and the `flushState()` of the bank accounts of `crudadmin/invoices` are removed, as the `RestoresBootState` trait and `restoreBootState()` of `crudadmin/eshop`.
 - Octane and queue workers keep base fields and relations trees of the models for the whole worker, for every language, as `admin:cache` compiles them. Code in `fields()`, `mutateFields()`, `mutateBootedFields()` and field mutations which reads the logged administrator, the request or the database without being detected moves into a runtime mutation, `getFields($row)` or options.
 - Static properties which only held constants became class constants: `HasAdminExportsGenerators::$tempDir` is `TEMP_DIRECTORY`, `AdminResourcesSyncer::$fieldsTranslatableKeys` is `FIELDS_TRANSLATABLE_KEYS`. The deprecated `FileMutator::$requiredAttributes` is removed, use `RequiredRules::RULES`. `SeoModule::$metaKeys` of `crudadmin/website` is `SeoModule::META_KEYS`, `SocialAuth::$errorMessageKey` and `$photoColumn` of `crudadmin/socialite` are `ERROR_MESSAGE_KEY` and `PHOTO_COLUMN`.
 - The booted model properties (`fillable`, `casts`, `dates`, `hidden`) and the `boot()` of model modules run once per worker, language and variant (`web`, `console`) instead of once per request. A module `boot()` or a `cachableFieldsProperties()` callback which reads the request beyond the administration, the website and the console overrides `getCachablePropertiesVariant()` of the model.
-- New `Admin\Core\Helpers\Store\RequestShared` attribute for static properties kept for the whole process (registries, caches derived from the code). Mark every static property of the project with `#[RequestScoped]` or `#[RequestShared]`, `php artisan admin:upgrade:statics` lists the ones without them and the static variables of functions.
-- New `Admin\Core\Helpers\Store\RequestState`: `flushUsing()` registers a reset of other state, `bootRequestUsing()` runs request-dependent code of a service provider for every Octane request (right away under PHP-FPM), `iniSet()` changes a php.ini option until the end of the request.
+- New `Admin\Core\State\RequestShared` attribute for static properties kept for the whole process (registries, caches derived from the code). Mark every static property of the project with `#[RequestScoped]` or `#[RequestShared]`, `php artisan admin:upgrade:statics` lists the ones without them and the static variables of functions.
+- New `Admin\Core\State\RequestState`: `flushUsing()` registers a reset of other state, `bootRequestUsing()` runs request-dependent code of a service provider for every Octane request (right away under PHP-FPM), `iniSet()` changes a php.ini option until the end of the request.
 - `AdminPackageServiceProvider` has `$flush` (classes with a static `flushState()`, or callables) and `'shared' => true` for `$facades` entries of registries. The `admin.fields` registry (`Fields` facade) is a singleton.
 - `Localization::fire()` runs through `bootRequestUsing()`. Localization instances no longer register an own `LocaleUpdated` listener, one listener registered at boot passes the locale to the instances of the request. `LocalizationHelper::$skipChangeEvent` is removed.
 - `autoAjax()->throw()`, `throwValidation()` and `render()` throw `AutoAjax\AutoAjaxResponseException` (a `HttpResponseException`) instead of sending the response and calling `exit`. The status and body are the same and code after the call still does not run, but a surrounding `catch (Exception|Throwable $e)` now catches it: rethrow it, or pass `$e` to `autoAjax()->error($e)`, which rethrows it. The response goes through the middleware now (session, queued cookies, CORS).
@@ -536,7 +581,7 @@ CrudAdmin 6 moves configuration properties that share a name with a value of the
 
 - Removed `Admin\Helpers\Ajax` and its `Ajax` alias (CrudAdmin 3). Use `autoAjax()->success()`, `->error()`, `->message()` and `->throw()`.
 - Removed `Admin\Models\Model` (CrudAdmin 1). Extend `Admin\Eloquent\AdminModel`.
-- Removed `Admin\Helpers\File` and `Admin\Core\Helpers\File`. Use `Admin\Core\Helpers\Storage\AdminFile`, which has the same methods.
+- Removed `Admin\Helpers\File` and `Admin\Core\Helpers\File`. Use `Admin\Core\Storage\AdminFile`, which has the same methods.
 - Removed `Admin\Eloquent\Casts\DecimalCast`. CrudAdmin never applied it to any field; copy it into the project if a model uses it in `$casts`.
 - Removed unused model methods: `filePath()` (use `getStorageFilePath()` and `getFieldStorage()->path()`), `scopeFilterByParentField()` and `checkForChildrenModels()` (the `HasChildrens` trait).
 - Removed `hasAccessByTable($table, $permission)` of the admin user. Use `hasAccess(Admin::getModelByTable($table), $permission)`.

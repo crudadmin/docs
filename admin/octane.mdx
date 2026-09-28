@@ -45,7 +45,7 @@ Packages register their own resets, see [Package service provider](/admin/helper
 - A service provider boots once for the whole worker, with a fake console request. Code in `boot()` which reads the request (`request()`, headers, the URL, `Admin::isAdmin()`, `Admin::isFrontend()`) runs in a middleware, in a `RouteMatched` listener or through `RequestState::bootRequestUsing()`:
 
 ```php app/Providers/AppServiceProvider.php
-use Admin\Core\Helpers\Store\RequestState;
+use Admin\Core\State\RequestState;
 
 public function boot(): void
 {
@@ -64,7 +64,7 @@ public function boot(): void
 - Mark a static property which lives for one request with `#[RequestScoped]`. Before every request and job it gets back the default value of its declaration, reading it stays as fast as any static:
 
 ```php
-use Admin\Core\Helpers\Store\RequestScoped;
+use Admin\Core\State\RequestScoped;
 
 class MyHelper
 {

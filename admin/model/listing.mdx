@@ -446,7 +446,7 @@ php artisan admin:export StockExport
 ```php app/Admin/Exports/StockExport.php
 namespace App\Admin\Exports;
 
-use Admin\Contracts\Exports\AdminExport;
+use Admin\Exports\AdminExport;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 
@@ -489,7 +489,7 @@ A `question()` method asks for confirmation or custom inputs before the export i
 
 ### Export of selected records
 
-An export extending `Admin\Contracts\Exports\AdminButtonExport` is rendered as a record button. It generates the file for one record, or a ZIP archive with one file per record when more records are selected.
+An export extending `Admin\Exports\AdminButtonExport` is rendered as a record button. It generates the file for one record, or a ZIP archive with one file per record when more records are selected.
 
 ```php
 class InvoiceExport extends AdminButtonExport
@@ -516,7 +516,7 @@ The file uses the standard export private storage and download endpoint. Existin
 
 ```php
 protected $exports = [
-    \Admin\Contracts\Exports\TableExportXls::class,
+    \Admin\Exports\TableExportXls::class,
 ];
 
 // Change the exported value of a column
