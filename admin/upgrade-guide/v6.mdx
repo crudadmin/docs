@@ -397,7 +397,7 @@ CrudAdmin runs on [Laravel Octane](/admin/octane) and in queue workers. Before e
 
 ## Replaced settings.xls with TableExportXls
 
-- Remove `xls` from model settings and add `\Admin\Contracts\Exports\TableExportXls::class` to `$exports`. Install `phpoffice/phpspreadsheet` if needed.
+- Remove `xls` from model settings and add `\Admin\Exports\TableExportXls::class` to `$exports`. Install `phpoffice/phpspreadsheet` if needed.
 - The rows endpoint no longer accepts `download` to create files. Use the standard export endpoint and its `download_url` response; replace custom uses of the removed `SheetDownloader` helper.
 - Table formatting, filters and the `setSheet{Column}Attribute()` / `setExcelSheet()` hooks are preserved. Files now use the normal private export storage; empty results produce a valid workbook.
 
@@ -488,7 +488,7 @@ public function getFilterStates()
 - PHP `crudadmin/helpers` 2.0 requires CrudAdmin 6 and framework 6.0.1 or the matching `6.0-dev` branch. Its `BootstrapRequest` inherits section composition and cache from the framework; existing project subclasses retain their namespace, client and token handling. Replace pinned `1.4.0` constraints with `^2.0` when upgrading.
 
 - App store startup flags now live in `boot` (`ready`, `loading`, `error`, `componentsLoaded`); replace `booted` checks with `boot.ready === true` and `isLoaded` with `boot.componentsLoaded`. Read `locale` and content `languages` from `useLocaleStore()` (`@crudadmin/helpers/store`). Replace `admin_languages` with `useSettingStore().languages`, read the selected interface language from the locally extended `useLocaleStore().current` getter, and read `gettext` from `settingStore.editor.gettext`. The temporary `appStore.localization` group is removed, and `model_settings` is now `settingStore.editor.available`, set by `crudadmin/admin-editor`. Update custom components reading the old top-level fields.
-- The admin-specific bootstrap request and controller live in `crudadmin/crudadmin` (`Admin\Bootstrap\AdminBootstrapRequest`, `Admin\Controllers\BootstrapController`). The reusable `Admin\Core\Utilities\BootstrapRequest` remains in `crudadmin/framework`.
+- The admin-specific bootstrap request and controller live in `crudadmin/crudadmin` (`Admin\Bootstrap\AdminBootstrapRequest`, `Admin\Http\Controllers\BootstrapController`). The reusable `Admin\Core\Bootstrap\BootstrapRequest` remains in `crudadmin/framework`.
 
 - CKEditor receives filebrowser URLs directly in its instance configuration. Custom editor initializers must supply those options from `useSettingStore().filemanager` inside the admin or `CAEditor.config.filemanager` after public-page editor bootstrap. Republish the matching CKEditor `config.js`; the `window.crudadmin.ckeditorConfig(config)` customization hook remains supported.
 
@@ -654,7 +654,7 @@ The menu is declared by the `navigation` section of `bootstrap/admin.php`, a tre
 - `admin.groups` is reported by the config check like the other changed keys; its value keeps working until the step moves it. Packages still merge their groups into `config('admin.groups')`, they are used for groups the section does not name.
 - A model the section does not list is placed by `$group` at the end of that group, so `$group` stays the default placement of new models and of package models. A project without the section renders the CrudAdmin 5 menu.
 - The order of the models set follows the section; `models_order` of the development line is no longer read and is dropped by the next write of the file. Children of a model are ordered by its `childs` setting, then by the models set.
-- `getModelGroupsTree()` was removed from admin models. Read the menu from `AdminTree::get()` or `Admin\Helpers\Navigation\Navigation`.
+- `getModelGroupsTree()` was removed from admin models. Read the menu from `AdminTree::get()` or `Admin\Navigation\Navigation`.
 - The sidebar was rewritten: `SidebarRow.vue` is replaced by `SidebarMenu`, `SidebarItem`, `SidebarGroup` and `SidebarModel`, and the `crudadmin:close-sidebar-menu` browser event no longer exists. Classes (`sidebar-menu`, `treeview`, `treeview-list`, `treeview-menu`, `active`) and the `data-model` attribute are unchanged.
 - With `crudadmin/admin-editor`, **Upraviť menu** in the Editor mode dropdown (or the pencil of the sidebar) edits the section in a modal: drag models and groups, create groups, rename groups and models, change their icons. Renaming a model rewrites `protected $name` in its source file.
 
