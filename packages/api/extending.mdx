@@ -57,6 +57,25 @@ GET /admin/api/v1/models/posts?include=postComments
 
 Rows of a child model are not filtered by the parent automatically. Filter them by the foreign column, e.g. `filter[post_id]=5`.
 
+### Other relations of the model
+
+Relations which are not fields, child or parent models are not included, the API answers `400` and the message names the `$apiRelations` property. List them there to allow them:
+
+```php app/Models/Invoice.php
+protected $apiRelations = ['proformInvoice'];
+
+public function proformInvoice()
+{
+    return $this->belongsTo(self::class, 'id', 'proform_id')->whereIn('type', ['invoice', 'advance']);
+}
+```
+
+```text
+GET /admin/api/v1/models/invoices?include=proformInvoice.invoicesItems
+```
+
+The related model has to be an admin model. The constraints of the relation, the `read` permission and `scopeAdminRows()` of the related model apply as for other relations, and nested includes continue with the relations of the related model.
+
 ## Localized values
 
 With [localization](/admin/model/localization) enabled, send the `App-Locale` header to receive the values of one language. Without it, localized fields return all languages.

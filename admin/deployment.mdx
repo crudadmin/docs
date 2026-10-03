@@ -1,47 +1,135 @@
 ---
 title: "Deployment"
-description: "The deploy script of a CrudAdmin project: dependencies, schema, assets, caches and workers."
+description: "The deploy script of CrudAdmin projects: dependencies, schema, assets, caches, workers and Octane."
 icon: "rocket"
 ---
 
 ## Deploy script
 
-Every project keeps a `deploy` file in its root and runs it on the server in the project directory after the new code is ready to be pulled.
+Every project keeps the same `deploy` file in its root and runs it on the server in the project directory:
 
-```bash deploy
-#!/bin/bash
-git pull
-composer install
-
-# Caches of the previous release must not be read by the steps below
-php artisan optimize:clear
-
-php artisan admin:migrate -f
-php artisan admin:update
-php artisan cache:clear
-
-npm ci
-npm run build
-
-# Config, events, routes, views and the compiled admin models
-php artisan optimize
-
-# Workers boot again with the new code and the new caches
-php artisan queue:restart
+```bash
+bash deploy
 ```
 
-| Step | Why |
-| --- | --- |
-| `composer install` | Installs the locked versions, CrudAdmin packages included. |
-| `optimize:clear` | Removes the cached config, routes, events, views and admin models of the previous release, so the migration and the update read the new code. |
-| `admin:migrate -f` | Builds the schema of every admin model, see [Migrations](/admin/model/migrations). A removed field asks before its column is dropped; add `--auto-drop` when the script has to drop it without asking. |
-| `admin:update` | Publishes the admin assets of the installed version. |
-| `cache:clear` | Clears the application cache, cached data of the previous release may not match the new models. |
-| `npm run build` | Builds the frontend of the project. |
-| `optimize` | Caches the config, events, routes and views and compiles the admin models (`admin:cache`), see [Performance cache](/admin/commands#performance-cache). |
-| `queue:restart` | Queue workers finish their job and start again with the new code. |
+The script adapts to the project, the same file works in every one of them. Settings of a single project belong to [`deploy.conf`](#project-settings) next to it, the `deploy` file itself is never edited.
 
-Restart every other long running process after `optimize` in the same way, for example `php artisan reverb:restart` for a Reverb websocket server or `php artisan octane:reload` for [Laravel Octane](/admin/octane).
+**Current version: 1.0.0.** Check the version of a project with:
+
+```bash
+bash deploy --version
+```
+
+The version is also printed at the start and at the end of every deploy.
+
+### Installation
+
+The script ships with CrudAdmin, every version of it is committed in `crudadmin/crudadmin`. Publish it into the root of the project and commit it:
+
+```bash
+php artisan vendor:publish --tag=admin.deploy
+```
+
+After a CrudAdmin update which brings a new version of the script, publish it again with `--force`. `deploy.conf` of the project stays untouched. Projects on CrudAdmin 5 and older copy the file from a project which has it.
+
+### Steps
+
+| Step | Runs when | Why |
+| --- | --- | --- |
+| `git pull --ff-only` | always, unless `DEPLOY_GIT_PULL=false` | Pulls the new release, refuses diverged branches instead of merging on the server. |
+| `composer install` | always | Installs the locked versions, CrudAdmin packages included. |
+| `optimize:clear` | always | Removes the cached config, routes, events, views and admin models of the previous release, so the migration and the update read the new code. |
+| `migrate --force` | `DEPLOY_MIGRATE=true` | Laravel migrations, for projects which have tables outside of the admin models. |
+| `admin:migrate -f` | CrudAdmin is installed | Builds the schema of every admin model, see [Migrations](/admin/model/migrations). |
+| `admin:update` | CrudAdmin is installed | Publishes the admin assets of the installed version. |
+| `cache:clear` | always | Cached data of the previous release may not match the new models. |
+| `npm ci`, `npm run build` | the project has a `vite*.config.*` file and a `package.json` | Builds the frontend. `npm install` runs instead of `npm ci` when there is no `package-lock.json`. |
+| `optimize` | always | Caches the config, events, routes and views and compiles the admin models (`admin:cache`), see [php artisan optimize](#php-artisan-optimize). |
+| `queue:restart` | always | Queue workers finish their job and start again with the new code. |
+| `horizon:terminate` | Laravel Horizon is installed | Horizon starts again under its process monitor. |
+| `reverb:restart` | Laravel Reverb is installed | The websocket server starts again. |
+| `pulse:restart` | Laravel Pulse is installed | The Pulse workers start again. |
+| `octane:reload` | Laravel Octane is installed and its server runs | Workers keep the application, the config and the Vite manifest in memory, they boot again last. |
+
+A failed step stops the deploy, except the steps below. The deploy goes on without them, lists them at the end and exits with `1`:
+
+- `optimize` fails, usually on a closure in a config file. The script caches only the routes, views and events then.
+- The project calls `env()` outside of the config files. The script removes the cached config, `env()` would return `null` with it.
+- Restarting a queue, Horizon, Reverb or Pulse fails.
+
+### Queue workers
+
+`queue:restart` only asks the running workers to stop after their current job. A process monitor starts them again with the new code, Supervisor on our servers. Keep its config in the project, e.g. `project-supervisor.conf`, and run the workers with the PHP version of the project:
+
+```ini project-supervisor.conf
+[program:project-supervisor]
+process_name=%(program_name)s_%(process_num)02d
+command=/usr/bin/php8.5 /var/www/project.com/data/sub/api/artisan queue:work --sleep=3 --tries=3 --max-time=3600
+autostart=true
+autorestart=true
+stopasgroup=true
+killasgroup=true
+user=project.com
+numprocs=2
+redirect_stderr=true
+stdout_logfile=/var/www/project.com/data/sub/api/storage/logs/worker.log
+stopwaitsecs=3600
+```
+
+### Octane
+
+The script reloads the workers of [Laravel Octane](/admin/octane) when the project requires `laravel/octane` and the server runs. When it does not run, the deploy says so and goes on.
+
+## Project settings
+
+`deploy.conf` in the project root is a bash file read before the first step. Commit it with the project. It is optional, most projects need none.
+
+| Setting | Default | Meaning |
+| --- | --- | --- |
+| `PHP` | `php` | PHP binary of the project, e.g. `php8.3` on a server where the default PHP is newer. Composer runs with it too. |
+| `DEPLOY_GIT_PULL` | `true` | `false` deploys the code which is already in the directory. |
+| `DEPLOY_MIGRATE` | `false` | `true` runs `php artisan migrate --force` before `admin:migrate`. |
+| `DEPLOY_ADMIN_MIGRATE` | `-f` | Options of `admin:migrate`. Add `--auto-drop` to drop the columns of removed fields without asking, `""` for old CrudAdmin versions without `-f`. |
+| `DEPLOY_ADMIN_UPDATE` | `true` | `false` skips `admin:update`. |
+| `DEPLOY_NPM` | `auto` | `auto` builds when there is a Vite config, `true` builds always (e.g. Laravel Mix), `false` never. |
+| `DEPLOY_NPM_INSTALL` | `auto` | `ci`, `install`, or `false` to skip installing. `auto` is `ci` with a `package-lock.json`, `install` without it. |
+| `DEPLOY_NPM_SCRIPTS` | `build` | npm scripts run one by one, e.g. `"build build:admin"`. |
+| `DEPLOY_OPTIMIZE` | `true` | `false` skips `php artisan optimize`. |
+
+Hooks are bash functions defined in `deploy.conf`: `deploy_before` runs before `git pull`, `deploy_before_npm` and `deploy_after_npm` around the frontend build, `deploy_after` at the end.
+
+```bash deploy.conf
+# Settings of the deploy script in this project, see https://docs.crudadmin.com/admin/deployment#project-settings
+
+# Admin and the website are built by separate Vite configs
+DEPLOY_NPM_SCRIPTS="build build:admin"
+
+deploy_after() {
+    php artisan sitemap:generate
+}
+```
+
+A project on Laravel Mix:
+
+```bash deploy.conf
+DEPLOY_NPM=true
+DEPLOY_NPM_INSTALL=install
+DEPLOY_NPM_SCRIPTS="prod"
+```
+
+Environment variables override the defaults for one run, settings in `deploy.conf` win over them:
+
+```bash
+DEPLOY_GIT_PULL=false bash deploy
+```
+
+## Versions
+
+| Version | Changes |
+| --- | --- |
+| 1.0.0 | First version of the shared script: CrudAdmin commands, Vite build, `optimize`, queue, Horizon, Reverb and Pulse restarts, Octane reload, `deploy.conf` settings and hooks. |
+
+Raise the version in `src/Resources/deploy/deploy` of crudadmin and add a row here with every change of the script.
 
 ## php artisan optimize
 

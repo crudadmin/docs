@@ -123,7 +123,7 @@ The parameters follow the conventions of [spatie/laravel-query-builder](https://
 
 The parameters reach only what the API describes, the same for every token:
 
-- `include` accepts relations of the model: its `belongsTo` / `belongsToMany` fields, child models and parent models of `$belongsToModel`, by their camelCase names listed in `/admin/api/v1/models`. The administrator needs the `read` permission of the related model, and [`scopeAdminRows()`](/admin/model/listing) of the related model limits the included rows as in the administration.
+- `include` accepts relations of the model: its `belongsTo` / `belongsToMany` fields, child models and parent models of `$belongsToModel`, by their camelCase names listed in `/admin/api/v1/models`, and the relations listed in [`$apiRelations`](/packages/api/extending#other-relations-of-the-model). The administrator needs the `read` permission of the related model, and [`scopeAdminRows()`](/admin/model/listing) of the related model limits the included rows as in the administration.
 - `filter`, `sort` and `fields` accept only the API columns and the timestamps above.
 - Scope filters apply only scopes declared on the model itself, internal scopes of CrudAdmin are not available.
 
