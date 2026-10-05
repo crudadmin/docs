@@ -1,0 +1,202 @@
+---
+title: "Sharing data with the frontend"
+description: "The JSON format of our APIs and how the store object of a response lands in Pinia stores through @crudadmin/helpers."
+icon: "arrow-right-left"
+---
+
+The backend shares data with the frontend through Pinia stores. It does not hand data to a component which then copies it into state; it tells the frontend which store gets what. This page describes the contract between both sides. The backend half is `autoAjax()` from `crudadmin/autoajax`, the frontend half is `Response` from `@crudadmin/helpers`.
+
+## The response
+
+Every endpoint answers with `autoAjax()`. Its JSON contains only the keys which were set:
+
+```json
+{
+    "type": "success",
+    "title": "Saved",
+    "message": "The event has been updated.",
+    "redirect": "/events/15",
+    "error": false,
+    "data": {
+        "pagination": {},
+        "toast_duration": 5000
+    },
+    "store": {
+        "auth": { "driver": "users", "user": { "id": 15 } },
+        "event/updateEvent": { "id": 15, "name": "Friday match" }
+    }
+}
+```
+
+| Key | Set by | What the frontend does with it |
+| --- | --- | --- |
+| `message`, `title`, `type`, `error` | `->message()`, `->success()`, `->error()`, `->title()`, `->type()` | `useResponse()` shows a toast, an error toast for a 4xx/5xx code, `error: true` or `type: "error"` |
+| `data` | `->data([...])` | Returned to the caller. Data of one component only: a page of rows, a created id |
+| `data.toast_duration` | `->duration($seconds)` | Duration of the toast |
+| `store` | `->store([...])` | Bound into Pinia stores by `useResponse()` |
+| `redirect`, `callback` | `->redirect()`, `->callback()` | Read by the caller |
+
+Turn the `store` key on in every project. Without it, `autoAjax()` merges the store data into `data` and nothing reaches the stores:
+
+```php config/autoajax.php
+return [
+    'store' => true,
+];
+```
+
+<Note>
+Hybrid projects serving older apps sometimes switch this per request (`'store' => isHybridApp()`). New projects set it to `true`.
+</Note>
+
+## How `store` is bound
+
+`useResponse(response)` walks the keys of `store` and every registered Pinia store. A key matches a store by its id (the first argument of `defineStore()`):
+
+| Key in `store` | Effect |
+| --- | --- |
+| `"auth": { "user": {...}, "driver": "users" }` | Every property is written into the `auth` store: `auth.user = ...`, `auth.driver = ...` |
+| `"auth/user": {...}` | One property of the `auth` store: `auth.user = ...` |
+| `"event": { "setEvents": [...] }` | A property naming an **action** calls it: `event.setEvents([...])` |
+| `"event/updateEvent": {...}` | Calls one action: `event.updateEvent({...})` |
+| `"auth/logout": null` | Calls an action without data |
+
+A key of a store which is not registered is ignored. Properties which the store does not declare are added to it, so keep the names of both sides the same.
+
+```js app/store/eventStore.js
+export const useEventStore = defineStore('event', {
+    state: () => ({ types: [], events: [] }),
+
+    actions: {
+        updateEvent(event) {
+            const index = this.events.findIndex((e) => e.id == event.id);
+
+            index > -1 ? this.events.splice(index, 1, event) : this.events.push(event);
+        },
+
+        deleteEvent(id) {
+            this.events = this.events.filter((e) => e.id != id);
+        },
+    },
+});
+```
+
+<Warning>
+Name sections and stores in the singular: `event`, `setting`, `friend`. The bootstrap section `event()` fills the store `event`, the store is defined as `defineStore('event', ...)` and used as `useEventStore()`.
+</Warning>
+
+## Patterns on the backend
+
+### Shared data on boot
+
+Data the whole app needs (settings, code lists, the logged user, translations) is a section of the [bootstrap request](/development/bootstrap). The frontend fetches it once on start and refreshes it in the background, see [App boot and auth](/development/frontend/boot).
+
+```php app/Utilities/Bootstrap/AppRequest.php
+public function setting()
+{
+    return [
+        'map' => config('services.map'),
+        'reportReasons' => ReportReason::all(),
+    ];
+}
+```
+
+### Return the changed sections
+
+An action which changes shared data answers with the sections it changed. The frontend gets them in the same shape as on boot:
+
+```php app/Http/Controllers/Auth/ProfileController.php
+public function update(ProfileRequest $request)
+{
+    client()->update($request->validated());
+
+    return autoAjax()
+        ->success(_('Your profile has been updated.'))
+        ->store(AppRequest::only(['auth']));
+}
+```
+
+`AppRequest::only([...])` takes any sections, with their caches and guest rules. Several of them go into one response:
+
+```php
+return autoAjax()
+    ->data(['test' => $test, 'reward' => $reward])
+    ->store(AppRequest::only(['auth', 'streak', 'heart']));
+```
+
+### Call a store action
+
+When the frontend holds a list and only one row changed, call an action of the store instead of sending the whole section again:
+
+```php app/Http/Controllers/EventController.php
+return autoAjax()
+    ->success(_('The event has been saved.'))
+    ->store(['event/updateEvent' => $event->setResponse()]);
+
+return autoAjax()
+    ->message(_('The event has been deleted.'))
+    ->store(['event/deleteEvent' => $event->getKey()]);
+
+return autoAjax()->store(['auth/logout' => null]);
+```
+
+### Data of one component
+
+Data used by one page only (a paginated list, a search result) goes into `data` and is returned to the caller:
+
+```php
+return autoAjax()->data([
+    'pagination' => $notifications->paginate(20),
+]);
+```
+
+`data` and `store` can be combined: the page gets its rows from `data`, while the shared counters update through `store`.
+
+### Login and registration
+
+The auth controllers of `crudadmin/helpers` answer with an `AuthResponse` (`driver`, `user`, `token`) in `data` by default. Set the response to `bootstrap` and they answer with the authenticated sections of the bootstrap request instead, so the token, the user and all data of the logged user arrive in one response:
+
+```php config/admin_helpers.php
+'auth' => [
+    'response' => 'bootstrap',
+],
+```
+
+The frontend understands both forms, see [`useAuth()`](/development/frontend/boot#auth).
+
+## Patterns on the frontend
+
+Every request goes through `useAxios()` and every response, including errors, through `useResponse()`:
+
+```js
+try {
+    const response = await useAxios().$postOnline('api/events/' + event.id + '/attendees', {});
+
+    useResponse(response); // toast + stores
+
+    return response.data;
+} catch (e) {
+    useResponse(e); // validation, 401/403/404 and server errors as a toast
+}
+```
+
+Components then read the stores, not the response:
+
+```vue
+<script setup>
+const eventStore = useEventStore();
+</script>
+
+<template>
+    <EventCard v-for="event in eventStore.events" :key="event.id" :event="event" />
+</template>
+```
+
+The details are in [Requests and responses](/development/frontend/requests) and [Pinia stores](/development/frontend/stores).
+
+## Checklist
+
+- [ ] `config/autoajax.php` has `'store' => true`.
+- [ ] Every section of the bootstrap has a store with the same id, registered with `Response.addStores()`.
+- [ ] Names are singular on both sides.
+- [ ] Actions changing shared data return the changed sections or call a store action.
+- [ ] Components call `useResponse()` on every response and error.

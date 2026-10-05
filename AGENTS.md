@@ -62,7 +62,15 @@ How new packages are added to this tab is described in `../../dependencies/READM
 
 ### Tab: Development structure — `development/`
 
-Project structure and conventions shared across our applications: `development/index` and the bootstrap request (`development/bootstrap`).
+Project structure and conventions shared across our applications: how a Laravel backend shares data with Nuxt, Ionic and Vue frontends through the `@crudadmin/helpers` npm package (source `../../../crudhelpers`, repository `crudadmin/crudhelpers`; its `README.md` is the API reference).
+
+| Group | Pages |
+| --- | --- |
+| Getting started | `development/index` (the stack, `@crudadmin/helpers` as the main pillar), `development/communication` (response format, `store` binding rules, controller patterns) |
+| Backend | `development/bootstrap` (`AppRequest` sections, guests, cache, several apps) |
+| Frontend | `development/frontend/{index,boot,requests,stores,modals,localization}`: installation, Nuxt layer boot and auth, `useAxios()`/`useResponse()`, Pinia stores, modals and toasts, url localization |
+
+Keep the frontend pages in sync with the package README when the package changes. All pages of this tab are bundled into the `crudadmin-development` Boost skill.
 
 ### Assets
 
@@ -106,7 +114,7 @@ Every legacy content page has been migrated:
 The documentation is also the source of the [Laravel Boost](https://laravel.com/docs/boost) guidelines and skills which `crudadmin/crudadmin` ships to AI agents of projects (installed by `php artisan boost:install`, see `admin/installation#ai-assistants`).
 
 - `ai/guidelines/` holds the guidelines, copied as they are. `core.blade.php` is loaded into every agent session of a project, keep it short: rules an agent breaks without them.
-- `ai/skills/<name>/SKILL.md` is the hand written entry of a skill (`crudadmin-models`, `crudadmin-fields`, `crudadmin-frontend`). `ai/boost.json` lists the pages bundled into each skill as `references/*.md`.
+- `ai/skills/<name>/SKILL.md` is the hand written entry of a skill (`crudadmin-models`, `crudadmin-fields`, `crudadmin-frontend`, `crudadmin-development`). `ai/boost.json` lists the pages bundled into each skill as `references/*.md`.
 - `bin/build-boost` converts the listed pages from MDX to plain markdown into `../../dependencies/crudadmin/resources/boost` (git ignored there). Links to bundled pages point to the bundled copy, other links to `https://docs.crudadmin.com`; feature marks, images and Mintlify components are stripped.
 - `bin/build-boost --check` tells whether the built resources are out of date. The release of crudadmin runs `bin/build-boost --release`, which refuses uncommitted sources, so commit the pages and `ai/` before releasing crudadmin.
 - A page bundled into a skill is read by agents without the site around it. A new page of the CrudAdmin tab belongs into `ai/boost.json` when it documents how to write project code; then rebuild.

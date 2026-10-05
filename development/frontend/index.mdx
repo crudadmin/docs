@@ -1,0 +1,106 @@
+---
+title: "@crudadmin/helpers"
+description: "The npm package through which every Nuxt, Ionic and Vue frontend communicates with a CrudAdmin backend."
+icon: "package"
+---
+
+`@crudadmin/helpers` is the frontend half of every project. Use it in every Nuxt website, Ionic + Capacitor app and Vue SPA talking to a CrudAdmin backend, so all projects request, authenticate and share data the same way. The CrudAdmin administration uses it too.
+
+Source: [github.com/crudadmin/crudhelpers](https://github.com/crudadmin/crudhelpers). The package `README.md` is the full API reference, `MIGRATION-*.md` describe the upgrades.
+
+## What it contains
+
+| Entry | Contents |
+| --- | --- |
+| `@crudadmin/helpers` | `Axios`, `Response`, `Network`, the helpers stores, `Translator`, `CrudadminVue`, `Modal`, `Toast` |
+| `@crudadmin/helpers/nuxt` | The Nuxt layer: boot, bootstrap, auth, translations, url localization, auto-imports |
+| `@crudadmin/helpers/helpers` | `useAxios`, `useResponse`, `useObjectToFormData`, `useSleep`, `useLazyClick`, `generateUuid`, `useIsVersionNewer`, `AutoImportPreset` |
+| `@crudadmin/helpers/store` | `useLocaleStore`, `useAjaxStore`, `useNetworkStore`, `useMobileStore`, `useOtpStore` |
+| `@crudadmin/helpers/definitions` | Options of the `app` and `auth` stores, for extending them |
+| `@crudadmin/helpers/modal` | `Modal`, `Toast`, `ModalRenderer`, `ToastRenderer`; depends on Vue only |
+| `@crudadmin/helpers/capacitor` | `Capacitor`, `Mobile`: native boot, keyboard, network state and refresh |
+| `@crudadmin/helpers/nuxt/stores`, `@crudadmin/helpers/nuxt/composables` | `useAppStore`, `useAuthStore`, `useBootstrap`... for layers importing them directly |
+
+## Requirements
+
+- Vue 3.4+, Pinia 3 or 4. In Nuxt also `@pinia/nuxt`.
+- `@ionic/vue`, `@capacitor/keyboard` and `@capacitor/network` only for `@crudadmin/helpers/capacitor`.
+- On the backend: `crudadmin/helpers` for the bootstrap request and auth, and `crudadmin/autoajax` with `'store' => true`.
+
+## Installation
+
+```bash
+npm install @crudadmin/helpers pinia @pinia/nuxt
+```
+
+<Warning>
+Do not symlink the package into a Nuxt project (`npm link`, or a `file:` dependency without `--install-links`). Nuxt then loads Vue and Pinia from the linked folder and the app gets two copies of them. To work on a local copy, run `npm install --install-links ../path/to/crudhelpers`, and run it again after every change of the package.
+</Warning>
+
+### Nuxt
+
+Extend the layer. It registers the plugins, the stores and the auto-imports, so `useAxios()`, `useResponse()`, `useAuth()`, `__()` and the stores work without an import.
+
+```ts nuxt.config.ts
+export default defineNuxtConfig({
+    extends: ['@crudadmin/helpers/nuxt'],
+
+    modules: ['@pinia/nuxt'],
+
+    crudadmin: {
+        bootstrap: { enabled: true },
+    },
+});
+```
+
+The options of `crudadmin` are described in [App boot and auth](/development/frontend/boot) and [Localization](/development/frontend/localization).
+
+The layer is used by other layers too: `@crudadmin/eshop` extends it, registers its own stores and headers, and turns the bootstrap on.
+
+### Vite, Ionic or Vue without Nuxt
+
+Without Nuxt there is no layer, so the app wires the pieces itself in `main.js`:
+
+```js src/main.js
+import { createApp } from 'vue';
+import { createPinia } from 'pinia';
+import { Axios, Response, CrudadminVue } from '@crudadmin/helpers';
+import { Capacitor } from '@crudadmin/helpers/capacitor';
+
+const app = createApp(App).use(createPinia()).use(router).use(CrudadminVue);
+
+Axios.setOptions({
+    baseURL: import.meta.env.VITE_APP_SERVER_URL,
+    token: () => useAuthStore().token?.token,
+    locale: () => useLocaleStore().locale,
+    // app-platform, app-version and app-type, built by the project (the Nuxt layer does it for you)
+    headers: (headers) => ({ ...headers, ...platformHeaders() }),
+});
+
+// useAppStore and useAuthStore are defined by the project, from @crudadmin/helpers/definitions
+
+Response.addStores([useAppStore, useAuthStore, useLocaleStore, useSettingStore]);
+
+new Capacitor({
+    user: () => useAuthStore().user,
+    refresh: () => useAppStore().refreshApp(),
+}).ready(() => app.mount('#app'));
+```
+
+`refreshApp()` of such an app fetches the bootstrap itself and passes the response to `useResponse()`, see [Without the Nuxt layer](/development/frontend/boot#without-the-nuxt-layer).
+
+For auto-imports, add the helpers stores to `unplugin-auto-import` and re-export the composables:
+
+```js vite.config.js
+import { AutoImportPreset } from '@crudadmin/helpers/helpers';
+
+AutoImport({ imports: ['vue', 'pinia', AutoImportPreset()] });
+```
+
+```js src/composables/helpers.js
+export * from '@crudadmin/helpers/helpers';
+```
+
+## The administration
+
+The CrudAdmin administration is a Vue SPA built on the same package. It loads `GET /admin/api/bootstrap`, binds the `store` object into its Pinia stores through `Response`, installs `CrudadminVue` for the gettext catalog of the `locale` store, and uses `Modal` and `Toast`. Its own backend class `Admin\Bootstrap\AdminBootstrapRequest` extends the same `Admin\Core\Bootstrap\BootstrapRequest` as the `AppRequest` of your projects. See [Admin Vue API](/admin/frontend/vue).

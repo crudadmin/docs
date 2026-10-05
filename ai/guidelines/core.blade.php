@@ -11,6 +11,7 @@ CrudAdmin generates the administration, the forms, the validation and the databa
 - Labels (`$name`, `$title`, field `name`, `title`, `placeholder`) are literal gettext source messages, not Laravel translation keys.
 - Inside an admin model `$this->name` and `$this->title` are model parameters. Read a column with the same name through `$this->getAttribute('name')`.
 - Before using a parameter, field type or helper, read the matching `crudadmin-*` skill. Do not guess parameter names from other admin panels.
+- Frontends (Nuxt, Ionic, Vue) get their data through the bootstrap request and `autoAjax()->store()`, bound into Pinia stores by the `@crudadmin/helpers` npm package. Read the `crudadmin-development` skill before adding a bootstrap section, a response for a frontend or a frontend store.
 
 @verbatim
 <code-snippet name="Admin model with fields" lang="php">

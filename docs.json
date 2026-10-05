@@ -193,14 +193,29 @@
         "groups": [
           {
             "group": "Getting started",
+            "icon": "rocket",
             "pages": [
-              "development/index"
+              "development/index",
+              "development/communication"
             ]
           },
           {
-            "group": "Requests",
+            "group": "Backend",
+            "icon": "server",
             "pages": [
               "development/bootstrap"
+            ]
+          },
+          {
+            "group": "Frontend",
+            "icon": "monitor",
+            "pages": [
+              "development/frontend/index",
+              "development/frontend/boot",
+              "development/frontend/requests",
+              "development/frontend/stores",
+              "development/frontend/modals",
+              "development/frontend/localization"
             ]
           }
         ]

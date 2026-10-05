@@ -1,0 +1,144 @@
+---
+title: "Requests and responses"
+description: "useAxios() and useResponse() of @crudadmin/helpers: headers, request helpers, offline requests, toasts and the store binding."
+icon: "send"
+---
+
+Every request of a frontend goes through `useAxios()`, and every response, success or error, through `useResponse()`. That is what keeps the headers, the toasts and the Pinia stores consistent across projects.
+
+## A request
+
+```js
+try {
+    const response = await useAxios().$postOnline('api/profile', data);
+
+    useResponse(response);
+
+    return response.data;
+} catch (e) {
+    useResponse(e);
+}
+```
+
+`useAxios()` returns a new axios instance with the helpers interceptors. Its `$` methods resolve to the JSON body (`res.data` of axios), so `response` is the autoAjax response: `message`, `data`, `store`.
+
+## `useAxios()`
+
+| Method | |
+| --- | --- |
+| `$get`, `$post`, `$put`, `$patch`, `$delete`, `$head`, `$options`, `$request` | the axios method resolving to the body |
+| `$getOnline`, `$postOnline`, `$deleteOnline` | the same, with a connection toast first when the device is offline |
+| `$getAsync`, `$postAsync`, `$deleteAsync` | a request which must not be lost; see [Offline requests](#offline-requests) |
+| `loading(refOrCallback, key?)` | toggles a loading state for the request |
+| `get`, `post`... | plain axios, resolving to the axios response |
+
+```js
+const loading = ref(false);
+
+const response = await useAxios().loading(loading).$get('api/events', { params: { page: 2 } });
+
+// a key of a reactive object, or a callback
+useAxios().loading(state, 'saving').$post('api/events', data);
+useAxios().loading((value) => (this.loading = value)).$get('api/bootstrap');
+```
+
+Files go as `FormData`; `useObjectToFormData(object)` converts a nested object:
+
+```js
+await useAxios().$post('api/profile', useObjectToFormData({ name, avatar: file }), {
+    onUploadProgress: (e) => (progress.value = Math.round((e.loaded * 100) / e.total)),
+});
+```
+
+<Note>
+On a Nuxt server, `useAxios()` captures the current request when it is created. Create it in setup, a plugin or a hook, or pass the nuxtApp after an `await`: `useAxios(nuxtApp)`.
+</Note>
+
+## Headers
+
+Every request gets:
+
+| Header | Value |
+| --- | --- |
+| `Authorization` | `Bearer <token>` of the `auth` store |
+| `app-locale` | the language of the `locale` store |
+| `app-platform` | `web`, `ios`, `android`... |
+| `app-version` | the version of the native app |
+| `app-type` | `crudadmin.platform.type`, selects the bootstrap class of the app |
+
+The backend reads `app-locale` to set the language and `app-type` to choose the bootstrap class. Add your own headers through `Axios.addHeaders()`:
+
+```js plugins/01.app.js
+import { Axios } from '@crudadmin/helpers';
+
+export default defineNuxtPlugin(() => {
+    Axios.addHeaders(({ pinia }) => ({ 'Cart-Token': useCartStore(pinia).token }), 'eshop.cart');
+});
+```
+
+| | |
+| --- | --- |
+| `Axios.addHeaders(callback \| object, key?)` | headers merged into every request; the callback gets `{ headers, nuxtApp, pinia }`; returns a remover |
+| `Axios.onUnauthorized(callback, key?)` | runs on every 401 |
+| `Axios.configure(options)` | merges options (`baseURL`, `token`, `locale`, `headers`, `unauthorized`, `callback`) |
+| `Axios.setOptions(options)` | replaces them; used by apps without the Nuxt layer |
+
+A callback registered with a key is global and replaces the previous one of that key, so it must read request state through the `pinia` it is handed, never through a store captured elsewhere. Without a key, a callback registered in a plugin belongs to the current request only.
+
+## `useResponse()`
+
+`useResponse(response)` does two things.
+
+**It binds `store` into the Pinia stores.** Every key of the `store` object goes into the store with the same id, as described in [Sharing data with the frontend](/development/communication#how-store-is-bound).
+
+**It shows the message as a toast:**
+
+| Response | Toast |
+| --- | --- |
+| 401, 403 | `message` of the response, or "This content is no longer available" |
+| 404 | "The record was not found" |
+| 422 with `errors` | the validation messages joined |
+| `message` with a 4xx/5xx code, `error: true` or `type: "error"` | an error toast |
+| `message` otherwise | an info toast |
+| an error without a message (network failure, server crash) | "An unexpected error occurred" |
+
+The toast lasts `data.toast_duration`, set on the backend by `autoAjax()->duration($seconds)`.
+
+Without arguments `useResponse()` returns the `Response` object:
+
+```js
+useResponse().bindStores({ 'auth/continue': null }); // bind data which did not come from a response
+```
+
+## Offline requests
+
+`$postAsync`, `$getAsync` and `$deleteAsync` are for requests which must reach the backend even when the device is offline: a tracked event, a read receipt, a device token.
+
+```js
+await useAxios().$postAsync('api/profile', { device_id: id }, 'profile.device');
+```
+
+The response goes to `useResponse()` automatically. A failed request is stored in the `ajax` store and sent again by the network loop after `options.failedRequestDelaySeconds` (60 s by default). The third argument is a key; a second request with the same key is not queued while one is waiting. The bootstrap can tune the queue with an `ajax` section:
+
+```php
+public function ajax()
+{
+    return [
+        'options' => [
+            'maxErrorCount' => 5,
+            'failedRequestDelaySeconds' => 60,
+        ],
+    ];
+}
+```
+
+## Forms with `v-autoAjax`
+
+Projects using the `autoajax` JS package for forms route its requests through the same axios and response:
+
+```js plugins/03.autoajax.js
+autoAjax.setOptions({
+    process: (type, url, data) => useAxios()[type](url, data),
+    error: (e, response) => useResponse(response),
+});
+```

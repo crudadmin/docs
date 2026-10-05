@@ -1,11 +1,12 @@
 ---
 title: "Bootstrap request"
-description: "Every **vue, nuxt, ionic** app we are building contains of bootstrap request. Data returned from this request will be automatically binded into **Vuex/Pinia** stores in those SPA apps."
+description: "One GET request returning all data a Vue, Nuxt or Ionic app shares, split into sections which @crudadmin/helpers binds into Pinia stores of the same name."
+icon: "rocket"
 ---
 
-## Explanation
+Every app we build starts with the bootstrap request, `GET /api/bootstrap`. It returns the data the whole app shares: settings, code lists, translations, the logged user and their data. Each method of the `AppRequest` class is a **section**, and each section lands in the Pinia store with the same id. The frontend fetches it on start and refreshes it in the background, see [App boot and auth](/development/frontend/boot). The same sections are returned by other endpoints after a change, see [Sharing data with the frontend](/development/communication).
 
-This GET request is used to obtain all backend data, metadata, and all shared informations from backend.
+`?only=locale,auth` returns only the given sections; without it the request returns all sections of a guest or of a logged user.
 
 ## Shared PHP implementation
 
@@ -29,9 +30,22 @@ The cache is per class: call `forgetCache()` on the class which serves the secti
 
 ## Configuration
 
+Register the route of `crudadmin/helpers` and point the config to your class. The route answers `ANY /api/bootstrap?only=a,b` with `autoAjax()->store(...)`, and `bootstrapRequest()`, `BootstrapResolver::make()` and the bootstrap login response all resolve your `AppRequest` through the config.
+
 ```php routes/api.php
-Route::any('bootstrap', [BootstrapController::class, 'index']);
+// auth.optional:<guard> of crudadmin/helpers, the guard of your users
+Route::middleware(['auth.optional:user'])->group(function () {
+    AdminHelpers\Utilities\BootstrapResolver::routes(); // ANY bootstrap, ?only=a,b
+});
 ```
+
+```php config/admin_helpers.php
+'bootstrap' => [
+    'class' => App\Utilities\Bootstrap\AppRequest::class,
+],
+```
+
+The route sits behind an optional authentication middleware, so a guest gets the guest sections and a valid token the authenticated ones. Older projects have their own controller doing the same:
 
 ```php app/Http/Controllers/BootstrapController.php
 <?php
@@ -67,11 +81,7 @@ Projects with several apps (customer, courier...) select the request class by th
 ],
 ```
 
-```php routes/api.php
-AdminHelpers\Utilities\BootstrapResolver::routes(); // ANY bootstrap, ?only=a,b
-```
-
-`BootstrapResolver::make()` and the `bootstrapRequest()` function return a new instance of the selected class, `BootstrapResolver::getClass()` its name.
+The frontend of each app sends its type, in Nuxt through `crudadmin.platform.type`. The route registered by `BootstrapResolver::routes()` selects the class by it. `BootstrapResolver::make()` and the `bootstrapRequest()` function return a new instance of the selected class, `BootstrapResolver::getClass()` its name.
 
 ## AppRequest class
 
@@ -150,7 +160,7 @@ You can create shortcut to you AppRequest accordingly to your needs. Helpful if 
 
 ## Response and structure
 
-According your method naming, data will be automatically binded into Vuex/Pinia stores.
+Each section is a key of `store`, and [`useResponse()`](/development/frontend/requests#useresponse) writes it into the Pinia store with the same id.
 
 ```json
 {
@@ -187,7 +197,7 @@ According your method naming, data will be automatically binded into Vuex/Pinia 
 ```
 
 <Warning>
-For wrapping data in **store** object, you need to set `store` parameter to `true` in autoajax config.
+The data is wrapped in the `store` object only when `store` is `true` in the autoajax config. Otherwise it is merged into `data` and never reaches the stores.
 </Warning>
 
 ```php config/autoajax.php

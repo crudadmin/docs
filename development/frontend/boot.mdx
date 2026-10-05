@@ -1,0 +1,221 @@
+---
+title: "App boot and auth"
+description: "How the Nuxt layer of @crudadmin/helpers configures axios, fetches the bootstrap, refreshes it and keeps the user logged in."
+icon: "power"
+---
+
+The Nuxt layer boots every app the same way: axios defaults, the auth token, one bootstrap request filling the stores and its periodic refresh. A project only registers its own stores. The boot is off by default; turn it on in `nuxt.config`.
+
+## Configuration
+
+```ts nuxt.config.ts
+export default defineNuxtConfig({
+    extends: ['@crudadmin/helpers/nuxt'],
+
+    crudadmin: {
+        bootstrap: {
+            enabled: true,
+            path: 'api/bootstrap', // relative to baseURL
+            baseURL: null, // runtime config public.crudBootstrap.baseURL, then VITE_APP_SERVER_URL
+            only: [], // sections asked for on boot, empty = all
+            ssr: true, // fetch on the server when the app renders there
+            blocking: false, // SPA: wait for the bootstrap before mounting
+            refresh: true, // browser: refresh on reconnect and every refreshSeconds
+            refreshSeconds: 600, // backendEnv.APP_REFRESH_SECONDS wins
+        },
+        auth: {
+            storage: 'auto', // auto | cookie | local | preferences | false
+            cookie: { name: 'auth_token', maxAge: 31536000, sameSite: 'lax', secure: null },
+            logoutOnUnauthorized: true,
+            routes: {
+                login: 'api/auth/login',
+                logout: 'api/auth/logout',
+                register: 'api/auth/register/otp-verify',
+                user: 'api/user',
+                passwordForgot: 'api/auth/password/forgot',
+                passwordReset: 'api/auth/password/reset',
+            },
+        },
+        platform: { type: null, version: null }, // app-type header, native version override
+        capacitor: { enabled: false }, // native boot through @crudadmin/helpers/capacitor
+    },
+});
+```
+
+`platform.type` is sent as the `app-type` header. The backend selects the bootstrap class by it when one API serves several apps, see [Several applications](/development/bootstrap#several-applications).
+
+## What happens on boot
+
+| Where | What |
+| --- | --- |
+| plugin `02.axios` (always) | `Axios` and `Response` learn to find the current request |
+| plugin `03.bootstrap` | `Axios.configure()` with the baseURL, `Authorization` from the `auth` store, `app-locale` from the `locale` store, the `app-platform`, `app-version` and `app-type` headers; the helpers stores are registered in `Response`; the token is restored from its storage; a 401 forgets the user |
+| server, `app:created` | `GET <path>?only=...`, the sections are bound into the stores, which reach the client with the payload |
+| client after SSR | nothing is fetched again, the `crudadmin:bootstrap` hook runs with `hydrated: true` |
+| client SPA | the bootstrap is fetched in `app:created`, then the refresher starts |
+| plugin `04.capacitor.client` | `new Capacitor({ user, refresh, refreshSeconds }).ready()` instead of the browser refresher |
+
+The bootstrap is fetched in `app:created`, after every plugin, so the stores and headers registered by plugins of other layers and of the project are in place.
+
+### Plugin order
+
+Numbered plugins (`NN.name.js`) of every layer extending helpers run in the order of their numbers right after Pinia, before the Nuxt core plugins and before the plugins of the project: helpers `00`-`09`, eshop `10`-`19`. Do not use the router in them, use a hook. The plugins of the project itself are never reordered.
+
+### Registering project stores
+
+The only boot code a project needs is a plugin registering the stores which receive the bootstrap sections:
+
+```js plugins/01.app.js
+import { Axios, Response } from '@crudadmin/helpers';
+
+export default defineNuxtPlugin(() => {
+    Response.addStores([useSettingStore, useEventStore, useFriendStore, useNotificationStore]);
+
+    // project specific headers
+    Axios.addHeaders(() => ({ 'X-Socket-Id': useEchoSocketId() }), 'app.socket');
+});
+```
+
+See [Pinia stores](/development/frontend/stores) for the rules of `Response.addStores()`.
+
+## Refreshing
+
+```js
+const bootstrap = useBootstrap();
+
+await bootstrap.refresh(); // every section
+await bootstrap.refresh(['notification', 'event']); // only these sections
+
+await bootstrap.ready(); // the first bootstrap settled, awaitable in route middleware
+```
+
+`useAppStore().refreshApp(only)` does the same and is what the network refresher calls. The browser refresher runs on reconnect and every `refreshSeconds`; the backend can change the interval with `backendEnv.APP_REFRESH_SECONDS`.
+
+| `useBootstrap()` | |
+| --- | --- |
+| `refresh(only)` | fetches the bootstrap again, all sections or the given ones |
+| `addSections(sections)` | sections a layer needs when `bootstrap.only` restricts the boot |
+| `ready()` | starts the first bootstrap when it has not started yet, so route middleware can await it, also on the server |
+| `booted`, `loading`, `path` | |
+
+## Hooks
+
+```js
+export default defineNuxtPlugin((nuxtApp) => {
+    nuxtApp.hook('crudadmin:bootstrap:before', (ctx) => {
+        // { nuxtApp, source, partial, path, only, params, headers }, all mutable
+    });
+
+    nuxtApp.hook('crudadmin:bootstrap', (ctx) => {
+        // { nuxtApp, source, partial, hydrated, only, response, data }
+        // source: server | client | hydration | refresh | login | register | logout ...
+        registerPushNotifications();
+    });
+
+    nuxtApp.hook('crudadmin:bootstrap:error', ({ error }) => {});
+    nuxtApp.hook('crudadmin:auth:login', ({ user, response, source }) => {});
+    nuxtApp.hook('crudadmin:auth:logout', ({ source }) => {}); // logout | unauthorized
+    nuxtApp.hook('crudadmin:capacitor:ready', () => {});
+});
+```
+
+Code which has to run after every bootstrap (registering push notifications, checking a version) belongs in the `crudadmin:bootstrap` hook. Clean up of project stores after a logout belongs in `crudadmin:auth:logout`.
+
+## Auth
+
+```js
+const auth = useAuth();
+
+await auth.login({ email, password });
+await auth.register(data);
+await auth.logout();
+await auth.forgotPassword({ email });
+await auth.resetPassword(data);
+await auth.fetchUser();
+
+auth.loggedIn.value; // boolean
+auth.user.value; // the logged user
+```
+
+| `useAuth()` | |
+| --- | --- |
+| `login(data)`, `register(data)`, `logout(options)` | requests to `auth.routes` |
+| `forgotPassword(data)`, `resetPassword(data)` / `setPassword(data)` | password reset |
+| `fetchUser()` | reloads the user |
+| `handleResponse(response)` | applies an auth response which came from another endpoint (OTP verification, socialite) |
+| `setToken(token)` | stores a token, e.g. from a socialite redirect |
+| `user`, `loggedIn`, `store` | |
+
+Every response of `useAuth()` is applied like a bootstrap: the `store` sections the backend adds to a login reach their stores (for example the e-shop `cart` after merging the guest cart), and an `AuthResponse` in `data` fills the `auth` store. So both login responses of `crudadmin/helpers` work, the default one and `admin_helpers.auth.response = 'bootstrap'`. Errors are thrown to the caller.
+
+### Where the token lives
+
+| Build | Storage |
+| --- | --- |
+| web (SSR) | the `auth_token` cookie, so the server renders the logged in state; it is removed from the html payload |
+| SPA | localStorage, under `crudadmin.auth.token` |
+| Capacitor | Capacitor Preferences with `auth.storage: 'preferences'` |
+
+A revoked token does not answer 401 on the bootstrap, which is optionally authenticated; it answers as a guest. The layer then sees an `auth` section without a user and forgets the token. A 401 from any other request logs the user out when `logoutOnUnauthorized` is on.
+
+## Helpers composables
+
+| Composable | |
+| --- | --- |
+| `useBackendEnv(key, default)` | a value of `app.backendEnv` |
+| `usePlatform()` | `web`, `ios`, `android`... |
+| `usePlatformHeaders()` | `{ 'app-platform', 'app-version', 'app-type' }`, for requests sent outside axios (websocket auth) |
+| `useAxios(nuxtApp?)`, `useResponse()` | see [Requests and responses](/development/frontend/requests) |
+
+All auto-imports of the layer have a lower priority than the project, so a project exporting the same name keeps its own.
+
+## Without the Nuxt layer
+
+Vite, Ionic and Vue apps without Nuxt boot by hand. Their `app` store fetches the bootstrap and hands the response to `useResponse()`:
+
+```js src/stores/app.js
+import { appStore } from '@crudadmin/helpers/definitions';
+
+export const useAppStore = defineStore('app', {
+    ...appStore,
+
+    actions: {
+        ...appStore.actions,
+
+        async refreshApp(only = []) {
+            try {
+                const response = await useAxios()
+                    .loading((state) => (this.loading = state))
+                    .$get('api/bootstrap', { params: { only: only.join(',') } });
+
+                useResponse(response);
+                useNetworkStore().setLastUpdate();
+
+                this.booted = true;
+
+                return true;
+            } catch (e) {
+                useResponse(e);
+
+                return false;
+            }
+        },
+    },
+});
+```
+
+`Capacitor` from `@crudadmin/helpers/capacitor` calls `refreshApp()` on start, on reconnect and periodically. See the installation in [`@crudadmin/helpers`](/development/frontend/index#vite-ionic-or-vue-without-nuxt).
+
+## Moving an older project onto the layer boot
+
+Projects started before helpers 2.1 boot themselves: their own `Axios.setOptions()`, `Response.setStores()`, `appStore.refreshApp()`, an SSR `useAsyncData('app-bootstrap')` in `app.vue` and `new Capacitor(...)`. It keeps working, the layer boot is opt-in. To move a project:
+
+1. Set `crudadmin.bootstrap.enabled`, plus `platform.type` if the API serves more apps and `capacitor.enabled` for the native build.
+2. Delete from the boot plugin `Axios.setOptions()` (token, locale, platform headers), the helpers stores in `Response.setStores()` and `new Capacitor(...)`. Register the project stores with `Response.addStores([...])`, project headers with `Axios.addHeaders()`.
+3. Delete the SSR fetch from `app.vue`.
+4. Delete the project `refreshApp()`, `getBootstrapResponse()`, `useBackendEnv()` and the platform header helpers. Keep only project state, by extending the options from `@crudadmin/helpers/definitions` under the same store id. An after-refresh helper becomes a `crudadmin:bootstrap` hook.
+5. Extend `authStore` from `@crudadmin/helpers/definitions` with the project getters. Logout goes through `useAuth().logout()`, project clean up moves to the `crudadmin:auth:logout` hook. Keep project specific getters such as a `loggedIn` requiring a completed registration.
+6. The web build keeps the token in the `auth_token` cookie and no longer persists the `auth` store, so web users log in again once. SPA users stay logged in.
+7. A project with its own `useAuth` shadows the helpers one. Rename it, or make it a thin wrapper.
+
+The package file `MIGRATION-2.0-to-2.1.md` has the full list.

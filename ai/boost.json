@@ -47,6 +47,17 @@
             "admin/frontend/vite",
             "admin/frontend/sluggable",
             "admin/frontend/files"
+        ],
+        "crudadmin-development": [
+            "development/index",
+            "development/communication",
+            "development/bootstrap",
+            "development/frontend/index",
+            "development/frontend/boot",
+            "development/frontend/requests",
+            "development/frontend/stores",
+            "development/frontend/modals",
+            "development/frontend/localization"
         ]
     }
 }

@@ -1,0 +1,131 @@
+---
+title: "Pinia stores"
+description: "Which Pinia stores receive the data of the backend, the stores of @crudadmin/helpers and how a project extends them."
+icon: "database"
+---
+
+The Pinia stores are where the data of the backend lives on the frontend. The bootstrap request and the `store` key of any response fill them; components only read them and call their actions.
+
+## Registering stores
+
+`Response` binds data only into the stores it knows. Register every store which receives a bootstrap section or a `store` key of a response:
+
+```js plugins/01.app.js
+import { Response } from '@crudadmin/helpers';
+
+export default defineNuxtPlugin(() => {
+    Response.addStores([useSettingStore, useEventStore, useFriendStore, useNotificationStore]);
+});
+```
+
+| | |
+| --- | --- |
+| `Response.addStores(definitions)` | adds stores, keeps the stores of the layers and the project |
+| `Response.removeStores(ids)` | stops binding into the given stores |
+| `Response.setStores(() => [...instances])` | the older API: replaces the list of the project, never the stores added by `addStores()` |
+
+`addStores()` takes store **definitions** (`useEventStore`), not instances (`useEventStore()`). They are resolved per response with the Pinia of the request, which is what makes them safe in SSR. A definition registered later under the same id replaces the earlier one.
+
+The Nuxt layer with `bootstrap.enabled` registers the helpers stores itself: `app`, `auth`, `locale`, `ajax`, `otp`, `network`. Apps without the layer register the ones they use.
+
+## One section, one store
+
+The section `event()` of the [bootstrap request](/development/bootstrap) fills the store `event`:
+
+<CodeGroup>
+
+```php app/Utilities/Bootstrap/AppRequest.php
+public function event()
+{
+    return [
+        'types' => EventType::all(),
+        'events' => $this->isAuthorized() ? client()->events : [],
+    ];
+}
+```
+
+```js app/store/eventStore.js
+export const useEventStore = defineStore('event', {
+    state: () => ({
+        types: [],
+        events: [],
+    }),
+
+    actions: {
+        updateEvent(event) {
+            const index = this.events.findIndex((e) => e.id == event.id);
+
+            index > -1 ? this.events.splice(index, 1, event) : this.events.push(event);
+        },
+    },
+});
+```
+
+</CodeGroup>
+
+- The store id equals the section name, in the singular.
+- Declare every property the backend sends in `state()`, with an empty default. The page renders before the bootstrap answers, and a declared property is reactive from the start.
+- A key of the section naming an action calls it with the value, see [How `store` is bound](/development/communication#how-store-is-bound).
+- A store which only holds local UI state is not registered.
+
+## Helpers stores
+
+| Store | Filled by | State |
+| --- | --- | --- |
+| `app` (`useAppStore`) | the `app` section | `booted`, `loading`, `backendEnv`, `latestVersion`, `appVersion`, `platform`; getters `updateAvailable`, `updateStoreUrl` (from `backendEnv.APP_STORES`); action `refreshApp(only)` |
+| `auth` (`useAuthStore`) | the `auth` section, login responses | `token`, `driver`, `user`, `device_tokens`; getters `loggedIn`, `bearer`; actions `setAuth()`, `logout()`, `flushData()` |
+| `locale` (`useLocaleStore`) | the `locale` section | `locale`, `languages`, `translations` (the gettext catalog `__()` reads) |
+| `ajax` (`useAjaxStore`) | the `ajax` section | the queue of [offline requests](/development/frontend/requests#offline-requests) and its `options` |
+| `otp` (`useOtpStore`) | OTP responses of `crudadmin/helpers` | `otp`, `verified`, `token`, `options` |
+| `network` (`useNetworkStore`) | the layer, `Network` | `connected`, `lastUpdateTime` |
+| `mobile` (`useMobileStore`) | `@crudadmin/helpers/capacitor` | `keyboard`, not registered in `Response` |
+
+The `app` and `auth` stores match the sections of `AdminHelpers\Utilities\BootstrapRequest`: the `app` section returns `booted` and `backendEnv`, the `auth` section an `AuthResponse`. Read backend switches through `useBackendEnv('KEY', default)` instead of the store.
+
+The `locale` section must return `translations`; `CrudadminVue` and the Nuxt layer replace the catalog of `__()` whenever it changes:
+
+```php
+public function locale()
+{
+    return [
+        'locale' => $locale = app()->getLocale(),
+        'languages' => Localization::all(),
+        'translations' => Localization::getJson($locale),
+    ];
+}
+```
+
+## Extending the helpers stores
+
+`app` and `auth` are defined from options exported by `@crudadmin/helpers/definitions`. Define the store under the same id with your additions; your definition wins the auto-import and the layer uses it too:
+
+```js app/store/authStore.js
+import { authStore } from '@crudadmin/helpers/definitions';
+
+export const useAuthStore = defineStore('auth', {
+    ...authStore,
+
+    state: () => ({
+        ...authStore.state(),
+        genders: [],
+    }),
+
+    getters: {
+        ...authStore.getters,
+        loggedIn: (state) => !!state.user?.registration_completed,
+    },
+});
+```
+
+```js app/store/appStore.js
+import { appStore } from '@crudadmin/helpers/definitions';
+
+export const useAppStore = defineStore('app', {
+    ...appStore,
+    state: () => ({ ...appStore.state(), deviceModel: null }),
+});
+```
+
+## Persistence
+
+On the web (SSR) build the `app` and `auth` stores are not persisted: the token lives in a cookie, the server renders the logged in state, and the token is removed from the html payload. The SPA build persists them, with `pinia-plugin-persistedstate`. Project stores choose themselves with `persist: true`; persist only what the app needs before the first bootstrap answers.
