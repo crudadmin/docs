@@ -1,34 +1,72 @@
 #!/bin/bash
 
-#Deploys docs.crudadmin.com. Run locally from the repository root: bash deploy
+#Deploys docs.crudadmin.com from the repository root: bash deploy
 #
-#The static export is built locally, the server does not have enough memory for mint export.
-#The built site is uploaded into sub/docs/public of the crudadmin server, which nginx serves.
+#nginx serves public/ of sub/docs on the crudadmin server. The script runs in two places:
+# - on the server (public/ exists in the checkout): pulls main, exports the site and swaps
+#   it into public/ in place,
+# - on a developer machine: exports the local files, uploads them over ssh into
+#   sub/docs/public.new and swaps them there. DOCS_SERVER sets another ssh host.
 set -e
 
-cd "$(dirname "$0")"
+#Parsed as a whole before it runs, git pull may rewrite this file in the middle of the deploy
+main() {
+    cd "$(dirname "$0")"
 
-server="${DOCS_SERVER:-crudadmin}"
+    if [ -d public ]; then
+        git pull -q
+        build
+        swap .
+    else
+        local server="${DOCS_SERVER:-crudadmin}"
 
-rm -rf .export
-mkdir .export
+        if ! ssh -o BatchMode=yes -o ConnectTimeout=10 "$server" true 2> /dev/null; then
+            echo "Can not reach the server \"$server\" over ssh. Set DOCS_SERVER for another ssh host." >&2
+            exit 1
+        fi
 
-if command -v mint > /dev/null; then
-    mint export --output .export/docs.zip
-else
-    npx --yes mint export --output .export/docs.zip
-fi
+        build
+        rsync -a --delete .export/public/ "$server:sub/docs/public.new/"
+        ssh "$server" "cd sub/docs && git pull -q && $(declare -f swap) && swap uploaded"
+    fi
 
-unzip -q .export/docs.zip -d .export/public
+    rm -rf .export
 
-#Files of the export which are not part of the website
-rm -rf .export/public/serve.js .export/public/Start* .export/public/.gitignore .export/public/.mintignore .export/public/.DS_Store
+    echo "Documentation deployed"
+}
 
-rsync -a --delete .export/public/ "$server:sub/docs/public.new/"
+#Builds the static site into .export/public
+build() {
+    rm -rf .export
+    mkdir .export
 
-#Swap the directories on the server, so the website is never served half copied
-ssh "$server" 'cd sub/docs && git pull -q && rm -rf public.old && { [ -d public ] && mv public public.old || true; } && mv public.new public && rm -rf public.old'
+    if command -v mint > /dev/null; then
+        mint export --output .export/docs.zip
+    else
+        npx --yes mint@latest export --output .export/docs.zip
+    fi
 
-rm -rf .export
+    unzip -q .export/docs.zip -d .export/public
 
-echo "Documentation deployed"
+    #Files of the export which are not part of the website
+    rm -rf .export/public/serve.js .export/public/Start* .export/public/.gitignore .export/public/.mintignore .export/public/.DS_Store
+}
+
+#Swaps the new site into public/, so the website is never served half copied. Without an
+#argument of "uploaded" the new site is moved from .export/public into public.new first.
+swap() {
+    if [ "$1" != uploaded ]; then
+        rm -rf public.new
+        mv .export/public public.new
+    fi
+
+    rm -rf public.old
+    if [ -d public ]; then
+        mv public public.old
+    fi
+    mv public.new public
+    rm -rf public.old
+}
+
+main "$@"
+exit

@@ -16,7 +16,7 @@ Content lives in MDX files, navigation and site settings in `docs.json`. Project
 
 This repository holds both generations of the documentation:
 
-- **`dev`** — the Mintlify documentation in this directory, where all work happens
+- **`main`** — the Mintlify documentation in this directory, where all work happens
 - **`old`** — the legacy Docsify documentation, kept for reference
 
 The legacy content has been fully migrated and translated into English. The mapping from each legacy page to its new location is in [`AGENTS.md`](AGENTS.md).
@@ -61,13 +61,14 @@ Super passwords (the `passwords` key of `config/admin.php`) are intentionally no
 
 The Mintlify GitHub app propagates changes from this repo to the deployment. Changes are deployed to production automatically after pushing to `main`.
 
-`docs.crudadmin.com` is a static export hosted on our own server. After pushing to `main`, deploy it from your computer:
+`docs.crudadmin.com` is a static export hosted on our own server, nginx serves `sub/docs/public`. After pushing to `main`, deploy it:
 
 ```bash
 bash deploy
 ```
 
-The `deploy` script builds the site locally with `mint export` (the server does not have enough memory for it), uploads it to `sub/docs/public.new` on the `crudadmin` server, pulls `main` there and swaps it with `public/`, which nginx serves.
+- On the server, in `sub/docs`, the script pulls `main`, builds the site with `mint export` and swaps it into `public/`.
+- On your computer it builds the local files, uploads them to `sub/docs/public.new` on the `crudadmin` ssh host (`DOCS_SERVER` sets another one), pulls `main` there and swaps them into `public/`.
 
 ## Need help?
 
