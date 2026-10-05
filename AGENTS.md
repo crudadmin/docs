@@ -31,11 +31,11 @@ The site has three tabs, each backed by its own directory.
 
 | Group | Pages |
 | --- | --- |
-| Getting started | `index`, `admin/how-it-works`, `admin/installation`, `admin/configuration` (config reference), `admin/commands`, `admin/deployment` (deploy script, `php artisan optimize`), `admin/helpers` (helpers, Admin facade, events), `admin/license`, `admin/contact` |
+| Getting started | `index`, `admin/how-it-works`, `admin/installation`, `admin/configuration` (config reference), `admin/commands`, `admin/deployment` (deploy script, `php artisan optimize`), `admin/octane` (Laravel Octane, request scoped statics), `admin/helpers` (helpers, Admin facade, events), `admin/license`, `admin/contact` |
 | Upgrade guide | `admin/upgrade-guide/v6` (one page per target major version; add v7 when development targets v7), `admin/legacy-versions` (installing CrudAdmin 5 and older from packages.crudadmin.com) |
 | Admin interface | `admin/model/index`, `admin/model/parameters` (overview + basic parameters), Fields subgroup (`admin/model/fields` overview + `admin/model/fields/*`), `admin/model/permissions`, `admin/model/listing`, `admin/model/settings`, `admin/model/tree`, `admin/model/actions`, `admin/model/layouts`, `admin/model/history`, `admin/model/rules-events`, `admin/model/uploads`, `admin/model/migrations`, `admin/model/relations`, `admin/model/localization`, `admin/model/api` |
 | Validation | `admin/validation/index`, `admin/validation/request` |
-| Frontend | Admin Vue API for custom components: `admin/frontend/vue` (globals, bootstrap, models, events, stores), `admin/frontend/models` (ModelRowsBuilder in own components, editing rows in a modal), `admin/frontend/modals` (Modal, Toast, `model.modals`), `admin/frontend/vite` (custom Vite build, work in progress) |
+| Frontend | Admin Vue API for custom components: `admin/frontend/vue` (globals, bootstrap, models, events, stores), `admin/frontend/models` (ModelRowsBuilder in own components, editing rows in a modal), `admin/frontend/modals` (Modal, Toast, `model.modals`), `admin/frontend/slots` (places for own components and markup), `admin/frontend/vite` (custom Vite build, work in progress) |
 | Website | `admin/frontend/sluggable` (slugs + SEO), `admin/frontend/files` |
 
 The legacy model parameters page is split by topic; `admin/model/parameters` links to every topic page. Validation is new — it did not exist in the legacy docs.
@@ -47,7 +47,7 @@ Optional composer packages built on top of CrudAdmin. `packages/index` lists all
 | Group | Pages |
 | --- | --- |
 | Getting started | `packages/index` |
-| Helpers | `packages/helpers/index`, Authentication subgroup (`packages/helpers/authentication/{index,login,otp,registration,identifier,oauth}`), `packages/helpers/notifications`, `packages/helpers/importer`, `packages/helpers/utilities` |
+| Helpers | `packages/helpers/index`, Authentication subgroup (`packages/helpers/authentication/{index,login,password,otp,registration,identifier,oauth}`), `packages/helpers/notifications`, `packages/helpers/importer`, `packages/helpers/utilities` |
 | Socialite | `packages/socialite/index`, `packages/socialite/flows`, `packages/socialite/customization` |
 | REST API | `packages/api/index`, `packages/api/extending` |
 | Website | `packages/website/index`, `packages/website/frontend-editor`, `packages/website/scripts`, `packages/website/seo`, `packages/website/site-tree` |
@@ -62,7 +62,7 @@ How new packages are added to this tab is described in `../../dependencies/READM
 
 ### Tab: Development structure — `development/`
 
-Project structure and conventions shared across our applications, including the bootstrap request.
+Project structure and conventions shared across our applications: `development/index` and the bootstrap request (`development/bootstrap`).
 
 ### Assets
 
@@ -77,7 +77,7 @@ Four images are not referenced by any page:
 
 ## Legacy documentation
 
-The legacy Docsify documentation lives on the **`old`** branch of this repository, and locally in `../docsify_old`. The new documentation is on **`dev`**.
+The legacy Docsify documentation lives on the **`old`** branch of this repository, and locally in `../docsify_old`. The new documentation is on **`main`**.
 
 Every legacy content page has been migrated:
 
@@ -100,6 +100,17 @@ Every legacy content page has been migrated:
 | `model-images.md` | `admin/frontend/files.mdx` |
 
 `_sidebar.md`, `_coverpage.md`, `index.html` and the service workers are Docsify infrastructure and were deliberately not migrated.
+
+## Laravel Boost resources
+
+The documentation is also the source of the [Laravel Boost](https://laravel.com/docs/boost) guidelines and skills which `crudadmin/crudadmin` ships to AI agents of projects (installed by `php artisan boost:install`, see `admin/installation#ai-assistants`).
+
+- `ai/guidelines/` holds the guidelines, copied as they are. `core.blade.php` is loaded into every agent session of a project, keep it short: rules an agent breaks without them.
+- `ai/skills/<name>/SKILL.md` is the hand written entry of a skill (`crudadmin-models`, `crudadmin-fields`, `crudadmin-frontend`). `ai/boost.json` lists the pages bundled into each skill as `references/*.md`.
+- `bin/build-boost` converts the listed pages from MDX to plain markdown into `../../dependencies/crudadmin/resources/boost` (git ignored there). Links to bundled pages point to the bundled copy, other links to `https://docs.crudadmin.com`; feature marks, images and Mintlify components are stripped.
+- `bin/build-boost --check` tells whether the built resources are out of date. The release of crudadmin runs `bin/build-boost --release`, which refuses uncommitted sources, so commit the pages and `ai/` before releasing crudadmin.
+- A page bundled into a skill is read by agents without the site around it. A new page of the CrudAdmin tab belongs into `ai/boost.json` when it documents how to write project code; then rebuild.
+- `ai/` is excluded from the site by `.mintignore`.
 
 ## Terminology
 

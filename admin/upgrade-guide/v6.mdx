@@ -630,12 +630,12 @@ Methods of `AdminModel` used only by CrudAdmin itself are `private` or `protecte
 
 ## Models without a migration date
 
-An `AdminModel` descendant without `$migration_date` was skipped silently. It is now reported, so a model never disappears from the administration unnoticed.
+An `AdminModel` descendant without `$migration_date` was skipped silently. Every instantiable descendant is registered now, so a class which is not meant to be a module has to say so.
 
 - A shared parent of admin models must be `abstract`. Non instantiable classes are never registered.
 - A class which is not a menu item by its nature implements `Admin\Core\Eloquent\Concerns\NotAdminModule`. The interface is inherited, so it covers the whole subtree. `AdminPivot` implements it already, its descendants need no change.
 - A class of such a subtree which is a module anyway, for example a pivot with its own fields or menu item, implements `Admin\Core\Eloquent\Concerns\AdminModule`. A remaining `$migration_date` still keeps it registered until the upgrade replaces it.
-- Anything else without a date stops the boot with a message naming the class and both options.
+- Any other class without a date is an ordinary module. It is placed in the menu by its `$group` until the navigation section lists it.
 - A model extending a registered admin model over the same table replaces it, also under another class name (a project `Notification` extending `AppNotification` of `crudadmin/helpers`). v5 did the same through the shared `$migration_date`; the parent is not a module of its own then. A child with its own table (a log extending the model it logs) and a model implementing `Admin\Core\Eloquent\Concerns\AdminModelReplica` (another page over the table of its parent) do not replace the parent, both stay registered.
 
 ## Menu in the navigation section
