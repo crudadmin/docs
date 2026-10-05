@@ -1,0 +1,52 @@
+{
+    "docs_url": "https://docs.crudadmin.com",
+    "target": "../../dependencies/crudadmin/resources/boost",
+    "skills": {
+        "crudadmin-models": [
+            "admin/how-it-works",
+            "admin/model/index",
+            "admin/model/parameters",
+            "admin/model/permissions",
+            "admin/model/listing",
+            "admin/model/settings",
+            "admin/model/tree",
+            "admin/model/relations",
+            "admin/model/actions",
+            "admin/model/layouts",
+            "admin/model/history",
+            "admin/model/rules-events",
+            "admin/model/uploads",
+            "admin/model/migrations",
+            "admin/model/localization",
+            "admin/model/api",
+            "admin/validation/index",
+            "admin/validation/request",
+            "admin/commands",
+            "admin/configuration"
+        ],
+        "crudadmin-fields": [
+            "admin/model/fields",
+            "admin/model/fields/types",
+            "admin/model/fields/select-options",
+            "admin/model/fields/relations",
+            "admin/model/fields/dates",
+            "admin/model/fields/uploads",
+            "admin/model/fields/validation",
+            "admin/model/fields/visibility",
+            "admin/model/fields/ui",
+            "admin/model/fields/components",
+            "admin/model/fields/groups",
+            "admin/model/fields/localization",
+            "admin/model/fields/database"
+        ],
+        "crudadmin-frontend": [
+            "admin/frontend/vue",
+            "admin/frontend/models",
+            "admin/frontend/modals",
+            "admin/frontend/slots",
+            "admin/frontend/vite",
+            "admin/frontend/sluggable",
+            "admin/frontend/files"
+        ]
+    }
+}

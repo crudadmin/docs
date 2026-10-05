@@ -1,0 +1,299 @@
+#!/usr/bin/env php
+<?php
+
+/*
+ * Builds the Laravel Boost guidelines and skills of CrudAdmin from this documentation.
+ *
+ * Sources live in ai/: guidelines/ is copied as it is, skills/<name>/SKILL.md is the hand written
+ * entry of a skill, and boost.json lists the documentation pages bundled into every skill as
+ * references/*.md. The output replaces the target directory, resources/boost of crudadmin/crudadmin.
+ *
+ * Usage:
+ *   bin/build-boost [target]    target defaults to "target" of ai/boost.json
+ *   bin/build-boost --check     exits with 1 when the target differs from a fresh build
+ *   bin/build-boost --release   refuses to build from uncommitted sources, used by crudadmin-release
+ */
+
+$root = dirname(__DIR__);
+$config = json_decode(file_get_contents($root.'/ai/boost.json'), true, flags: JSON_THROW_ON_ERROR);
+
+$args = array_slice($argv, 1);
+$check = in_array('--check', $args, true);
+$release = in_array('--release', $args, true);
+$args = array_values(array_filter($args, fn ($arg) => ! in_array($arg, ['--check', '--release'], true)));
+$target = $args[0] ?? $root.'/'.$config['target'];
+
+$docsUrl = rtrim($config['docs_url'], '/');
+
+// Map every bundled page to its skill, so links between pages can point to the bundled copy.
+$pageSkills = [];
+foreach ($config['skills'] as $skill => $pages) {
+    foreach ($pages as $page) {
+        $pageSkills[$page] = $skill;
+    }
+}
+
+// A release must be reproducible from the documentation repository, not from local edits.
+if ($release) {
+    $sources = ['ai', ...array_map(fn ($page) => $page.'.mdx', array_keys($pageSkills))];
+    exec('git -C '.escapeshellarg($root).' status --porcelain -- '.implode(' ', array_map('escapeshellarg', $sources)), $status, $code);
+
+    if ($code !== 0 || $status !== []) {
+        fail("Uncommitted documentation sources in {$root}, commit them before releasing:\n".implode("\n", $status));
+    }
+
+    echo 'Building Boost resources from docs '.trim(shell_exec('git -C '.escapeshellarg($root).' rev-parse --short HEAD'))."\n";
+}
+
+$files = [];
+
+foreach (glob($root.'/ai/guidelines/*') as $path) {
+    $files['guidelines/'.basename($path)] = file_get_contents($path);
+}
+
+foreach ($config['skills'] as $skill => $pages) {
+    $entry = $root.'/ai/skills/'.$skill.'/SKILL.md';
+
+    if (! is_file($entry)) {
+        fail("Missing skill entry ai/skills/{$skill}/SKILL.md");
+    }
+
+    $index = [];
+
+    foreach ($pages as $page) {
+        $source = $root.'/'.$page.'.mdx';
+
+        if (! is_file($source)) {
+            fail("Missing page {$page}.mdx of skill {$skill}");
+        }
+
+        [$meta, $body] = splitFrontmatter(file_get_contents($source));
+
+        $markdown = '# '.$meta['title']."\n\n";
+        if (! empty($meta['description'])) {
+            $markdown .= $meta['description']."\n\n";
+        }
+        $markdown .= 'Source: '.$docsUrl.'/'.$page."\n\n";
+        $markdown .= convertMdx($body, fn ($url) => resolveLink($url, $skill, $pageSkills, $docsUrl));
+
+        $files['skills/'.$skill.'/references/'.referenceName($page)] = $markdown;
+        $index[] = '- [' . $meta['title'] . '](references/' . referenceName($page) . ')'
+            . (empty($meta['description']) ? '' : ': '.$meta['description']);
+    }
+
+    $files['skills/'.$skill.'/SKILL.md'] = rtrim(file_get_contents($entry))
+        ."\n\n## Reference pages\n\n".implode("\n", $index)."\n";
+}
+
+ksort($files);
+
+if ($check) {
+    $current = readTree($target);
+    ksort($current);
+
+    if ($current !== $files) {
+        $changed = array_keys(array_diff_assoc($files, $current) + array_diff_key($current, $files));
+        fwrite(STDERR, "Boost resources in {$target} are out of date:\n  ".implode("\n  ", $changed)."\n");
+        exit(1);
+    }
+
+    echo "Boost resources are up to date.\n";
+    exit(0);
+}
+
+removeTree($target);
+
+foreach ($files as $path => $content) {
+    $file = $target.'/'.$path;
+    if (! is_dir(dirname($file))) {
+        mkdir(dirname($file), 0755, true);
+    }
+    file_put_contents($file, $content);
+}
+
+echo 'Built '.count($files)." files into {$target}\n";
+
+function fail(string $message): never
+{
+    fwrite(STDERR, $message."\n");
+    exit(1);
+}
+
+function splitFrontmatter(string $content): array
+{
+    if (! preg_match('/\A---\n(.*?)\n---\n/s', $content, $match)) {
+        return [[], $content];
+    }
+
+    $meta = [];
+    foreach (explode("\n", $match[1]) as $line) {
+        if (preg_match('/^(\w+):\s*(.*)$/', $line, $pair)) {
+            $meta[$pair[1]] = trim($pair[2], " \"'");
+        }
+    }
+
+    return [$meta, substr($content, strlen($match[0]))];
+}
+
+function referenceName(string $page): string
+{
+    return str_replace('/', '-', preg_replace('#^admin/#', '', $page)).'.md';
+}
+
+function resolveLink(string $url, string $skill, array $pageSkills, string $docsUrl): string
+{
+    if (! str_starts_with($url, '/') || str_starts_with($url, '/images/')) {
+        return $url;
+    }
+
+    [$path, $anchor] = array_pad(explode('#', $url, 2), 2, null);
+    $page = trim($path, '/') ?: 'index';
+    $anchor = $anchor === null ? '' : '#'.$anchor;
+
+    if (! isset($pageSkills[$page]) && isset($pageSkills[$page.'/index'])) {
+        $page .= '/index';
+    }
+
+    if (! isset($pageSkills[$page])) {
+        return $docsUrl.'/'.$page.$anchor;
+    }
+
+    // Links are written from references/*.md, other skills are siblings of this skill directory.
+    $prefix = $pageSkills[$page] === $skill ? '' : '../../'.$pageSkills[$page].'/references/';
+
+    return $prefix.referenceName($page).$anchor;
+}
+
+/*
+ * Converts Mintlify MDX into plain markdown. Fenced code blocks are left untouched.
+ */
+function convertMdx(string $body, callable $link): string
+{
+    $blocks = [];
+
+    // Pull out fenced code blocks first, even indented ones inside components.
+    $body = preg_replace_callback('/^([ \t]*)(```|~~~)[^\n]*\n.*?^\1\2[ \t]*$/ms', function ($match) use (&$blocks) {
+        $blocks[] = dedent($match[0]);
+
+        return $match[1].'@@CODE'.(count($blocks) - 1).'@@';
+    }, $body);
+
+    // Comments, among them the feature marks.
+    $body = preg_replace('/\{\/\*.*?\*\/\}\n?/s', '', $body);
+
+    // Images are useless for an agent.
+    $body = preg_replace('/^[ \t]*<Frame[^>]*>.*?<\/Frame>[ \t]*\n?/ms', '', $body);
+    $body = preg_replace('/<img\b[^>]*\/?>/', '', $body);
+
+    // Callouts become a bold label followed by the content.
+    $body = preg_replace_callback('/^[ \t]*<(Note|Info|Tip|Warning|Check)>[ \t]*\n?(.*?)\n?[ \t]*<\/\1>/ms', function ($match) {
+        return '**'.$match[1].':** '.trim(dedent($match[2]))."\n";
+    }, $body);
+
+    $body = preg_replace_callback('/^[ \t]*<ResponseField\s+([^>]*)>[ \t]*\n?(.*?)\n?[ \t]*<\/ResponseField>/ms', function ($match) {
+        $attributes = attributes($match[1]);
+        $heading = '#### `'.($attributes['name'] ?? '').'`';
+        if (! empty($attributes['type'])) {
+            $heading .= ' ('.$attributes['type'].')';
+        }
+
+        return $heading."\n\n".trim(dedent($match[2]))."\n";
+    }, $body);
+
+    $body = preg_replace_callback('/^[ \t]*<Card\s+([^>]*)>[ \t]*\n?(.*?)\n?[ \t]*<\/Card>/ms', function ($match) {
+        $attributes = attributes($match[1]);
+        $text = trim(preg_replace('/\s+/', ' ', $match[2]));
+        $title = $attributes['title'] ?? '';
+        $title = isset($attributes['href']) ? '['.$title.']('.$attributes['href'].')' : $title;
+
+        return '- '.$title.($text === '' ? '' : ': '.$text);
+    }, $body);
+
+    $body = preg_replace_callback('/^[ \t]*<(Step|Accordion|Tab)\s+([^>]*)>[ \t]*\n?(.*?)\n?[ \t]*<\/\1>/ms', function ($match) {
+        $attributes = attributes($match[2]);
+
+        return '**'.($attributes['title'] ?? '').'**'."\n\n".trim(dedent($match[3]))."\n";
+    }, $body);
+
+    // Wrappers without own content.
+    $body = preg_replace('/^[ \t]*<\/?(Columns|CardGroup|Steps|AccordionGroup|CodeGroup|Tabs)\b[^>]*>[ \t]*\n?/m', '', $body);
+
+    // Internal links.
+    $body = preg_replace_callback('/\]\(([^)\s]+)\)/', fn ($match) => ']('.$link($match[1]).')', $body);
+
+    $body = preg_replace("/\n{3,}/", "\n\n", $body);
+
+    $body = preg_replace_callback('/^([ \t]*)@@CODE(\d+)@@/m', function ($match) use ($blocks) {
+        return $blocks[(int) $match[2]];
+    }, $body);
+
+    return trim($body)."\n";
+}
+
+function attributes(string $source): array
+{
+    preg_match_all('/(\w+)=(?:"([^"]*)"|\{([^}]*)\})/', $source, $matches, PREG_SET_ORDER);
+
+    $attributes = [];
+    foreach ($matches as $match) {
+        $attributes[$match[1]] = $match[2] !== '' ? $match[2] : ($match[3] ?? '');
+    }
+
+    return $attributes;
+}
+
+function dedent(string $text): string
+{
+    $lines = explode("\n", $text);
+    $indent = null;
+
+    foreach ($lines as $line) {
+        if (trim($line) === '') {
+            continue;
+        }
+        preg_match('/^[ \t]*/', $line, $match);
+        $indent = $indent === null ? strlen($match[0]) : min($indent, strlen($match[0]));
+    }
+
+    if (! $indent) {
+        return $text;
+    }
+
+    return implode("\n", array_map(fn ($line) => substr($line, min($indent, strspn($line, " \t"))), $lines));
+}
+
+function readTree(string $dir): array
+{
+    $files = [];
+
+    if (! is_dir($dir)) {
+        return $files;
+    }
+
+    $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($dir, FilesystemIterator::SKIP_DOTS));
+    foreach ($iterator as $file) {
+        if ($file->isFile()) {
+            $files[substr($file->getPathname(), strlen($dir) + 1)] = file_get_contents($file->getPathname());
+        }
+    }
+
+    return $files;
+}
+
+function removeTree(string $dir): void
+{
+    if (! is_dir($dir)) {
+        return;
+    }
+
+    $iterator = new RecursiveIteratorIterator(
+        new RecursiveDirectoryIterator($dir, FilesystemIterator::SKIP_DOTS),
+        RecursiveIteratorIterator::CHILD_FIRST
+    );
+
+    foreach ($iterator as $file) {
+        $file->isDir() ? rmdir($file->getPathname()) : unlink($file->getPathname());
+    }
+
+    rmdir($dir);
+}

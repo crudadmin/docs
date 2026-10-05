@@ -11,3 +11,6 @@ deploy
 public/
 public.old/
 .export/
+
+# Laravel Boost resources, built into crudadmin/crudadmin by bin/build-boost
+ai/
