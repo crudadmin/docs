@@ -9,13 +9,23 @@ This GET request is used to obtain all backend data, metadata, and all shared in
 
 ## Shared PHP implementation
 
-In PHP helpers 2.0, `AdminHelpers\Utilities\BootstrapRequest` extends `Admin\Core\Utilities\BootstrapRequest` from `crudadmin/framework` 6. The framework owns section composition (`get`, `guest`, `authenticated`, `all`, `only`) and caching. Helpers adds the project client, token, `auth()` response and `onClient()` hook. Existing `AppRequest` subclasses keep their imports.
+In PHP helpers 2.0, `AdminHelpers\Utilities\BootstrapRequest` extends `Admin\Core\Bootstrap\BootstrapRequest` from `crudadmin/framework` 6. The framework owns section composition (`get`, `guest`, `authenticated`, `all`, `only`) and caching. Helpers adds the project client, token, `auth()` response and `onClient()` hook. Existing `AppRequest` subclasses keep their imports.
 
 The administration uses its own `Admin\Bootstrap\AdminBootstrapRequest`, built on the same framework base with admin session and verification rules. Its endpoint is `/admin/api/bootstrap`; it does not reuse your application's `/api/bootstrap`.
 
-Override `canLoadSection($method)` to restrict selectable methods when exposing `only` to HTTP input. Authentication checks must cover explicitly selected sections as well as the default response.
+Every public method is a section by default. Opt in to a whitelist to keep public helpers out of `?only=`: list the sections in `protected $sections = ['locale', 'app', ...]`, or mark them with the `Admin\Core\Bootstrap\Attributes\BootstrapSection` attribute. With either, only the base sections (`get`, `guest`, `authenticated`, and `auth` in helpers), the listed and the marked methods are sections. Override `canLoadSection($method)` for other rules.
 
-Configure section caches with `['minutage' => 5]` or a number of minutes. Array entries default to 60 minutes when `minutage` is omitted; `duration` is not supported. Cache keys contain the bootstrap class basename, locale and section name, plus an optional `key` callback result. User-dependent sections need an appropriate key or must remain uncached.
+A guest gets a 403 for a section of the `$authenticated` property, and for a section requested directly which only an overridden `authenticated()` composes (not `get()` or `guest()`). Sections composed by `get()`, `guest()` or another loaded section are allowed. A guest never gets `authenticated`.
+
+Configure section caches with `['minutage' => 5]` or a number of minutes; `duration` is an alias of `minutage`. Array entries default to 60 minutes. Cache keys contain the bootstrap class basename, locale and section name, plus an optional `key` callback result. User-dependent sections need an appropriate key or must remain uncached.
+
+Invalidate a cached section with `forgetCache($section, $key = null, $locale = null)`, e.g. from a model observer: `AppRequest::forgetCache('locale')`.
+
+- Without `$key` and `$locale`, every variant of the section (all locales, all keys) is invalidated by raising its version. Old entries expire on their own.
+- With `$key`, the entries of that key value are forgotten in `$locale`, or in every locale (`cacheLocales()`: application locales and CrudAdmin languages).
+- A `$locale` alone on a section with a `key` callback invalidates the whole section.
+
+The cache is per class: call `forgetCache()` on the class which serves the section.
 
 ## Configuration
 
@@ -42,6 +52,26 @@ class BootstrapController extends Controller
     }
 }
 ```
+
+### Several applications
+
+Projects with several apps (customer, courier...) select the request class by the `app-type` header. Map the types in the helpers config; an unknown or missing type uses the default class.
+
+```php config/admin_helpers.php
+'bootstrap' => [
+    'class' => App\Utilities\Bootstrap\AppRequest::class,
+    'header' => 'app-type',
+    'app_types' => [
+        'courier' => App\Utilities\Bootstrap\CourierAppRequest::class, // extends AppRequest
+    ],
+],
+```
+
+```php routes/api.php
+AdminHelpers\Utilities\BootstrapResolver::routes(); // ANY bootstrap, ?only=a,b
+```
+
+`BootstrapResolver::make()` and the `bootstrapRequest()` function return a new instance of the selected class, `BootstrapResolver::getClass()` its name.
 
 ## AppRequest class
 

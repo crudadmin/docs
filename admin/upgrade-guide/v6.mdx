@@ -196,6 +196,10 @@ Breaking change for every project. Outside production the administration throws 
 - The file manager `lfm.private_folder_name` is a handler class instead of a closure; a project config which overrides it with a closure has to use a class with a `userField()` method.
 - New config keys read from the same environment variables as before: `admin.storage.clean_items_limit` (`STORAGE_CLEAN_ITEMS_LIMIT`), `admin.sitetree_editor` (`ADMIN_SITETREE_EDITOR`) and `admin.frontend_editor.url` (`APP_NUXT_URL` or `WEB_URL`) of `crudadmin/website`.
 
+### Cache of serialized models
+
+- Laravel 13 sets `cache.serializable_classes` to `false` in a new `config/cache.php`: objects come back from the cache store as `__PHP_Incomplete_Class`. CrudAdmin caches models and collections (`runCached()`, `Admin::cache()` with a store, bootstrap sections, invoice settings), every request reading one fails. Set `'serializable_classes' => true` in `config/cache.php` (or a list of the cached model classes). Projects upgraded from Laravel 12 have no such key and keep the old behaviour.
+
 ### Package service provider
 
 - Packages extend `Admin\Providers\AdminPackageServiceProvider` and declare their config, admin config, routes, models (`$models` or `models()`), listeners, commands, field mutations, views, assets and publishable files in properties, see [Package service provider](/admin/helpers#package-service-provider). The base provider skips config merging with a cached config and route files with cached routes.
@@ -488,6 +492,9 @@ public function getFilterStates()
 - PHP `crudadmin/helpers` 2.0 requires CrudAdmin 6 and framework 6.0.1 or the matching `6.0-dev` branch. Its `BootstrapRequest` inherits section composition and cache from the framework; existing project subclasses retain their namespace, client and token handling. Replace pinned `1.4.0` constraints with `^2.0` when upgrading.
 
 - App store startup flags now live in `boot` (`ready`, `loading`, `error`, `componentsLoaded`); replace `booted` checks with `boot.ready === true` and `isLoaded` with `boot.componentsLoaded`. Read `locale` and content `languages` from `useLocaleStore()` (`@crudadmin/helpers/store`). Replace `admin_languages` with `useSettingStore().languages`, read the selected interface language from the locally extended `useLocaleStore().current` getter, and read `gettext` from `settingStore.editor.gettext`. The temporary `appStore.localization` group is removed, and `model_settings` is now `settingStore.editor.available`, set by `crudadmin/admin-editor`. Update custom components reading the old top-level fields.
+- `Admin\Core\Bootstrap\BootstrapRequest` (framework): a cache array of a section reads `duration` as an alias of `minutage`. Projects which used `duration` got the default 60 minutes until now and get their configured minutes now. Cache keys of a section get a `.v{n}` suffix after the first `forgetCache($section)`; nothing changes before it.
+- A guest requesting `authenticated` through `only()` gets nothing (it was computed before). A guest requesting directly a section which only an overridden `authenticated()` composes (not `get()` or `guest()`) gets a 403, like a section of the `$authenticated` property; before it was computed without a client. Sections composed by `get()`, `guest()` or another loaded section are not affected.
+- The framework `BootstrapRequest` declares `protected $baseSections` and `protected $sections` (opt-in whitelist, `null` by default). A subclass declaring a `private` property of the same name must rename it.
 - The admin-specific bootstrap request and controller live in `crudadmin/crudadmin` (`Admin\Bootstrap\AdminBootstrapRequest`, `Admin\Http\Controllers\BootstrapController`). The reusable `Admin\Core\Bootstrap\BootstrapRequest` remains in `crudadmin/framework`.
 
 - CKEditor receives filebrowser URLs directly in its instance configuration. Custom editor initializers must supply those options from `useSettingStore().filemanager` inside the admin or `CAEditor.config.filemanager` after public-page editor bootstrap. Republish the matching CKEditor `config.js`; the `window.crudadmin.ckeditorConfig(config)` customization hook remains supported.
@@ -629,7 +636,7 @@ An `AdminModel` descendant without `$migration_date` was skipped silently. It is
 - A class which is not a menu item by its nature implements `Admin\Core\Eloquent\Concerns\NotAdminModule`. The interface is inherited, so it covers the whole subtree. `AdminPivot` implements it already, its descendants need no change.
 - A class of such a subtree which is a module anyway, for example a pivot with its own fields or menu item, implements `Admin\Core\Eloquent\Concerns\AdminModule`. A remaining `$migration_date` still keeps it registered until the upgrade replaces it.
 - Anything else without a date stops the boot with a message naming the class and both options.
-- A model extending a registered admin model replaces it, also under another class name (a project `Notification` extending `AppNotification` of `crudadmin/helpers`). v5 did the same through the shared `$migration_date`; the parent is not a module and has no table of its own.
+- A model extending a registered admin model over the same table replaces it, also under another class name (a project `Notification` extending `AppNotification` of `crudadmin/helpers`). v5 did the same through the shared `$migration_date`; the parent is not a module of its own then. A child with its own table (a log extending the model it logs) and a model implementing `Admin\Core\Eloquent\Concerns\AdminModelReplica` (another page over the table of its parent) do not replace the parent, both stay registered.
 
 ## Menu in the navigation section
 
@@ -688,3 +695,14 @@ The models set is keyed by class name and ordered by the administration, not by 
 - A `column_editable` cell is no longer an input all the time. Cells show their values, a cell switches to its field by the pencil shown on its hover and the whole column by the pencil of its header, so long tables render without a form input in every row.
 - Every column of a field editable in the form can be switched now, not only `column_editable` ones. `column_editable` keeps the pencil of the header visible; turn a column off with `column_editable:false` or the `columns.{key}.editable => false` setting. Columns of `readonly`, `disabled`, `removeFromForm`, `inaccessible` and `invisible` fields, columns with a column component, editors, `json`, `file` and `radio` fields, fields with a form `component` or `sub_component` and `multiple` dates are never switched.
 - A click on a cell of a `column_editable` column opens the record like any other cell, unless the cell is switched to its field.
+
+## Indexes of columns turning into JSON
+
+- `admin:migrate` drops every index (plain, unique, fulltext) containing a column whose type changes to JSON, before the column is changed. This happens when a field becomes `locale`, `multiple` or `type:json`, and for CrudAdmin 5 locale fields still stored as varchar/text columns with JSON values (e.g. `products.name` with a `name` index and the `full` fulltext index). MySQL can not index a JSON column, the migration failed on `modify ... json` before.
+- The dropped indexes are not recreated. A fulltext index whose other columns stay non JSON is rebuilt by the fulltext step from the fields which still have `fulltext`. Search on a localized column has to use another way (e.g. a generated column of one language).
+
+## Installation and migration output
+
+- `admin:install` runs `migrate` before `admin:migrate`: a fresh Laravel 11+ project stores the cache and sessions in the database (`cache` table) and failed. The Laravel users migration is removed only for an administrator model stored in `users` (`2014_10_12_000000_create_users_table.php`); `0001_01_01_000000_create_users_table.php` (also `password_reset_tokens` and `sessions`) stays.
+- `admin:migrate` lists a table as updated only when something is reported for it (added, unknown or dropped column...), `-v` lists every table. Scripts parsing "Updated table:" lines need `-v`.
+- `Localization::getJson()` returns `'{}'` without gettext (`admin.gettext.enabled` not `true`) or for an unknown locale; it failed on a missing language model before.

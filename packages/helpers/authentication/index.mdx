@@ -33,7 +33,18 @@ Add a Sanctum guard for your users:
 ],
 ```
 
-The controllers look users up in the model of the default guard. Set `$guard` in your controller to use another guard, see [Login](/packages/helpers/authentication/login#login-controller).
+The controllers look users up in the model of the default guard. Set `$guard` in your controller to use another guard, see [Login](/packages/helpers/authentication/login#login-controller), or set it for all controllers in the config, e.g. for e-shop clients:
+
+```php config/admin_helpers.php
+'auth' => [
+    'guard' => 'api',  // config('admin_eshop.client.guard'), a Sanctum guard
+    'model' => AdminEshop\Models\Clients\Client::class, // optional, the model of the guard provider by default
+    'login_event' => true, // dispatch Illuminate\Auth\Events\Login, e.g. for the e-shop cart merge
+    'response' => 'bootstrap', // login returns the authenticated() sections, see Login response
+],
+```
+
+With `auth.guard`, the logged user is set into that guard instead of the guard of the model (`getGuard()`). The client model needs `HasApiTokens` (Sanctum) and should use `HasUserAuth` with `protected $guard`.
 
 ## User model
 
@@ -141,6 +152,7 @@ Route::middleware('auth:user')->group(function () {
 | `AdminAuth::logout($controller)` | `ANY auth/logout` | [Logout](/packages/helpers/authentication/login#logout) |
 | `AdminAuth::otp($controller)` | `POST auth/otp/verify`, `auth/otp/resend` | [OTP codes](/packages/helpers/authentication/otp) |
 | `AdminAuth::register($controller)` | `POST auth/register/otp`, `auth/register/otp-verify` | [Registration](/packages/helpers/authentication/registration) |
+| `AdminAuth::password($controller)` | `POST auth/password/forgot`, `auth/password/reset` | [Password reset](/packages/helpers/authentication/password) |
 | `AdminAuth::changeIdentifier($controller)` | `POST auth/identifier/otp`, `auth/identifier/verify` | [Changing the e-mail or phone](/packages/helpers/authentication/identifier) |
 | `AdminAuth::oauth($controller)` | `GET admin/oauth/authorize`, `POST admin/oauth/token` | [OAuth](/packages/helpers/authentication/oauth) |
 

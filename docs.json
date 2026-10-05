@@ -133,6 +133,7 @@
                   "packages/helpers/authentication/otp",
                   "packages/helpers/authentication/registration",
                   "packages/helpers/authentication/identifier",
+                  "packages/helpers/authentication/password",
                   "packages/helpers/authentication/oauth"
                 ]
               },

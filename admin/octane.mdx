@@ -88,6 +88,7 @@ RequestState::flushUsing(function () {
 - Do not call `exit`, `die` or `dd()` in code reachable by a request, they end the worker. `autoAjax()->throw()` throws an exception which Laravel renders.
 - Read the request through Laravel (`request()->getContent()`, `request()->header()`), not through `$_SERVER`, `$_GET`, `$_POST` or `php://input`. RoadRunner and Swoole do not fill them.
 - Do not add CrudAdmin services to `octane.warm`: `admin`, `localization`, `localization.admin`, `admin.payments.service`, `store`, `cart` and bootstrap request classes hold the state of one request.
+- Enable `CollectGarbage::class` among the `OperationTerminated` listeners of `config/octane.php` and set `garbage` to about 20 MB above the memory of an idle worker (80 for most CrudAdmin projects). Every request clones the application, the clones are reference cycles which PHP frees only when its garbage collector runs. Without the listener they pile up over many requests and a worker with the default `memory_limit` of 128 MB fails on an ordinary request. A collection takes under 2 ms.
 - Long imports and exports belong to the queue. Octane stops a request after `max_execution_time` of `config/octane.php`, `ini_set()` does not change it.
 
 ## Checking a project
@@ -104,4 +105,4 @@ Watch the workers of the running RoadRunner server, their handled requests and m
 php artisan octane:workers
 ```
 
-Memory of a worker which grows with every request and drops only when the worker restarts after `max-requests` points to data kept in a static property or a singleton. `--once` lists the workers only once.
+Memory of a worker which grows with every request and drops only when the worker restarts after `max-requests` points to data kept in a static property or a singleton. Memory which goes up and down by a few MB is garbage waiting for the collector. `--once` lists the workers only once.

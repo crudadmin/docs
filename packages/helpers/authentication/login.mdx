@@ -96,6 +96,23 @@ The code is valid for 15 minutes. Enable and configure OTP codes first, see [OTP
 - `device_tokens` lists the push notification tokens of the user when [notifications](/packages/helpers/notifications) are enabled.
 - `token` is a new Sanctum token. Send it as `Authorization: Bearer {token}`.
 
+### Bootstrap response
+
+With `admin_helpers.auth.response = 'bootstrap'`, login, registration and password reset return the `authenticated()` sections of the [bootstrap request](/development/bootstrap) selected by the `app-type` header, plus the `auth` section with the new token. Projects get the data of the signed in user in one response, e.g. the merged `cart` of an e-shop.
+
+```json
+{
+    "type": "success",
+    "message": "You have been signed in successfully.",
+    "store": {
+        "auth": { "driver": "clients", "user": { "id": 13 }, "token": { "token": "1|...", "expiration": null, "abilities": ["*"] } },
+        "cart": { "items": [] }
+    }
+}
+```
+
+The sections are in `store` when `autoajax.store` is enabled, otherwise merged into `data`. The bootstrap class must extend `AdminHelpers\Utilities\BootstrapRequest`.
+
 ## Login controller
 
 Extend the default controller to change the guard or the response.

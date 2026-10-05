@@ -32,9 +32,10 @@ Route::middleware('auth.optional:customer,courier')->group(function () {
 
 | Method | Description |
 | --- | --- |
-| `setToken($name)` | Creates a new token named `$name` in the `auth` section, e.g. after login |
+| `setToken($name, $abilities = ['*'])` | Creates a new token named `$name` in the `auth` section, e.g. after login. Created once per instance, repeated `auth()` calls return the same token. |
+| `withClient($client)` | Uses the given client instead of the one of the request guard, e.g. right after login |
 | `isAuthorized()` | Whether a client is signed in |
-| `auth()` | The same data as the [login response](/packages/helpers/authentication/login#login-response) |
+| `auth()` | The same data as the [login response](/packages/helpers/authentication/login#login-response), empty for a guest |
 | `onClient($client)` | Hook called with the signed in client |
 | `getBundleKey()` | Version of the frontend build in `NUXT_PATH` or `IONIC_PATH`. Apps compare it to reload after a deploy. |
 
