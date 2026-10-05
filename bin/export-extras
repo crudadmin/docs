@@ -1,0 +1,252 @@
+#!/usr/bin/env php
+<?php
+
+/*
+ * Completes the static export of mint export for hosting on nginx, run by the deploy script.
+ *
+ * The Mintlify cloud serves these on its own, a static export has none of them:
+ * - pages of foo/index.mdx are exported as foo/index/index.html, links of the site point to /foo,
+ *   they are copied to foo/index.html,
+ * - redirects of docs.json become html pages redirecting to their destination,
+ * - sitemap.xml, robots.txt and llms.txt are written from the navigation of docs.json.
+ *
+ * Usage: bin/export-extras <export directory>
+ */
+
+$root = dirname(__DIR__);
+$export = rtrim($argv[1] ?? '', '/');
+$siteUrl = rtrim(getenv('DOCS_URL') ?: 'https://docs.crudadmin.com', '/');
+
+if ($export === '' || ! is_dir($export)) {
+    fail('Usage: bin/export-extras <export directory>');
+}
+
+$config = json_decode(file_get_contents($root.'/docs.json'), true, flags: JSON_THROW_ON_ERROR);
+
+copyIndexPages($export);
+$redirects = writeRedirects($export, $config['redirects'] ?? [], $siteUrl);
+$pages = navigationPages($config['navigation'], $root);
+writeSitemap($export, $pages, $siteUrl);
+writeRobots($export, $siteUrl);
+writeLlms($export, $config, $pages, $siteUrl);
+
+echo 'Export completed: '.count($pages).' pages in the sitemap, '.$redirects." redirect pages\n";
+
+function fail(string $message): never
+{
+    fwrite(STDERR, $message."\n");
+    exit(1);
+}
+
+/*
+ * Url path of a page, foo/index is served as /foo.
+ */
+function pageUrl(string $page): string
+{
+    if ($page === 'index') {
+        return '/';
+    }
+
+    return '/'.preg_replace('#/index$#', '', $page);
+}
+
+function copyIndexPages(string $export): void
+{
+    $files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($export, FilesystemIterator::SKIP_DOTS));
+
+    foreach ($files as $file) {
+        $path = $file->getPathname();
+
+        if (str_starts_with($path, $export.'/_next/') || ! str_ends_with($path, '/index/index.html')) {
+            continue;
+        }
+
+        $target = dirname($path, 2).'/index.html';
+
+        if (! is_file($target)) {
+            copy($path, $target);
+        }
+    }
+}
+
+/*
+ * Redirects of docs.json as html pages. A trailing :name* parameter redirects every exported
+ * page under the destination. Existing pages are never replaced.
+ */
+function writeRedirects(string $export, array $redirects, string $siteUrl): int
+{
+    $count = 0;
+
+    foreach ($redirects as $redirect) {
+        $source = '/'.trim($redirect['source'], '/');
+        $destination = '/'.trim($redirect['destination'], '/');
+
+        if (preg_match('#^(.*)/:\w+\*$#', $source, $sourceMatch) && preg_match('#^(.*)/:\w+\*$#', $destination, $destinationMatch)) {
+            $base = $export.$destinationMatch[1];
+
+            if (! is_dir($base)) {
+                continue;
+            }
+
+            $files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($base, FilesystemIterator::SKIP_DOTS));
+
+            foreach ($files as $file) {
+                if ($file->getFilename() !== 'index.html' || dirname($file->getPathname()) === $base) {
+                    continue;
+                }
+
+                $rest = substr(dirname($file->getPathname()), strlen($base));
+                $count += writeRedirect($export, $sourceMatch[1].$rest, $destinationMatch[1].$rest, $siteUrl);
+            }
+
+            continue;
+        }
+
+        $count += writeRedirect($export, $source, $destination, $siteUrl);
+    }
+
+    return $count;
+}
+
+function writeRedirect(string $export, string $source, string $destination, string $siteUrl): int
+{
+    // foo/index/... pages are copies of foo/..., they need no redirect of their own
+    if (preg_match('#/index(/|$)#', $source)) {
+        return 0;
+    }
+
+    $file = $export.$source.'/index.html';
+
+    if (is_file($file)) {
+        return 0;
+    }
+
+    if (! is_dir(dirname($file))) {
+        mkdir(dirname($file), 0755, true);
+    }
+
+    $url = htmlspecialchars($destination, ENT_QUOTES);
+    $canonical = htmlspecialchars($siteUrl.$destination, ENT_QUOTES);
+    $script = json_encode($destination, JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP);
+
+    file_put_contents($file, <<<HTML
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+        <meta charset="utf-8">
+        <title>Redirecting…</title>
+        <meta name="robots" content="noindex">
+        <link rel="canonical" href="{$canonical}">
+        <meta http-equiv="refresh" content="0; url={$url}">
+        <script>location.replace({$script} + location.hash)</script>
+        </head>
+        <body><a href="{$url}">{$url}</a></body>
+        </html>
+
+        HTML);
+
+    return 1;
+}
+
+/*
+ * Pages of the navigation in their order, with the tab and group they belong to and their
+ * frontmatter. Hidden and noindex pages are left out.
+ */
+function navigationPages(array $navigation, string $root): array
+{
+    $pages = [];
+
+    $walk = function ($node, string $tab = '', string $group = '') use (&$walk, &$pages, $root) {
+        if (is_string($node)) {
+            $meta = frontmatter($root.'/'.$node.'.mdx');
+
+            if (($meta['hidden'] ?? '') !== 'true' && ($meta['noindex'] ?? '') !== 'true' && ! isset($pages[$node])) {
+                $pages[$node] = ['tab' => $tab, 'group' => $group, 'title' => $meta['title'] ?? $node, 'description' => $meta['description'] ?? ''];
+            }
+
+            return;
+        }
+
+        if (! is_array($node)) {
+            return;
+        }
+
+        $tab = $node['tab'] ?? $tab;
+        $group = isset($node['group']) && $group === '' ? $node['group'] : $group;
+
+        foreach (['tabs', 'anchors', 'dropdowns', 'groups', 'pages'] as $key) {
+            if (isset($node[$key])) {
+                foreach ($node[$key] as $child) {
+                    $walk($child, $tab, $group);
+                }
+            }
+        }
+
+        if (array_is_list($node)) {
+            foreach ($node as $child) {
+                $walk($child, $tab, $group);
+            }
+        }
+    };
+
+    $walk($navigation);
+
+    return $pages;
+}
+
+function frontmatter(string $file): array
+{
+    if (! is_file($file) || ! preg_match('/\A---\n(.*?)\n---\n/s', file_get_contents($file), $match)) {
+        return [];
+    }
+
+    $meta = [];
+
+    foreach (explode("\n", $match[1]) as $line) {
+        if (preg_match('/^(\w+):\s*(.*)$/', $line, $pair)) {
+            $meta[$pair[1]] = trim($pair[2], " \"'");
+        }
+    }
+
+    return $meta;
+}
+
+function writeSitemap(string $export, array $pages, string $siteUrl): void
+{
+    $urls = '';
+
+    foreach (array_keys($pages) as $page) {
+        $urls .= '  <url><loc>'.htmlspecialchars($siteUrl.pageUrl($page), ENT_XML1).'</loc></url>'."\n";
+    }
+
+    file_put_contents($export.'/sitemap.xml', '<?xml version="1.0" encoding="UTF-8"?>'."\n"
+        .'<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'."\n".$urls.'</urlset>'."\n");
+}
+
+function writeRobots(string $export, string $siteUrl): void
+{
+    file_put_contents($export.'/robots.txt', "User-agent: *\nAllow: /\n\nSitemap: {$siteUrl}/sitemap.xml\n");
+}
+
+/*
+ * llms.txt index of the documentation (https://llmstxt.org), pages grouped by tab and group.
+ */
+function writeLlms(string $export, array $config, array $pages, string $siteUrl): void
+{
+    $content = '# '.($config['name'] ?? 'Documentation')."\n\n";
+    $section = null;
+
+    foreach ($pages as $page => $meta) {
+        $heading = trim($meta['tab'].($meta['group'] !== '' ? ' – '.$meta['group'] : ''));
+
+        if ($heading !== $section) {
+            $content .= ($section === null ? '' : "\n").'## '.$heading."\n\n";
+            $section = $heading;
+        }
+
+        $content .= '- ['.$meta['title'].']('.$siteUrl.pageUrl($page).')'
+            .($meta['description'] === '' ? '' : ': '.$meta['description'])."\n";
+    }
+
+    file_put_contents($export.'/llms.txt', $content);
+}
