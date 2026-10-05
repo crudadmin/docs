@@ -50,6 +50,13 @@ build() {
 
     #Files of the export which are not part of the website
     rm -rf .export/public/serve.js .export/public/Start* .export/public/.gitignore .export/public/.mintignore .export/public/.DS_Store
+
+    #A page foo/index.mdx is exported as foo/index/index.html, while the links of the site
+    #(tabs, cards) point to /foo. Copy it to foo/index.html, which nginx serves for /foo.
+    find .export/public -path .export/public/_next -prune -o -type f -path '*/index/index.html' -print | while read -r page; do
+        local dir="$(dirname "$(dirname "$page")")"
+        [ -f "$dir/index.html" ] || cp "$page" "$dir/index.html"
+    done
 }
 
 #Swaps the new site into public/, so the website is never served half copied. Without an
