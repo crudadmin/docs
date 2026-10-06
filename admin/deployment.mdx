@@ -12,9 +12,9 @@ Every project keeps the same `deploy` file in its root and runs it on the server
 bash deploy
 ```
 
-The script adapts to the project, the same file works in every one of them. Settings of a single project belong to [`deploy.conf`](#project-settings) next to it, the `deploy` file itself is never edited.
+The script adapts to the project, the same file works in every one of them. Settings of a single project are [`DEPLOY_*` keys of `.env`](#project-settings), hooks belong to `deploy.conf` next to the script. The `deploy` file itself is never edited.
 
-**Current version: 1.0.0.** Check the version of a project with:
+**Current version: 1.1.0.** Check the version of a project with:
 
 ```bash
 bash deploy --version
@@ -30,7 +30,23 @@ The script ships with CrudAdmin, every version of it is committed in `crudadmin/
 php artisan vendor:publish --tag=admin.deploy
 ```
 
-After a CrudAdmin update which brings a new version of the script, publish it again with `--force`. `deploy.conf` of the project stays untouched. Projects on CrudAdmin 5 and older copy the file from a project which has it.
+Publishing also lists the settings of the script in `.env.example`, commented out with their defaults, unless the file already lists a `DEPLOY_*` key:
+
+```bash .env.example
+# Deploy script (bash deploy), https://docs.crudadmin.com/admin/deployment#project-settings
+# Uncomment only what differs from the default on this server.
+# DEPLOY_PHP=php
+# DEPLOY_GIT_PULL=true
+# DEPLOY_MIGRATE=false
+# DEPLOY_ADMIN_MIGRATE=-f
+# DEPLOY_ADMIN_UPDATE=true
+# DEPLOY_NPM=auto
+# DEPLOY_NPM_INSTALL=auto
+# DEPLOY_NPM_SCRIPTS=build
+# DEPLOY_OPTIMIZE=true
+```
+
+After a CrudAdmin update which brings a new version of the script, publish it again with `--force`. `.env`, `.env.example` and `deploy.conf` of the project stay untouched. Projects on CrudAdmin 5 and older copy the file from a project which has it.
 
 ### Steps
 
@@ -82,52 +98,67 @@ The script reloads the workers of [Laravel Octane](/admin/octane) when the proje
 
 ## Project settings
 
-`deploy.conf` in the project root is a bash file read before the first step. Commit it with the project. It is optional, most projects need none.
+Settings are `DEPLOY_*` keys of the `.env` file in the project root. They may differ on every server (e.g. no frontend build on the API server, Laravel migrations only on staging) and `.env` is not committed. All keys are optional, a project without them deploys with the defaults.
 
 | Setting | Default | Meaning |
 | --- | --- | --- |
-| `PHP` | `php` | PHP binary of the project, e.g. `php8.3` on a server where the default PHP is newer. Composer runs with it too. |
+| `DEPLOY_PHP` | `php` | PHP binary of the project, e.g. `php8.3` on a server where the default PHP is newer. Composer runs with it too. |
 | `DEPLOY_GIT_PULL` | `true` | `false` deploys the code which is already in the directory. |
 | `DEPLOY_MIGRATE` | `false` | `true` runs `php artisan migrate --force` before `admin:migrate`. |
-| `DEPLOY_ADMIN_MIGRATE` | `-f` | Options of `admin:migrate`. Add `--auto-drop` to drop the columns of removed fields without asking, `""` for old CrudAdmin versions without `-f`. |
+| `DEPLOY_ADMIN_MIGRATE` | `-f` | Options of `admin:migrate`. Add `--auto-drop` to drop the columns of removed fields without asking. An empty value (`DEPLOY_ADMIN_MIGRATE=`) runs it without options, for old CrudAdmin versions without `-f`. |
 | `DEPLOY_ADMIN_UPDATE` | `true` | `false` skips `admin:update`. |
 | `DEPLOY_NPM` | `auto` | `auto` builds when there is a Vite config, `true` builds always (e.g. Laravel Mix), `false` never. |
 | `DEPLOY_NPM_INSTALL` | `auto` | `ci`, `install`, or `false` to skip installing. `auto` is `ci` with a `package-lock.json`, `install` without it. |
 | `DEPLOY_NPM_SCRIPTS` | `build` | npm scripts run one by one, e.g. `"build build:admin"`. |
 | `DEPLOY_OPTIMIZE` | `true` | `false` skips `php artisan optimize`. |
 
-Hooks are bash functions defined in `deploy.conf`: `deploy_before` runs before `git pull`, `deploy_before_npm` and `deploy_after_npm` around the frontend build, `deploy_after` at the end.
-
-```bash deploy.conf
-# Settings of the deploy script in this project, see https://docs.crudadmin.com/admin/deployment#project-settings
-
+```bash .env
 # Admin and the website are built by separate Vite configs
 DEPLOY_NPM_SCRIPTS="build build:admin"
+DEPLOY_PHP=php8.5
+```
 
+A project on Laravel Mix:
+
+```bash .env
+DEPLOY_NPM=true
+DEPLOY_NPM_INSTALL=install
+DEPLOY_NPM_SCRIPTS=prod
+```
+
+The script reads only the `DEPLOY_*` lines of `.env`, it never runs the file as bash. Values may be unquoted, in double or in single quotes, an unquoted value ends before ` #` (an inline comment), `export` in front of the key is allowed. Variables are not expanded.
+
+### Hooks: deploy.conf
+
+Hooks are bash functions, they can not live in `.env`. Define them in `deploy.conf` in the project root and commit it with the project: `deploy_before` runs before `git pull`, `deploy_before_npm` and `deploy_after_npm` around the frontend build, `deploy_after` at the end.
+
+```bash deploy.conf
 deploy_after() {
     php artisan sitemap:generate
 }
 ```
 
-A project on Laravel Mix:
+`deploy.conf` may also set the same `DEPLOY_*` settings for every server of the project (and `PHP`, the older name of `DEPLOY_PHP`). Version 1.0.0 of the script read the settings only from there.
 
-```bash deploy.conf
-DEPLOY_NPM=true
-DEPLOY_NPM_INSTALL=install
-DEPLOY_NPM_SCRIPTS="prod"
-```
+### Order of the settings
 
-Environment variables override the defaults for one run, settings in `deploy.conf` win over them:
+The first one found wins:
 
-```bash
-DEPLOY_GIT_PULL=false bash deploy
-```
+1. A variable set for one run: `DEPLOY_GIT_PULL=false bash deploy`
+2. `DEPLOY_*` key of `.env`
+3. `deploy.conf`
+4. The default of the script
+
+<Note>
+Moving a project from 1.0.0: move the settings from `deploy.conf` to `.env` on each server, keep `deploy.conf` only for hooks, delete it when it has none. With 1.0.0 the settings of `deploy.conf` won over a variable set for one run, since 1.1.0 the variable wins.
+</Note>
 
 ## Versions
 
 | Version | Changes |
 | --- | --- |
 | 1.0.0 | First version of the shared script: CrudAdmin commands, Vite build, `optimize`, queue, Horizon, Reverb and Pulse restarts, Octane reload, `deploy.conf` settings and hooks. |
+| 1.1.0 | Settings are `DEPLOY_*` keys of `.env` (`DEPLOY_PHP` replaces `PHP`), `deploy.conf` stays for hooks. A variable set for one run wins over both files. An empty `DEPLOY_ADMIN_MIGRATE` runs `admin:migrate` without options. Publishing lists the settings in `.env.example`. |
 
 Raise the version in `src/Resources/deploy/deploy` of crudadmin and add a row here with every change of the script.
 
