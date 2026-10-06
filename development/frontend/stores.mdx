@@ -80,7 +80,7 @@ export const useEventStore = defineStore('event', {
 | `network` (`useNetworkStore`) | the layer, `Network` | `connected`, `lastUpdateTime` |
 | `mobile` (`useMobileStore`) | `@crudadmin/helpers/capacitor` | `keyboard`, not registered in `Response` |
 
-The `app` and `auth` stores match the sections of `AdminHelpers\Utilities\BootstrapRequest`: the `app` section returns `booted` and `backendEnv`, the `auth` section an `AuthResponse`. Read backend switches through `useBackendEnv('KEY', default)` instead of the store.
+The `app` and `auth` stores match the sections of `AdminHelpers\Bootstrap\BootstrapRequest`: the `app` section returns `booted` and `backendEnv`, the `auth` section an `AuthResponse`. Read backend switches through `useBackendEnv('KEY', default)` instead of the store.
 
 The `locale` section must return `translations`; `CrudadminVue` and the Nuxt layer replace the catalog of `__()` whenever it changes:
 

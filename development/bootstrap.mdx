@@ -10,13 +10,22 @@ Every app we build starts with the bootstrap request, `GET /api/bootstrap`. It r
 
 ## Shared PHP implementation
 
-In PHP helpers 2.0, `AdminHelpers\Utilities\BootstrapRequest` extends `Admin\Core\Bootstrap\BootstrapRequest` from `crudadmin/framework` 6. The framework owns section composition (`get`, `guest`, `authenticated`, `all`, `only`) and caching. Helpers adds the project client, token, `auth()` response and `onClient()` hook. Existing `AppRequest` subclasses keep their imports.
+In PHP helpers 2.0, `AdminHelpers\Bootstrap\BootstrapRequest` extends `Admin\Core\Bootstrap\BootstrapRequest` from `crudadmin/framework` 6. The framework owns the request mechanism the administration uses as well: section composition (`get`, `guest`, `authenticated`, `all`, `only`), the guest rule of the `$authenticated` property, the section whitelist (`$sections`, `#[BootstrapSection]`) and caching. Helpers adds what an application needs on top: the project client, token, `auth()` response and `onClient()` hook, the `app-type` resolver and the route. The former `AdminHelpers\Utilities\BootstrapRequest` and `BootstrapResolver` names were removed, see the migration of PHP helpers.
 
 The administration uses its own `Admin\Bootstrap\AdminBootstrapRequest`, built on the same framework base with admin session and verification rules. Its endpoint is `/admin/api/bootstrap`; it does not reuse your application's `/api/bootstrap`.
 
-Every public method is a section by default. Opt in to a whitelist to keep public helpers out of `?only=`: list the sections in `protected $sections = ['locale', 'app', ...]`, or mark them with the `Admin\Core\Bootstrap\Attributes\BootstrapSection` attribute. With either, only the base sections (`get`, `guest`, `authenticated`, and `auth` in helpers), the listed and the marked methods are sections. Override `canLoadSection($method)` for other rules.
+Every public method is a section by default. Opt in to a whitelist to keep public helpers out of `?only=`: list the sections in `protected $sections = ['locale', 'app', ...]`, or mark them with the `Admin\Core\Bootstrap\Attributes\BootstrapSection` attribute. The administration marks its sections the same way (`AdminBootstrapRequest`). With either, only the base sections (`get`, `guest`, `authenticated`, and `auth` in helpers), the listed and the marked methods are sections. The attribute is inherited: a method overriding a marked method of a parent class or trait stays a section without repeating it, so a package can mark its sections and a project only marks its own. Both ways stay supported and may be combined: the sections are the union of `$sections` and the marked methods. A list in a subclass adds to the sections marked by its parents, it does not replace them. Override `canLoadSection($method)` for other rules.
 
-A guest gets a 403 for a section of the `$authenticated` property, and for a section requested directly which only an overridden `authenticated()` composes (not `get()` or `guest()`). Sections composed by `get()`, `guest()` or another loaded section are allowed. A guest never gets `authenticated`.
+`get()` is loaded by everybody, `guest()` only by a guest, `authenticated()` only by a signed in user (in helpers also the login response with `auth.response = bootstrap`). Override `authenticated()` to compose the sections of a signed in user, a section may be in `get()` and `authenticated()` at once:
+
+```php
+public function authenticated()
+{
+    return $this->only(['auth', 'cart']); // cart is in get() too
+}
+```
+
+The `$authenticated` property is an alternative of the default `authenticated()` for sections a guest must not load even directly by `?only=`: a guest requesting one of them gets a 403 (the administration uses it for `setting`). A section composed by an overridden `authenticated()` is not refused to a guest, so a section which needs a signed in user handles a guest itself, e.g. returns `[]` like `auth()` of helpers, or is listed in `$authenticated`. A guest never gets `authenticated` in helpers.
 
 Configure section caches with `['minutage' => 5]` or a number of minutes; `duration` is an alias of `minutage`. Array entries default to 60 minutes. Cache keys contain the bootstrap class basename, locale and section name, plus an optional `key` callback result. User-dependent sections need an appropriate key or must remain uncached.
 
@@ -35,7 +44,7 @@ Register the route of `crudadmin/helpers` and point the config to your class. Th
 ```php routes/api.php
 // auth.optional:<guard> of crudadmin/helpers, the guard of your users
 Route::middleware(['auth.optional:user'])->group(function () {
-    AdminHelpers\Utilities\BootstrapResolver::routes(); // ANY bootstrap, ?only=a,b
+    AdminHelpers\Bootstrap\BootstrapResolver::routes(); // ANY bootstrap, ?only=a,b
 });
 ```
 
@@ -93,7 +102,7 @@ This class is used to render all data returned from bootstrap request during GET
 namespace App\Utilities\Bootstrap;
 
 use Localization;
-use AdminHelpers\Utilities\BootstrapRequest;
+use AdminHelpers\Bootstrap\BootstrapRequest;
 
 class AppRequest extends BootstrapRequest
 {
@@ -102,10 +111,7 @@ class AppRequest extends BootstrapRequest
         return $this->only([ 'locale', 'app', 'auth', 'setting' ]);
     }
 
-    public function authenticated()
-    {
-        return $this->only([ 'auth' ]);
-    }
+    protected $authenticated = [ 'auth' ];
 
     public function auth()
     {
