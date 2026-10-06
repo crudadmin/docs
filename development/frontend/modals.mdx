@@ -79,6 +79,10 @@ modal with that name.
 | `replace(...)`, `replaceAll(...)`, `closeAll()` | both take the arguments of `open()`; a preset replaces through its own `{ replace: true }` or `{ replaceAll: true }` |
 | `onOpen`, `onClose`, `onChange(target, callback)` | `onOpen` of an entry which is already open runs on the next tick |
 
+<Note>
+Coming from helpers 1.x: the payload of `Modal.open(name, payload)` is in `entry.data`, read it with `Modal.getData(name)`. `Modal.get(name)?.callback` no longer exists, and `Modal.close(name)` closes only the last opened modal of that name. The package file `MIGRATION-1.x-to-2.0.md` lists every change.
+</Note>
+
 ## Setup
 
 ```js

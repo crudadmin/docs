@@ -89,7 +89,7 @@ await bootstrap.refresh(['notification', 'event']); // only these sections
 await bootstrap.ready(); // the first bootstrap settled, awaitable in route middleware
 ```
 
-`useAppStore().refreshApp(only)` does the same and is what the network refresher calls. The browser refresher runs on reconnect and every `refreshSeconds`; the backend can change the interval with `backendEnv.APP_REFRESH_SECONDS`.
+`useAppStore().refreshApp(only)` does the same and is what the network refresher calls. The refresher runs on reconnect, when the app or tab returns to the foreground and every `refreshSeconds`; the backend can change the interval with `backendEnv.APP_REFRESH_SECONDS`. See [When the bootstrap refreshes](#when-the-bootstrap-refreshes).
 
 | `useBootstrap()` | |
 | --- | --- |
@@ -204,7 +204,39 @@ export const useAppStore = defineStore('app', {
 });
 ```
 
-`Capacitor` from `@crudadmin/helpers/capacitor` calls `refreshApp()` on start, on reconnect and periodically. See the installation in [`@crudadmin/helpers`](/development/frontend/index#vite-ionic-or-vue-without-nuxt).
+`Capacitor` from `@crudadmin/helpers/capacitor` calls `refreshApp()` by the rules in [When the bootstrap refreshes](#when-the-bootstrap-refreshes). See the installation in [`@crudadmin/helpers`](/development/frontend/index#vite-ionic-or-vue-without-nuxt).
+
+## When the bootstrap refreshes
+
+Every app refreshes its bootstrap through `Network` of `@crudadmin/helpers`, the same class in the browser and in a native app. It calls `refresh()`, which is `useAppStore().refreshApp()`:
+
+| When | What happens |
+| --- | --- |
+| the app starts and is online | first refresh. In the Nuxt layer the first bootstrap already ran in `app:created`, so this one is skipped as fresh |
+| the connection comes back | refresh, and the [offline requests](/development/frontend/requests#offline-requests) of the queue are sent again |
+| the app or the tab returns to the foreground | refresh. Timers are paused in the background, so without it the data would wait for the rest of the interval |
+| every `refreshSeconds` | refresh, then the next one is planned |
+
+- A refresh is **skipped** while the last successful one is younger than `refreshSeconds`. Switching apps for a moment sends nothing; the timer is only planned again for the rest of the interval.
+- The interval is `backendEnv.APP_REFRESH_SECONDS` when the backend sends it, otherwise `refreshSeconds` (600 s).
+- `refreshApp()` has to resolve `true` on success: that time (`useNetworkStore().lastUpdateTime`) is what the skipping compares.
+- Offline, nothing is fetched; the refresh runs when the connection comes back.
+- The foreground is detected by `visibilitychange` and by the `resume` event Capacitor fires on the `document`. One return to the app runs one refresh.
+
+### Native apps: with and without the Nuxt layer
+
+The refresh rules are the same, the difference is who builds the pieces:
+
+| | Nuxt with `capacitor.enabled` | Vite, Ionic or Vue without Nuxt |
+| --- | --- | --- |
+| `new Capacitor({ user, refresh, refreshSeconds })` | the layer, plugin `04.capacitor.client`, after the first bootstrap | the project in `main.js`, `.ready()` mounts the app |
+| axios defaults, token, locale, platform headers | the layer | the project, `Axios.setOptions()` |
+| the bootstrap request | the layer (`refreshApp()` of the helpers `app` store) | the project's own `refreshApp()` in its `app` store |
+| `app` and `auth` stores | defined by the layer, extended from `definitions` | defined by the project from `definitions` |
+| code after a refresh, after a logout | hooks `crudadmin:bootstrap`, `crudadmin:auth:logout` | inside the project's `refreshApp()` and `logout()` |
+| token storage | `auth.storage: 'preferences'` (Capacitor Preferences) | the persisted `auth` store (`persist: true`) |
+
+A web build of the Nuxt layer runs the same `Network` without Capacitor: browser `online`/`offline` events, the foreground of the tab and the interval.
 
 ## Moving an older project onto the layer boot
 

@@ -35,7 +35,17 @@ composer require crudadmin/helpers:^2.0
 php artisan vendor:publish --tag=admin_helpers.config
 ```
 
-The service provider is discovered automatically. The config is published to `config/admin_helpers.php`. Enabled modules register their admin models, so run the migrations after you enable OTP, notifications or the importer:
+The service provider is discovered automatically. The config is published to `config/admin_helpers.php`. Keep in it only the values your project changes: keys missing in the project config are merged in from the package, also inside groups, so the rest keeps the package defaults and new keys of later versions arrive by themselves. A project using only the bootstrap needs no more than:
+
+```php config/admin_helpers.php
+return [
+    'bootstrap' => [
+        'class' => App\Utilities\Bootstrap\AppRequest::class,
+    ],
+];
+```
+
+Enabled modules register their admin models, so run the migrations after you enable OTP, notifications or the importer:
 
 ```bash
 php artisan admin:migrate
