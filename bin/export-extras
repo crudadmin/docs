@@ -223,9 +223,13 @@ function writeSitemap(string $export, array $pages, string $siteUrl): void
         .'<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'."\n".$urls.'</urlset>'."\n");
 }
 
+/*
+ * Crawlers find paths of PHP files in the code samples (__DIR__.'/../Config/admin.php') and request them as urls
+ * (/Config/admin.php). No page of the documentation ends with .php, the server blocks these requests as scanners.
+ */
 function writeRobots(string $export, string $siteUrl): void
 {
-    file_put_contents($export.'/robots.txt', "User-agent: *\nAllow: /\n\nSitemap: {$siteUrl}/sitemap.xml\n");
+    file_put_contents($export.'/robots.txt', "User-agent: *\nAllow: /\nDisallow: /*.php$\n\nSitemap: {$siteUrl}/sitemap.xml\n");
 }
 
 /*
