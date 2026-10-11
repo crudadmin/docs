@@ -28,7 +28,9 @@ public function fields()
 </ResponseField>
 
 <ResponseField name="unique_index">
-  Adds a unique index on the column. `unique_index:order_id` creates a unique combination with another column. It can be combined with `index` on the same field.
+  Adds a unique index on the column. `unique_index:order_id` creates a unique combination with another column, `unique_index:order_id,size` with several columns, the field column first. The other columns may be columns of relations, e.g. `order_id` of [`$belongsToModel`](/admin/model/tree#tree-structured-models) or of a `belongsTo` field. It can be combined with `index` on the same field.
+
+  A `belongsTo` field gets no index from these parameters, its foreign key indexes it. Put the combination on another field: `'name' => 'name:Name|required|unique_index:warehouse_id'` with a `warehouse` field.
 </ResponseField>
 
 <ResponseField name="fulltext">

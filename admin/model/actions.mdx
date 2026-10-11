@@ -75,9 +75,10 @@ Where the button is available depends on its type and on the methods it defines.
 
 | Type | Behaviour |
 | --- | --- |
-| `button` | Shown in the record side panel, runs `fire($row)`. |
-| `action` | Shown in the side panel when it has `fire()`, and in the action bar of checked records when it has `fireMultiple()`. |
+| `button` | Shown in the buttons column of the row and in the record side panel, runs `fire($row)`. |
+| `action` | Shown in the side panel when it has `fire()`, and in the action bar of checked records when it has `fireMultiple()`. Not in the buttons column of the row. |
 | `multiple` | Shown in the action bar of checked records, runs `fireMultiple($rows)`. |
+| `both` | Shown in the buttons column of every row of the table, in the side panel and in the action bar of checked records, runs `fire($row)` or `fireMultiple($rows)`. |
 
 ```php
 public $type = 'multiple';
