@@ -250,12 +250,13 @@ protected $settings = [
 </Note>
 
 ## Search, filters and pagination
-{/* feature: settings.search.enabled, settings.search.column, settings.search.autosave, settings.pagination.enabled, settings.pagination.limit, settings.pagination.limits, settings.filter.enabled, settings.filter.items, settings.filter.max_buttons, settings.filter.single */}
+{/* feature: settings.search.enabled, settings.search.column, settings.search.columns, settings.search.autosave, settings.pagination.enabled, settings.pagination.limit, settings.pagination.limits, settings.filter.enabled, settings.filter.items, settings.filter.max_buttons, settings.filter.single */}
 
 ```php
 protected $settings = [
     'search.enabled' => true,          // always show the search bar, false hides it
     'search.column' => 'number',       // preselected search column
+    'search.columns' => ['number'],    // the only columns offered in the search, without the search in all columns
     'search.autosave' => true,         // remember searches of the administrator
     'pagination.limit' => 50,          // rows per page, 0 does not load rows at all
     'pagination.limits' => [25, 50, 100],
@@ -265,7 +266,7 @@ protected $settings = [
 ];
 ```
 
-By default the search bar appears when the table has at least 3 rows. Filter buttons are defined by [`getFilterStates()`](/admin/model/listing#filter-buttons), which fills `filter.items` automatically. `'filter.enabled' => false` hides them.
+By default the search bar appears when the table has at least 3 rows. The column select is as wide as the name of the selected column, at most 80rem. With `search.columns`, a new search starts in `search.column`, or in the first listed column. Filter buttons are defined by [`getFilterStates()`](/admin/model/listing#filter-buttons), which fills `filter.items` automatically. `'filter.enabled' => false` hides them.
 
 ## Form behaviour
 {/* feature: settings.form.enabled, settings.form.modal, settings.form.actions, settings.form.header, settings.form.footer, settings.form.autocomplete, settings.layout.header, settings.tabs.enabled, settings.tabs.default, settings.tabs.autoload, settings.tabs.name, settings.form.autoreset, settings.table.refresh_interval, settings.table.reload_on_update */}
