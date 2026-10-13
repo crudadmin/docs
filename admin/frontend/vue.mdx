@@ -126,6 +126,18 @@ model.fields.date_from.on('change', (value) => {
 
 `Modal` and `Toast` are available as `window.Modal` and `window.Toast`, and every admin model can open its own form in a modal through `model.modals`. See [Modals and toasts](/admin/frontend/modals).
 
+## Tooltips
+
+`<Tooltip>` and the `v-tooltip` directive are registered globally. They show rich Vue content (components, lists, data loaded on hover) next to an element, rendered into the page only while the tooltip is open, so they are cheap in every row of a table. Short texts keep the Bootstrap tooltip, `data-toggle="tooltip"` with a `title`. See [Tooltips](/admin/frontend/tooltips).
+
+```vue
+<Tooltip @show="loadOrders">
+    <template #trigger>{{ row.blocked }}</template>
+
+    <div v-for="order in orders" :key="order.id">{{ order.number }}: {{ order.quantity }}</div>
+</Tooltip>
+```
+
 ## Stores
 {/* feature: frontend.stores */}
 

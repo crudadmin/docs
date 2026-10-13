@@ -1,0 +1,104 @@
+---
+title: "Tooltips"
+description: "Tooltips with rich Vue content, opened on hover, focus or click and rendered into the page only while they are open."
+icon: "message-square"
+---
+
+Short texts use the Bootstrap tooltip of the administration: `data-toggle="tooltip"` with a `title`, and `data-bs-html="true"` for simple HTML. Its content is a sanitized string set before the hover.
+
+`<Tooltip>` is for everything else: components, colors, lists and data loaded when the tooltip opens. Its content is a Vue slot rendered into the `body` only while the tooltip is open, so a table with a tooltip in every row renders none of them until a hover. One tooltip is open at a time. The component and the `v-tooltip` directive are registered globally, use them in every custom component without an import.
+
+## Trigger in the slot
+
+The `#trigger` slot is the element which opens the tooltip. It is wrapped in a `<span>`, `tag` changes the element. The wrapper is the root element of `<Tooltip>`, so classes and scoped styles of your component apply to it.
+
+```vue resources/views/admin/components/columns/OrderQuantity.vue
+<template>
+    <Tooltip>
+        <template #trigger>
+            <strong>{{ row.quantity }}</strong>
+        </template>
+
+        <div>{{ __('Ordered') }}: {{ row.quantity_ordered }}</div>
+        <div>{{ __('Delivered') }}: {{ row.quantity_delivered }}</div>
+    </Tooltip>
+</template>
+```
+
+## Trigger by an id
+
+`v-tooltip="id"` opens the `<Tooltip id="...">` from any element. The trigger and the content can be placed apart, e.g. the trigger inside a table cell and the content at the end of the component, and more triggers can open the same tooltip. A trigger whose tooltip is not rendered does nothing.
+
+```vue
+<template>
+    <span v-tooltip="'blocks-' + row.id">{{ row.blocked }}</span>
+
+    <Tooltip :id="'blocks-' + row.id">
+        <OrderBlocks :row="row" />
+    </Tooltip>
+</template>
+```
+
+## Options
+
+| Prop | Default | Description |
+| --- | --- | --- |
+| `id` | | id for `v-tooltip` triggers, not needed with the `#trigger` slot |
+| `trigger` | `hover focus` | space separated list of `hover`, `focus` and `click`, like the Bootstrap tooltip |
+| `placement` | `bottom` | `top`, `bottom`, `left` or `right`, the tooltip flips to the other side when it does not fit and stays inside the window |
+| `interactive` | `false` | the pointer can move into the tooltip, its text can be selected and its links and buttons clicked |
+| `delay` | `150` | milliseconds before the tooltip opens on hover or focus |
+| `disabled` | `false` | the tooltip does not open |
+| `tag` | `span` | element wrapping the `#trigger` slot, other attributes of `<Tooltip>` are set on it |
+| `content-class` | | class of the tooltip box |
+
+The default slot receives `close`, e.g. for a button inside an interactive tooltip:
+
+```vue
+<Tooltip trigger="click" interactive>
+    <template #trigger><button type="button" class="btn btn-sm btn-light">{{ __('Details') }}</button></template>
+
+    <template #default="{ close }">
+        <a :href="row.url" target="_blank">{{ __('Open order') }}</a>
+        <button type="button" class="btn btn-sm btn-light" @click="close">{{ __('Close') }}</button>
+    </template>
+</Tooltip>
+```
+
+A tooltip closes when the pointer leaves the trigger (or the interactive tooltip), on a click outside of it, on `Escape` and when its trigger is removed from the page. On touch screens a touch opens and closes a hover tooltip.
+
+## Loading the content
+
+`show` is emitted when the tooltip opens and `hide` when it closes. Load the data in `show`, the tooltip moves itself when its content changes the size.
+
+```vue
+<template>
+    <Tooltip @show="load">
+        <template #trigger>{{ row.blocked }}</template>
+
+        <div v-if="loading">{{ __('Loading...') }}</div>
+        <div v-for="order in orders" :key="order.id">{{ order.number }}: {{ order.quantity }}</div>
+    </Tooltip>
+</template>
+
+<script setup>
+const props = defineProps(['row']);
+
+const loading = ref(false);
+const orders = ref([]);
+
+const load = async () => {
+    loading.value = true;
+
+    try {
+        orders.value = (await useAxios().$get('/api/orders/blocks', { params: { id: props.row.id } })).orders;
+    } finally {
+        loading.value = false;
+    }
+};
+</script>
+```
+
+## Styling
+
+The tooltip box has the `admin-tooltip` class, with `--top`, `--bottom`, `--left` or `--right` of the placement used and `--interactive`. Use `content-class` for your own look of one tooltip.
