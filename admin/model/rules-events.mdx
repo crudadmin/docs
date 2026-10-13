@@ -232,6 +232,8 @@ public function __construct(array $attributes = [])
 | `set{Property}Property($value)` | change a [model parameter](/admin/model/parameters#dynamic-parameters), runs after the model mutator |
 | `scopeAdminRows($query)` | [filter admin table rows](/admin/model/listing#filtering-rows-in-the-administration) |
 | `scope{Name}($query, $value)` | [request scope](/admin/model/listing#request-scopes) |
+| `set{Column}AdminSearch($query, $search, $searchTo)` | [search of a column](/admin/model/listing#custom-column-search) the module adds, used when the model has no such method |
+| `set{Column}AdminSort($query, $direction)` | [sorting of a column](/admin/model/listing#sorting-by-a-column) the module adds, used when the model has no such method |
 | `setAdminAttributes`, `setAdminRowAttributes`, `setAdminRowsAttributes` | [change row attributes](/admin/model/listing#row-attributes) |
 | `setAdminResponse`, `setAdminRowResponse`, `setAdminRowsResponse` | [prepare the row before serialization](/admin/model/listing#columns-loaded-by-the-query) |
 | `adminModelRender(&$data)` | [change the module definition](/admin/model/listing#changing-the-module-definition), `$data` by reference |

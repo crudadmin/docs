@@ -279,6 +279,8 @@ public function setCommentsCountAdminSort($query, $direction)
 }
 ```
 
+A [module](/admin/model/rules-events#modules) adding a column can define its `set{Column}AdminSort` too. The method of the model wins over its modules.
+
 `columns.*.sortable => false` turns sorting of a column off.
 
 ## Search
@@ -295,12 +297,12 @@ public function setCommentsCountAdminSort($query, $direction)
 | `locale` | case and accent insensitive |
 | integer, decimal with interval | range from / to |
 | date, datetime, `created_at` | exact date, with interval from, to or range |
-| imaginary | ignored |
+| imaginary | ignored, unless the column has its `set{Column}AdminSearch` |
 
 ### Custom column search
 {/* feature: hook.set{Column}AdminSearch, model.getSearchAdminColumnOperator() */}
 
-`set{Column}AdminSearch` replaces the search of a column. It is also used when the search runs in all columns. `getSearchAdminColumnOperator` decides how words of the query are combined.
+`set{Column}AdminSearch` replaces the search of a column. It is also used when the search runs in all columns. A [module](/admin/model/rules-events#modules) adding the column can define it too, the method of the model wins over its modules. `getSearchAdminColumnOperator` decides how words of the query are combined.
 
 ```php app/Models/Product.php
 public function setSupplierIdAdminSearch($query, $search, $searchTo)

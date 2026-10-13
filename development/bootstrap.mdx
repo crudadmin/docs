@@ -10,11 +10,15 @@ Every app we build starts with the bootstrap request, `GET /api/bootstrap`. It r
 
 ## Shared PHP implementation
 
-In PHP helpers 2.0, `AdminHelpers\Bootstrap\BootstrapRequest` extends `Admin\Core\Bootstrap\BootstrapRequest` from `crudadmin/framework` 6. The framework owns the request mechanism the administration uses as well: section composition (`get`, `guest`, `authenticated`, `all`, `only`), the guest rule of the `$authenticated` property, the section whitelist (`$sections`, `#[BootstrapSection]`) and caching. Helpers adds what an application needs on top: the project client, token, `auth()` response and `onClient()` hook, the `app-type` resolver and the route. The former `AdminHelpers\Utilities\BootstrapRequest` and `BootstrapResolver` names were removed, see the migration of PHP helpers.
+In PHP helpers 2.0, `AdminHelpers\Bootstrap\BootstrapRequest` extends `Admin\Core\Bootstrap\BootstrapRequest` from `crudadmin/framework` 6. The framework owns the request mechanism the administration uses as well: section composition (`get`, `guest`, `authenticated`, `all`, `only`), the guest rule of the `$authenticated` property, the section whitelist (`$sections`, `#[BootstrapSection]`) and caching. Helpers adds what an application needs on top: the project client, token, `auth()` response and `onClient()` hook, the `app-type` resolver and the route. The sections are written by the project, or come from a package: `crudadmin/eshop` 5 extends the helpers class with `locale`, `app`, `routes`, `eshop` and `cart` and serves `GET /bootstrap` through the helpers route. The former `AdminHelpers\Utilities\BootstrapRequest` and `BootstrapResolver` names were removed, see the migration of PHP helpers.
+
+<Warning>
+Updating helpers to 2.0 breaks a project which still imports `AdminHelpers\Utilities\BootstrapRequest`: the bootstrap and every login response built from it end with "Class not found" (500). Replace the import with `AdminHelpers\Bootstrap\BootstrapRequest` and run `composer dump-autoload`, the classmap of a linked (symlinked) helpers otherwise still points to the removed file.
+</Warning>
 
 The administration uses its own `Admin\Bootstrap\AdminBootstrapRequest`, built on the same framework base with admin session and verification rules. Its endpoint is `/admin/api/bootstrap`; it does not reuse your application's `/api/bootstrap`.
 
-Every public method is a section by default. Opt in to a whitelist to keep public helpers out of `?only=`: list the sections in `protected $sections = ['locale', 'app', ...]`, or mark them with the `Admin\Core\Bootstrap\Attributes\BootstrapSection` attribute. The administration marks its sections the same way (`AdminBootstrapRequest`). With either, only the base sections (`get`, `guest`, `authenticated`, and `auth` in helpers), the listed and the marked methods are sections. The attribute is inherited: a method overriding a marked method of a parent class or trait stays a section without repeating it, so a package can mark its sections and a project only marks its own. Both ways stay supported and may be combined: the sections are the union of `$sections` and the marked methods. A list in a subclass adds to the sections marked by its parents, it does not replace them. Override `canLoadSection($method)` for other rules.
+Every public method added by the project is a section by default. The public methods of the bootstrap class itself (`only`, `all`, `cache`, `forgetCache`, `setToken`, `withClient`…) are not sections, `?only=setToken` loads nothing even when the project overrides the method. Opt in to a whitelist to keep public helpers out of `?only=`: list the sections in `protected $sections = ['locale', 'app', ...]`, or mark them with the `Admin\Core\Bootstrap\Attributes\BootstrapSection` attribute. The administration marks its sections the same way (`AdminBootstrapRequest`). With either, only the base sections (`get`, `guest`, `authenticated`, and `auth` in helpers), the listed and the marked methods are sections. The attribute is inherited: a method overriding a marked method of a parent class or trait stays a section without repeating it, so a package can mark its sections and a project only marks its own. Both ways stay supported and may be combined: the sections are the union of `$sections` and the marked methods. A list in a subclass adds to the sections marked by its parents, it does not replace them. Override `canLoadSection($method)` for other rules.
 
 `get()` is loaded by everybody, `guest()` only by a guest, `authenticated()` only by a signed in user (in helpers also the login response with `auth.response = bootstrap`). Override `authenticated()` to compose the sections of a signed in user, a section may be in `get()` and `authenticated()` at once:
 
@@ -53,6 +57,8 @@ Route::middleware(['auth.optional:user'])->group(function () {
     'class' => App\Utilities\Bootstrap\AppRequest::class,
 ],
 ```
+
+In an e-shop, `Store::routesForBootstrap()` of `crudadmin/eshop` 5 registers this route, and the class defaults to `AdminEshop\Contracts\Bootstrap\BootstrapRequest`. Extend that class instead of the helpers one.
 
 The route sits behind an optional authentication middleware, so a guest gets the guest sections and a valid token the authenticated ones. Older projects have their own controller doing the same:
 
@@ -152,6 +158,20 @@ class AppRequest extends BootstrapRequest
 <Warning>
 We are using singular forms of method naming. Same in Pinia stores.
 </Warning>
+
+### Client and token
+
+- The client is resolved when the request is created: `client()` of the project, otherwise `auth()->user()`. `onClient($client)` runs right away for a signed in client, use it for side effects like the last activity or the platform of the device.
+- `withClient($client)` sets the client explicitly, e.g. in a login response, where the guard of the request does not know the user yet. `onClient()` runs for it too.
+- `isAuthorized()` tells whether a client is set. `auth()` returns `[]` for a guest.
+- `setToken($name, $abilities = ['*'])` makes `auth()` create a Sanctum token of that name. The token is created once per instance: every later `auth()` call of the same request, from another section or response, returns the same token. Another name or other abilities create a new one.
+
+```php
+// Login response of a project (see Login response of the helpers authentication)
+return autoAjax()->store(
+    AppRequest::setToken('login')->authenticated()
+);
+```
 
 ## Facade
 
