@@ -269,7 +269,7 @@ protected $settings = [
 By default the search bar appears when the table has at least 3 rows. The column select is as wide as the name of the selected column, at most 80rem. With `search.columns`, a new search starts in `search.column`, or in the first listed column. Filter buttons are defined by [`getFilterStates()`](/admin/model/listing#filter-buttons), which fills `filter.items` automatically. `'filter.enabled' => false` hides them.
 
 ## Form behaviour
-{/* feature: settings.form.enabled, settings.form.modal, settings.form.actions, settings.form.header, settings.form.footer, settings.form.autocomplete, settings.layout.header, settings.tabs.enabled, settings.tabs.default, settings.tabs.autoload, settings.tabs.name, settings.form.autoreset, settings.table.refresh_interval, settings.table.reload_on_update */}
+{/* feature: settings.form.enabled, settings.form.modal, settings.form.actions, settings.form.header, settings.form.footer, settings.form.autocomplete, settings.layout.header, settings.tabs.enabled, settings.tabs.default, settings.tabs.autoload, settings.tabs.name, settings.form.autoreset, settings.table.refresh_interval, settings.table.refresh_in_background, settings.table.reload_on_update */}
 
 ```php app/Models/Booking.php
 protected $settings = [
@@ -295,6 +295,7 @@ protected $settings = [
 | `tabs.name` | name of the first tab holding fields outside of tabs, default "General" |
 | `form.autoreset` | `false` keeps the created record opened instead of resetting the form |
 | `table.refresh_interval` | automatic refresh of rows in milliseconds, `false` refreshes once per hour, default 60–120 s |
+| `table.refresh_in_background` | `true` refreshes rows also while the admin window is hidden or not focused. By default a refresh falling into that time waits and runs as soon as the user returns to the window, the table header shows "Synchronization paused" meanwhile |
 | `table.reload_on_update` | reloads all rows after a record is saved |
 
 ### Read-only forms

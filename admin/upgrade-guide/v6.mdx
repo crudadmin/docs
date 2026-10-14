@@ -689,6 +689,10 @@ The models set is keyed by class name and ordered by the administration, not by 
 - `scopeAdminRows()` orders follow the chosen column. `AdminRows::getRowsDataQuery()` applies the `order` request parameter, exports of the table follow it too. A column named like a value the query selects (`withCount`, `withSum`, an alias) is sorted by that alias; code calling `count()` on that query has to drop the order first (`reorder()`).
 - The chosen sorting is remembered in the browser per table. Frontend code reading `getRowsSorted()` gets the rows of the database order unchanged when the database sorted them.
 
+## Rows refresh in inactive windows
+
+- The automatic refresh of rows (`table.refresh_interval`) is paused while the admin window is hidden or not focused. A refresh due in that time runs as soon as the user returns to the window. The table header shows the paused synchronization like a disabled one. Screens which must stay current in the background (dashboards on a wall monitor) set `'table.refresh_in_background' => true`.
+
 ## Editing in the table
 
 - A `column_editable` cell is no longer an input all the time. Cells show their values, a cell switches to its field by the pencil shown on its hover and the whole column by the pencil of its header, so long tables render without a form input in every row.
